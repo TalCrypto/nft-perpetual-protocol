@@ -1,35 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
 import { BlockContext } from "./utils/BlockContext.sol";
-import { BaseRelayRecipient } from "@opengsn/gsn/contracts/BaseRelayRecipient.sol";
-import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { Decimal } from "./utils/Decimal.sol";
-import { SignedDecimal } from "./utils/SignedDecimal.sol";
-import { MixedDecimal } from "./utils/MixedDecimal.sol";
-import { DecimalERC20 } from "./utils/DecimalERC20.sol";
-import { ContextUpgradeSafe } from "@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
-// prettier-ignore
-// solhint-disable-next-line
-import { ReentrancyGuardUpgradeSafe } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { OwnerPausableUpgradeSafe } from "./OwnerPausable.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
 import { IMultiTokenRewardRecipient } from "./interface/IMultiTokenRewardRecipient.sol";
 
+import { IntMath } from "./utils/IntMath.sol";
+import { UIntMath } from "./utils/UIntMath.sol";
+
 // note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
 // (yes, the ordering is reversed comparing to Python)
-contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeSafe, BlockContext, BaseRelayRecipient {
-    using Decimal for Decimal.decimal;
-    using SignedDecimal for SignedDecimal.signedDecimal;
-    using MixedDecimal for SignedDecimal.signedDecimal;
+contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
+    using UIntMath for uint256;
+    using IntMath for int256;
 
     //
     // EVENTS
     //
-    event MarginRatioChanged(uint256 marginRatio);
-    event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
+    //event MarginRatioChanged(uint256 marginRatio);
+    //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
     event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
     event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
     event PositionAdjusted(address indexed amm, address indexed trader, int256 newPositionSize, uint256 oldLiquidityIndex, uint256 newLiquidityIndex);
@@ -84,8 +77,6 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         uint256 badDebt
     );
 
-    event ReferredPositionChanged(bytes32 indexed referralCode);
-
     //
     // Struct and Enum
     //
@@ -115,10 +106,10 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     /// @param liquidityHistoryIndex
     /// @param blockNumber the block number of the last position
     struct Position {
-        SignedDecimal.signedDecimal size;
-        Decimal.decimal margin;
-        Decimal.decimal openNotional;
-        SignedDecimal.signedDecimal lastUpdatedCumulativePremiumFraction;
+        int256 size;
+        uint256 margin;
+        uint256 openNotional;
+        int256 lastUpdatedCumulativePremiumFraction;
         uint256 liquidityHistoryIndex;
         uint256 blockNumber;
     }
@@ -127,21 +118,21 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     struct PositionResp {
         Position position;
         // the quote asset amount trader will send if open position, will receive if close
-        Decimal.decimal exchangedQuoteAssetAmount;
+        uint256 exchangedQuoteAssetAmount;
         // if realizedPnl + realizedFundingPayment + margin is negative, it's the abs value of it
-        Decimal.decimal badDebt;
+        uint256 badDebt;
         // the base asset amount trader will receive if open position, will send if close
-        SignedDecimal.signedDecimal exchangedPositionSize;
+        int256 exchangedPositionSize;
         // funding payment incurred during this position response
-        SignedDecimal.signedDecimal fundingPayment;
+        int256 fundingPayment;
         // realizedPnl = unrealizedPnl * closedRatio
-        SignedDecimal.signedDecimal realizedPnl;
+        int256 realizedPnl;
         // positive = trader transfer margin to vault, negative = trader receive margin from vault
         // it's 0 when internalReducePosition, its addedMargin when internalIncreasePosition
         // it's min(0, oldPosition + realizedFundingPayment + realizedPnl) when internalClosePosition
-        SignedDecimal.signedDecimal marginToVault;
+        int256 marginToVault;
         // unrealized pnl after open position
-        SignedDecimal.signedDecimal unrealizedPnlAfter;
+        int256 unrealizedPnlAfter;
     }
 
     struct AmmMap {
@@ -154,33 +145,35 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         // This design is to prevent the attacker being benefited from the multiple action in one block
         // in extreme cases
         uint256 lastRestrictionBlock;
-        SignedDecimal.signedDecimal[] cumulativePremiumFractions;
+        int256[] cumulativePremiumFractions;
         mapping(address => Position) positionMap;
     }
 
     //**********************************************************//
     //    Can not change the order of below state variables     //
     //**********************************************************//
-    string public override versionRecipient;
+    //string public override versionRecipient;
+
+    mapping(address => uint256) private decimalMap;
 
     // only admin
-    Decimal.decimal public initMarginRatio;
+    uint256 public initMarginRatio;
 
     // only admin
-    Decimal.decimal public maintenanceMarginRatio;
+    uint256 public maintenanceMarginRatio;
 
     // only admin
-    Decimal.decimal public liquidationFeeRatio;
+    uint256 public liquidationFeeRatio;
 
     // key by amm address. will be deprecated or replaced after guarded period.
     // it's not an accurate open interest, just a rough way to control the unexpected loss at the beginning
-    mapping(address => Decimal.decimal) public openInterestNotionalMap;
+    mapping(address => uint256) public openInterestNotionalMap;
 
     // key by amm address
     mapping(address => AmmMap) internal ammMap;
 
     // prepaid bad debt balance, key by ERC20 token address
-    mapping(address => Decimal.decimal) internal prepaidBadDebt;
+    mapping(address => uint256) internal prepaidBadDebt;
 
     // contract dependencies
     IInsuranceFund public insuranceFund;
@@ -195,7 +188,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     //**********************************************************//
 
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
-    Decimal.decimal public partialLiquidationRatio;
+    uint256 public partialLiquidationRatio;
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
@@ -206,27 +199,24 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     //
     // openzeppelin doesn't support struct input
     // https://github.com/OpenZeppelin/openzeppelin-sdk/issues/1523
-    // function initialize(
-    //     uint256 _initMarginRatio,
-    //     uint256 _maintenanceMarginRatio,
-    //     uint256 _liquidationFeeRatio,
-    //     IInsuranceFund _insuranceFund,
-    //     address _trustedForwarder
-    // ) public initializer {
-    // require(address(_insuranceFund) != address(0), "Invalid IInsuranceFund");
+    function initialize(
+        uint256 _initMarginRatio,
+        uint256 _maintenanceMarginRatio,
+        uint256 _liquidationFeeRatio,
+        IInsuranceFund _insuranceFund
+    ) public initializer {
+        //require(address(_insuranceFund) != address(0), "Invalid IInsuranceFund");
 
-    // __OwnerPausable_init();
+        __OwnerPausable_init();
 
-    // comment these out for reducing bytecode size
-    // __ReentrancyGuard_init();
+        //comment these out for reducing bytecode size
+        __ReentrancyGuard_init();
 
-    // versionRecipient = "1.0.0"; // we are not using it atm
-    // initMarginRatio = Decimal.decimal(_initMarginRatio);
-    // maintenanceMarginRatio = Decimal.decimal(_maintenanceMarginRatio);
-    // liquidationFeeRatio = Decimal.decimal(_liquidationFeeRatio);
-    // insuranceFund = _insuranceFund;
-    // trustedForwarder = _trustedForwarder;
-    // }
+        initMarginRatio = _initMarginRatio;
+        maintenanceMarginRatio = _maintenanceMarginRatio;
+        liquidationFeeRatio = _liquidationFeeRatio;
+        insuranceFund = _insuranceFund;
+    }
 
     //
     // External
@@ -237,9 +227,9 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @dev only owner can call
      * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
      */
-    function setLiquidationFeeRatio(Decimal.decimal memory _liquidationFeeRatio) external onlyOwner {
+    function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
         liquidationFeeRatio = _liquidationFeeRatio;
-        emit LiquidationFeeRatioChanged(liquidationFeeRatio.toUint());
+        //emit LiquidationFeeRatioChanged(liquidationFeeRatio.toUint());
     }
 
     /**
@@ -247,9 +237,9 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @dev only owner can call
      * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
      */
-    function setMaintenanceMarginRatio(Decimal.decimal memory _maintenanceMarginRatio) external onlyOwner {
+    function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
         maintenanceMarginRatio = _maintenanceMarginRatio;
-        emit MarginRatioChanged(maintenanceMarginRatio.toUint());
+        //emit MarginRatioChanged(maintenanceMarginRatio.toUint());
     }
 
     /**
@@ -284,8 +274,9 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @notice set the margin ratio after deleveraging
      * @dev only owner can call
      */
-    function setPartialLiquidationRatio(Decimal.decimal memory _ratio) external onlyOwner {
-        require(_ratio.cmp(Decimal.one()) <= 0, "invalid partial liquidation ratio");
+    function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
+        //require(_ratio.cmp(Decimal.one()) <= 0, "invalid partial liquidation ratio");
+        require(_ratio <= 1 ether, "invalid partial liquidation ratio");
         partialLiquidationRatio = _ratio;
     }
 
@@ -294,7 +285,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @param _amm IAmm address
      * @param _addedMargin added margin in 18 digits
      */
-    function addMargin(IAmm _amm, Decimal.decimal calldata _addedMargin) external whenNotPaused nonReentrant {
+    function addMargin(IAmm _amm, uint256 _addedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
@@ -303,12 +294,13 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         address trader = _msgSender();
         Position memory position = getPosition(_amm, trader);
         // update margin
-        position.margin = position.margin.addD(_addedMargin);
+        position.margin = position.margin + _addedMargin;
 
         setPosition(_amm, trader, position);
         // transfer token from trader
-        _transferFrom(quoteToken, trader, address(this), _addedMargin);
-        emit MarginChanged(trader, address(_amm), int256(_addedMargin.toUint()), 0);
+        quoteToken.transferFrom(trader, address(this), _addedMargin);
+        //_transferFrom(quoteToken, trader, address(this), _addedMargin);
+        emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
     }
 
     /**
@@ -316,7 +308,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @param _amm IAmm address
      * @param _removedMargin removed margin in 18 digits
      */
-    function removeMargin(IAmm _amm, Decimal.decimal calldata _removedMargin) external whenNotPaused nonReentrant {
+    function removeMargin(IAmm _amm, uint256 _removedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
@@ -327,27 +319,26 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         Position memory position = getPosition(_amm, trader);
 
         // update margin and cumulativePremiumFraction
-        SignedDecimal.signedDecimal memory marginDelta = MixedDecimal.fromDecimal(_removedMargin).mulScalar(-1);
-        (
-            Decimal.decimal memory remainMargin,
-            Decimal.decimal memory badDebt,
-            SignedDecimal.signedDecimal memory fundingPayment,
-            SignedDecimal.signedDecimal memory latestCumulativePremiumFraction
-        ) = calcRemainMarginWithFundingPayment(_amm, position, marginDelta);
-        require(badDebt.toUint() == 0, "margin is not enough");
+        int256 marginDelta = _removedMargin.toInt() * -1;
+        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, int256 latestCumulativePremiumFraction) = calcRemainMarginWithFundingPayment(
+            _amm,
+            position,
+            marginDelta
+        );
+        require(badDebt == 0, "margin is not enough");
         position.margin = remainMargin;
         position.lastUpdatedCumulativePremiumFraction = latestCumulativePremiumFraction;
 
         // check enough margin (same as the way Curie calculates the free collateral)
         // Use a more conservative way to restrict traders to remove their margin
         // We don't allow unrealized PnL to support their margin removal
-        require(calcFreeCollateral(_amm, trader, remainMargin.subD(badDebt)).toInt() >= 0, "free collateral is not enough");
+        require(calcFreeCollateral(_amm, trader, remainMargin - badDebt) >= 0, "free collateral is not enough");
 
         setPosition(_amm, trader, position);
 
         // transfer token back to trader
         withdraw(quoteToken, trader, _removedMargin);
-        emit MarginChanged(trader, address(_amm), marginDelta.toInt(), fundingPayment.toInt());
+        emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
     }
 
     /**
@@ -365,28 +356,26 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         // calculate settledValue
         // If Settlement Price = 0, everyone takes back her collateral.
         // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
-        Decimal.decimal memory settlementPrice = _amm.getSettlementPrice();
-        Decimal.decimal memory settledValue;
-        if (settlementPrice.toUint() == 0) {
+        uint256 settlementPrice = _amm.getSettlementPrice();
+        uint256 settledValue;
+        if (settlementPrice == 0) {
             settledValue = pos.margin;
         } else {
             // returnedFund = positionSize * (settlementPrice - openPrice) + positionMargin
             // openPrice = positionOpenNotional / positionSize.abs()
-            SignedDecimal.signedDecimal memory returnedFund = pos
-                .size
-                .mulD(MixedDecimal.fromDecimal(settlementPrice).subD(pos.openNotional.divD(pos.size.abs())))
-                .addD(pos.margin);
+            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) + pos.margin.toInt();
             // if `returnedFund` is negative, trader can't get anything back
-            if (returnedFund.toInt() > 0) {
+            if (returnedFund > 0) {
                 settledValue = returnedFund.abs();
             }
         }
         // transfer token based on settledValue. no insurance fund support
-        if (settledValue.toUint() > 0) {
-            _transfer(_amm.quoteAsset(), trader, settledValue);
+        if (settledValue > 0) {
+            _amm.quoteAsset().transfer(trader, settledValue);
+            //_transfer(_amm.quoteAsset(), trader, settledValue);
         }
         // emit event
-        emit PositionSettled(address(_amm), trader, settledValue.toUint());
+        emit PositionSettled(address(_amm), trader, settledValue);
     }
 
     // if increase position
@@ -420,29 +409,6 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     //   move the remain margin to insuranceFund
 
     /**
-     * @notice open a position with referral code
-     * @param _amm amm address
-     * @param _side enum Side; BUY for long and SELL for short
-     * @param _quoteAssetAmount quote asset amount in 18 digits. Can Not be 0
-     * @param _leverage leverage  in 18 digits. Can Not be 0
-     * @param _baseAssetAmountLimit minimum base asset amount expected to get to prevent from slippage.
-     * @param _referralCode referral code
-     */
-    function openPositionWithReferral(
-        IAmm _amm,
-        Side _side,
-        Decimal.decimal calldata _quoteAssetAmount,
-        Decimal.decimal calldata _leverage,
-        Decimal.decimal calldata _baseAssetAmountLimit,
-        bytes32 _referralCode
-    ) external {
-        openPosition(_amm, _side, _quoteAssetAmount, _leverage, _baseAssetAmountLimit);
-        // if (_referralCode != 0) {
-        //     emit ReferredPositionChanged(_referralCode);
-        // }
-    }
-
-    /**
      * @notice open a position
      * @param _amm amm address
      * @param _side enum Side; BUY for long and SELL for short
@@ -453,22 +419,22 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function openPosition(
         IAmm _amm,
         Side _side,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _leverage,
-        Decimal.decimal memory _baseAssetAmountLimit
+        uint256 _quoteAssetAmount,
+        uint256 _leverage,
+        uint256 _baseAssetAmountLimit
     ) public whenNotPaused nonReentrant {
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
         requireValidTokenAmount(quoteToken, _quoteAssetAmount);
         requireNonZeroInput(_leverage);
-        requireMoreMarginRatio(MixedDecimal.fromDecimal(Decimal.one()).divD(_leverage), initMarginRatio, true);
+        requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
         requireNotRestrictionMode(_amm);
 
         address trader = _msgSender();
         PositionResp memory positionResp;
         {
             // add scope for stack too deep error
-            int256 oldPositionSize = getPosition(_amm, trader).size.toInt();
+            int256 oldPositionSize = getPosition(_amm, trader).size;
             bool isNewPosition = oldPositionSize == 0 ? true : false;
 
             // increase or decrease position depends on old position's side and size
@@ -481,39 +447,40 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
             // update the position state
             setPosition(_amm, trader, positionResp.position);
             // if opening the exact position size as the existing one == closePosition, can skip the margin ratio check
-            if (!isNewPosition && positionResp.position.size.toInt() != 0) {
+            if (!isNewPosition && positionResp.position.size != 0) {
                 requireMoreMarginRatio(getMarginRatio(_amm, trader), maintenanceMarginRatio, true);
             }
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
-            require(positionResp.badDebt.toUint() == 0, "bad debt");
+            require(positionResp.badDebt == 0, "bad debt");
 
             // transfer the actual token between trader and vault
-            if (positionResp.marginToVault.toInt() > 0) {
-                _transferFrom(quoteToken, trader, address(this), positionResp.marginToVault.abs());
-            } else if (positionResp.marginToVault.toInt() < 0) {
+            if (positionResp.marginToVault > 0) {
+                quoteToken.transferFrom(trader, address(this), positionResp.marginToVault.abs());
+                //_transferFrom(quoteToken, trader, address(this), positionResp.marginToVault.abs());
+            } else if (positionResp.marginToVault < 0) {
                 withdraw(quoteToken, trader, positionResp.marginToVault.abs());
             }
         }
 
         // calculate fee and transfer token for fees
         //@audit - can optimize by changing amm.swapInput/swapOutput's return type to (exchangedAmount, quoteToll, quoteSpread, quoteReserve, baseReserve) (@wraecca)
-        Decimal.decimal memory transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
+        uint256 transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
 
         // emit event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
-        int256 fundingPayment = positionResp.fundingPayment.toInt(); // pre-fetch for stack too deep error
+        uint256 spotPrice = _amm.getSpotPrice();
+        int256 fundingPayment = positionResp.fundingPayment; // pre-fetch for stack too deep error
         emit PositionChanged(
             trader,
             address(_amm),
-            positionResp.position.margin.toUint(),
-            positionResp.exchangedQuoteAssetAmount.toUint(),
-            positionResp.exchangedPositionSize.toInt(),
-            transferredFee.toUint(),
-            positionResp.position.size.toInt(),
-            positionResp.realizedPnl.toInt(),
-            positionResp.unrealizedPnlAfter.toInt(),
-            positionResp.badDebt.toUint(),
+            positionResp.position.margin,
+            positionResp.exchangedQuoteAssetAmount,
+            positionResp.exchangedPositionSize,
+            transferredFee,
+            positionResp.position.size,
+            positionResp.realizedPnl,
+            positionResp.unrealizedPnlAfter,
+            positionResp.badDebt,
             0,
             spotPrice,
             fundingPayment
@@ -521,26 +488,10 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     }
 
     /**
-     * @notice close position with referral code
-     * @param _amm IAmm address
-     * @param _referralCode referral code
-     */
-    function closePositionWithReferral(
-        IAmm _amm,
-        Decimal.decimal calldata _quoteAssetAmountLimit,
-        bytes32 _referralCode
-    ) external {
-        closePosition(_amm, _quoteAssetAmountLimit);
-        // if (_referralCode != 0) {
-        //     emit ReferredPositionChanged(_referralCode);
-        // }
-    }
-
-    /**
      * @notice close all the positions
      * @param _amm IAmm address
      */
-    function closePosition(IAmm _amm, Decimal.decimal memory _quoteAssetAmountLimit) public whenNotPaused nonReentrant {
+    function closePosition(IAmm _amm, uint256 _quoteAssetAmountLimit) public whenNotPaused nonReentrant {
         // check conditions
         requireAmm(_amm, true);
         requireNotRestrictionMode(_amm);
@@ -552,24 +503,21 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         {
             Position memory position = getPosition(_amm, trader);
             // if it is long position, close a position means short it(which means base dir is ADD_TO_AMM) and vice versa
-            IAmm.Dir dirOfBase = position.size.toInt() > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
+            IAmm.Dir dirOfBase = position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
 
             // check if this position exceed fluctuation limit
             // if over fluctuation limit, then close partial position. Otherwise close all.
             // if partialLiquidationRatio is 1, then close whole position
-            if (_amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) && partialLiquidationRatio.cmp(Decimal.one()) < 0) {
-                Decimal.decimal memory partiallyClosedPositionNotional = _amm.getOutputPrice(
-                    dirOfBase,
-                    position.size.mulD(partialLiquidationRatio).abs()
-                );
+            if (_amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) && partialLiquidationRatio < 1 ether) {
+                uint256 partiallyClosedPositionNotional = _amm.getOutputPrice(dirOfBase, position.size.mulD(partialLiquidationRatio.toInt()).abs());
 
                 positionResp = openReversePosition(
                     _amm,
-                    position.size.toInt() > 0 ? Side.SELL : Side.BUY,
+                    position.size > 0 ? Side.SELL : Side.BUY,
                     trader,
                     partiallyClosedPositionNotional,
-                    Decimal.one(),
-                    Decimal.zero(),
+                    1 ether,
+                    0,
                     true
                 );
                 setPosition(_amm, trader, positionResp.position);
@@ -578,7 +526,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
             }
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
-            require(positionResp.badDebt.toUint() == 0, "bad debt");
+            require(positionResp.badDebt == 0, "bad debt");
 
             // add scope for stack too deep error
             // transfer the actual token from trader and vault
@@ -587,22 +535,22 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         }
 
         // calculate fee and transfer token for fees
-        Decimal.decimal memory transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
+        uint256 transferredFee = transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
 
         // prepare event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
-        int256 fundingPayment = positionResp.fundingPayment.toInt();
+        uint256 spotPrice = _amm.getSpotPrice();
+        int256 fundingPayment = positionResp.fundingPayment;
         emit PositionChanged(
             trader,
             address(_amm),
-            positionResp.position.margin.toUint(),
-            positionResp.exchangedQuoteAssetAmount.toUint(),
-            positionResp.exchangedPositionSize.toInt(),
-            transferredFee.toUint(),
-            positionResp.position.size.toInt(),
-            positionResp.realizedPnl.toInt(),
-            positionResp.unrealizedPnlAfter.toInt(),
-            positionResp.badDebt.toUint(),
+            positionResp.position.margin,
+            positionResp.exchangedQuoteAssetAmount,
+            positionResp.exchangedPositionSize,
+            transferredFee,
+            positionResp.position.size,
+            positionResp.realizedPnl,
+            positionResp.unrealizedPnlAfter,
+            positionResp.badDebt,
             0,
             spotPrice,
             fundingPayment
@@ -612,17 +560,17 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function liquidateWithSlippage(
         IAmm _amm,
         address _trader,
-        Decimal.decimal memory _quoteAssetAmountLimit
-    ) external nonReentrant returns (Decimal.decimal memory quoteAssetAmount, bool isPartialClose) {
+        uint256 _quoteAssetAmountLimit
+    ) external nonReentrant returns (uint256 quoteAssetAmount, bool isPartialClose) {
         Position memory position = getPosition(_amm, _trader);
         (quoteAssetAmount, isPartialClose) = internalLiquidate(_amm, _trader);
 
-        Decimal.decimal memory quoteAssetAmountLimit = isPartialClose ? _quoteAssetAmountLimit.mulD(partialLiquidationRatio) : _quoteAssetAmountLimit;
+        uint256 quoteAssetAmountLimit = isPartialClose ? _quoteAssetAmountLimit.mulD(partialLiquidationRatio) : _quoteAssetAmountLimit;
 
-        if (position.size.toInt() > 0) {
-            require(quoteAssetAmount.toUint() >= quoteAssetAmountLimit.toUint(), "Less than minimal quote token");
-        } else if (position.size.toInt() < 0 && quoteAssetAmountLimit.cmp(Decimal.zero()) != 0) {
-            require(quoteAssetAmount.toUint() <= quoteAssetAmountLimit.toUint(), "More than maximal quote token");
+        if (position.size > 0) {
+            require(quoteAssetAmount >= quoteAssetAmountLimit, "More than maximal quote token");
+        } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
+            require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
         }
 
         return (quoteAssetAmount, isPartialClose);
@@ -645,19 +593,19 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function payFunding(IAmm _amm) external {
         requireAmm(_amm, true);
 
-        SignedDecimal.signedDecimal memory premiumFraction = _amm.settleFunding();
-        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction.addD(getLatestCumulativePremiumFraction(_amm)));
+        int256 premiumFraction = _amm.settleFunding();
+        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
 
         // funding payment = premium fraction * position
         // eg. if alice takes 10 long position, totalPositionSize = 10
         // if premiumFraction is positive: long pay short, amm get positive funding payment
         // if premiumFraction is negative: short pay long, amm get negative funding payment
         // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
-        SignedDecimal.signedDecimal memory totalTraderPositionSize = _amm.getBaseAssetDelta();
-        SignedDecimal.signedDecimal memory ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
+        int256 totalTraderPositionSize = _amm.getBaseAssetDelta();
+        int256 ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
 
         IERC20 quoteAsset = _amm.quoteAsset();
-        if (ammFundingPaymentProfit.toInt() < 0) {
+        if (ammFundingPaymentProfit < 0) {
             insuranceFund.withdraw(quoteAsset, ammFundingPaymentProfit.abs());
         } else {
             transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
@@ -675,14 +623,10 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @param _trader trader address
      * @return margin ratio in 18 digits
      */
-    function getMarginRatio(IAmm _amm, address _trader) public view returns (SignedDecimal.signedDecimal memory) {
+    function getMarginRatio(IAmm _amm, address _trader) public view returns (int256) {
         Position memory position = getPosition(_amm, _trader);
         requirePositionSize(position.size);
-        (SignedDecimal.signedDecimal memory unrealizedPnl, Decimal.decimal memory positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(
-            _amm,
-            _trader,
-            PnlPreferenceOption.MAX_PNL
-        );
+        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(_amm, _trader, PnlPreferenceOption.MAX_PNL);
         return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
     }
 
@@ -690,29 +634,21 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         IAmm _amm,
         address _trader,
         PnlCalcOption _pnlCalcOption
-    ) internal view returns (SignedDecimal.signedDecimal memory) {
+    ) internal view returns (int256) {
         Position memory position = getPosition(_amm, _trader);
         requirePositionSize(position.size);
-        (Decimal.decimal memory positionNotional, SignedDecimal.signedDecimal memory pnl) = getPositionNotionalAndUnrealizedPnl(
-            _amm,
-            _trader,
-            _pnlCalcOption
-        );
+        (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
         return _getMarginRatio(_amm, position, pnl, positionNotional);
     }
 
     function _getMarginRatio(
         IAmm _amm,
         Position memory _position,
-        SignedDecimal.signedDecimal memory _unrealizedPnl,
-        Decimal.decimal memory _positionNotional
-    ) internal view returns (SignedDecimal.signedDecimal memory) {
-        (Decimal.decimal memory remainMargin, Decimal.decimal memory badDebt, , ) = calcRemainMarginWithFundingPayment(
-            _amm,
-            _position,
-            _unrealizedPnl
-        );
-        return MixedDecimal.fromDecimal(remainMargin).subD(badDebt).divD(_positionNotional);
+        int256 _unrealizedPnl,
+        uint256 _positionNotional
+    ) internal view returns (int256) {
+        (uint256 remainMargin, uint256 badDebt, , ) = calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
+        return (remainMargin.toInt() - badDebt.toInt()).divD(_positionNotional.toInt());
     }
 
     /**
@@ -737,26 +673,26 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         IAmm _amm,
         address _trader,
         PnlCalcOption _pnlCalcOption
-    ) public view returns (Decimal.decimal memory positionNotional, SignedDecimal.signedDecimal memory unrealizedPnl) {
+    ) public view returns (uint256 positionNotional, int256 unrealizedPnl) {
         Position memory position = getPosition(_amm, _trader);
-        Decimal.decimal memory positionSizeAbs = position.size.abs();
-        if (positionSizeAbs.toUint() != 0) {
-            bool isShortPosition = position.size.toInt() < 0;
+        uint256 positionSizeAbs = position.size.abs();
+        if (positionSizeAbs != 0) {
+            bool isShortPosition = position.size < 0;
             IAmm.Dir dir = isShortPosition ? IAmm.Dir.REMOVE_FROM_AMM : IAmm.Dir.ADD_TO_AMM;
             if (_pnlCalcOption == PnlCalcOption.TWAP) {
                 positionNotional = _amm.getOutputTwap(dir, positionSizeAbs);
             } else if (_pnlCalcOption == PnlCalcOption.SPOT_PRICE) {
                 positionNotional = _amm.getOutputPrice(dir, positionSizeAbs);
             } else {
-                Decimal.decimal memory oraclePrice = _amm.getUnderlyingPrice();
+                uint256 oraclePrice = _amm.getUnderlyingPrice();
                 positionNotional = positionSizeAbs.mulD(oraclePrice);
             }
             // unrealizedPnlForLongPosition = positionNotional - openNotional
             // unrealizedPnlForShortPosition = positionNotionalWhenBorrowed - positionNotionalWhenReturned =
             // openNotional - positionNotional = unrealizedPnlForLongPosition * -1
             unrealizedPnl = isShortPosition
-                ? MixedDecimal.fromDecimal(position.openNotional).subD(positionNotional)
-                : MixedDecimal.fromDecimal(positionNotional).subD(position.openNotional);
+                ? position.openNotional.toInt() - positionNotional.toInt()
+                : positionNotional.toInt() - position.openNotional.toInt();
         }
     }
 
@@ -765,7 +701,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
      * @param _amm IAmm address
      * @return latest cumulative premium fraction in 18 digits
      */
-    function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (SignedDecimal.signedDecimal memory) {
+    function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256) {
         uint256 len = ammMap[address(_amm)].cumulativePremiumFractions.length;
         if (len > 0) {
             return ammMap[address(_amm)].cumulativePremiumFractions[len - 1];
@@ -799,97 +735,95 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function clearPosition(IAmm _amm, address _trader) internal {
         // keep the record in order to retain the last updated block number
         ammMap[address(_amm)].positionMap[_trader] = Position({
-            size: SignedDecimal.zero(),
-            margin: Decimal.zero(),
-            openNotional: Decimal.zero(),
-            lastUpdatedCumulativePremiumFraction: SignedDecimal.zero(),
+            size: 0,
+            margin: 0,
+            openNotional: 0,
+            lastUpdatedCumulativePremiumFraction: 0,
             blockNumber: _blockNumber(),
             liquidityHistoryIndex: 0
         });
     }
 
-    function internalLiquidate(IAmm _amm, address _trader) internal returns (Decimal.decimal memory quoteAssetAmount, bool isPartialClose) {
+    function internalLiquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
         requireAmm(_amm, true);
-        SignedDecimal.signedDecimal memory marginRatio = getMarginRatio(_amm, _trader);
+        int256 marginRatio = getMarginRatio(_amm, _trader);
 
         // including oracle-based margin ratio as reference price when amm is over spread limit
         if (_amm.isOverSpreadLimit()) {
-            SignedDecimal.signedDecimal memory marginRatioBasedOnOracle = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
-            if (marginRatioBasedOnOracle.subD(marginRatio).toInt() > 0) {
+            int256 marginRatioBasedOnOracle = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
+            if (marginRatioBasedOnOracle - marginRatio > 0) {
                 marginRatio = marginRatioBasedOnOracle;
             }
         }
         requireMoreMarginRatio(marginRatio, maintenanceMarginRatio, false);
 
         PositionResp memory positionResp;
-        Decimal.decimal memory liquidationPenalty;
+        uint256 liquidationPenalty;
         {
-            Decimal.decimal memory liquidationBadDebt;
-            Decimal.decimal memory feeToLiquidator;
-            Decimal.decimal memory feeToInsuranceFund;
+            uint256 liquidationBadDebt;
+            uint256 feeToLiquidator;
+            uint256 feeToInsuranceFund;
             IERC20 quoteAsset = _amm.quoteAsset();
 
-            int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE).toInt();
+            int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
                 // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatioBasedOnSpot > int256(liquidationFeeRatio.toUint()) &&
-                partialLiquidationRatio.cmp(Decimal.one()) < 0 &&
-                partialLiquidationRatio.toUint() != 0
+                marginRatioBasedOnSpot > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
-                Decimal.decimal memory partiallyLiquidatedPositionNotional = _amm.getOutputPrice(
-                    position.size.toInt() > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
-                    position.size.mulD(partialLiquidationRatio).abs()
+                uint256 partiallyLiquidatedPositionNotional = _amm.getOutputPrice(
+                    position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                    position.size.mulD(partialLiquidationRatio.toInt()).abs()
                 );
 
                 positionResp = openReversePosition(
                     _amm,
-                    position.size.toInt() > 0 ? Side.SELL : Side.BUY,
+                    position.size > 0 ? Side.SELL : Side.BUY,
                     _trader,
                     partiallyLiquidatedPositionNotional,
-                    Decimal.one(),
-                    Decimal.zero(),
+                    1 ether,
+                    0,
                     true
                 );
 
                 // half of the liquidationFee goes to liquidator & another half goes to insurance fund
                 liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio);
-                feeToLiquidator = liquidationPenalty.divScalar(2);
-                feeToInsuranceFund = liquidationPenalty.subD(feeToLiquidator);
+                feeToLiquidator = liquidationPenalty / 2;
+                feeToInsuranceFund = liquidationPenalty - feeToLiquidator;
 
-                positionResp.position.margin = positionResp.position.margin.subD(liquidationPenalty);
+                positionResp.position.margin = positionResp.position.margin - liquidationPenalty;
                 setPosition(_amm, _trader, positionResp.position);
 
                 isPartialClose = true;
             } else {
                 liquidationPenalty = getPosition(_amm, _trader).margin;
-                positionResp = internalClosePosition(_amm, _trader, Decimal.zero());
-                Decimal.decimal memory remainMargin = positionResp.marginToVault.abs();
-                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio).divScalar(2);
+                positionResp = internalClosePosition(_amm, _trader, 0);
+                uint256 remainMargin = positionResp.marginToVault.abs();
+                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio) / 2;
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund
-                Decimal.decimal memory totalBadDebt = positionResp.badDebt;
-                if (feeToLiquidator.toUint() > remainMargin.toUint()) {
-                    liquidationBadDebt = feeToLiquidator.subD(remainMargin);
-                    totalBadDebt = totalBadDebt.addD(liquidationBadDebt);
+                uint256 totalBadDebt = positionResp.badDebt;
+                if (feeToLiquidator > remainMargin) {
+                    liquidationBadDebt = feeToLiquidator - remainMargin;
+                    totalBadDebt = totalBadDebt + liquidationBadDebt;
                 } else {
-                    remainMargin = remainMargin.subD(feeToLiquidator);
+                    remainMargin = remainMargin - feeToLiquidator;
                 }
 
                 // transfer the actual token between trader and vault
-                if (totalBadDebt.toUint() > 0) {
+                if (totalBadDebt > 0) {
                     require(backstopLiquidityProviderMap[_msgSender()], "not backstop LP");
                     realizeBadDebt(quoteAsset, totalBadDebt);
                 }
-                if (remainMargin.toUint() > 0) {
+                if (remainMargin > 0) {
                     feeToInsuranceFund = remainMargin;
                 }
             }
 
-            if (feeToInsuranceFund.toUint() > 0) {
+            if (feeToInsuranceFund > 0) {
                 transferToInsuranceFund(quoteAsset, feeToInsuranceFund);
             }
             withdraw(quoteAsset, _msgSender(), feeToLiquidator);
@@ -898,29 +832,29 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
             emit PositionLiquidated(
                 _trader,
                 address(_amm),
-                positionResp.exchangedQuoteAssetAmount.toUint(),
+                positionResp.exchangedQuoteAssetAmount,
                 positionResp.exchangedPositionSize.toUint(),
-                feeToLiquidator.toUint(),
+                feeToLiquidator,
                 _msgSender(),
-                liquidationBadDebt.toUint()
+                liquidationBadDebt
             );
         }
 
         // emit event
-        uint256 spotPrice = _amm.getSpotPrice().toUint();
-        int256 fundingPayment = positionResp.fundingPayment.toInt();
+        uint256 spotPrice = _amm.getSpotPrice();
+        int256 fundingPayment = positionResp.fundingPayment;
         emit PositionChanged(
             _trader,
             address(_amm),
-            positionResp.position.margin.toUint(),
-            positionResp.exchangedQuoteAssetAmount.toUint(),
-            positionResp.exchangedPositionSize.toInt(),
+            positionResp.position.margin,
+            positionResp.exchangedQuoteAssetAmount,
+            positionResp.exchangedPositionSize,
             0,
-            positionResp.position.size.toInt(),
-            positionResp.realizedPnl.toInt(),
-            positionResp.unrealizedPnlAfter.toInt(),
-            positionResp.badDebt.toUint(),
-            liquidationPenalty.toUint(),
+            positionResp.position.size,
+            positionResp.realizedPnl,
+            positionResp.unrealizedPnlAfter,
+            positionResp.badDebt,
+            liquidationPenalty,
             spotPrice,
             fundingPayment
         );
@@ -932,34 +866,34 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function internalIncreasePosition(
         IAmm _amm,
         Side _side,
-        Decimal.decimal memory _openNotional,
-        Decimal.decimal memory _minPositionSize,
-        Decimal.decimal memory _leverage
+        uint256 _openNotional,
+        uint256 _minPositionSize,
+        uint256 _leverage
     ) internal returns (PositionResp memory positionResp) {
         address trader = _msgSender();
         Position memory oldPosition = getPosition(_amm, trader);
         positionResp.exchangedPositionSize = swapInput(_amm, _side, _openNotional, _minPositionSize, false);
-        SignedDecimal.signedDecimal memory newSize = oldPosition.size.addD(positionResp.exchangedPositionSize);
+        int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
-        updateOpenInterestNotional(_amm, MixedDecimal.fromDecimal(_openNotional));
+        updateOpenInterestNotional(_amm, _openNotional.toInt());
         // if the trader is not in the whitelist, check max position size
         if (trader != whitelist) {
-            Decimal.decimal memory maxHoldingBaseAsset = _amm.getMaxHoldingBaseAsset();
-            if (maxHoldingBaseAsset.toUint() > 0) {
+            uint256 maxHoldingBaseAsset = _amm.getMaxHoldingBaseAsset();
+            if (maxHoldingBaseAsset > 0) {
                 // total position size should be less than `positionUpperBound`
-                require(newSize.abs().cmp(maxHoldingBaseAsset) <= 0, "hit position size upper bound");
+                require(newSize.abs() <= maxHoldingBaseAsset, "hit position size upper bound"); //hit position size upper bound
             }
         }
 
-        SignedDecimal.signedDecimal memory increaseMarginRequirement = MixedDecimal.fromDecimal(_openNotional.divD(_leverage));
+        int256 increaseMarginRequirement = _openNotional.divD(_leverage).toInt();
         (
-            Decimal.decimal memory remainMargin, // the 2nd return (bad debt) must be 0 - already checked from caller
+            uint256 remainMargin, // the 2nd return (bad debt) must be 0 - already checked from caller
             ,
-            SignedDecimal.signedDecimal memory fundingPayment,
-            SignedDecimal.signedDecimal memory latestCumulativePremiumFraction
+            int256 fundingPayment,
+            int256 latestCumulativePremiumFraction
         ) = calcRemainMarginWithFundingPayment(_amm, oldPosition, increaseMarginRequirement);
 
-        (, SignedDecimal.signedDecimal memory unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, trader, PnlCalcOption.SPOT_PRICE);
+        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, trader, PnlCalcOption.SPOT_PRICE);
 
         // update positionResp
         positionResp.exchangedQuoteAssetAmount = _openNotional;
@@ -967,9 +901,9 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         positionResp.marginToVault = increaseMarginRequirement;
         positionResp.fundingPayment = fundingPayment;
         positionResp.position = Position(
-            newSize,
+            newSize, //Number of base asset (e.g. BAYC)
             remainMargin,
-            oldPosition.openNotional.addD(positionResp.exchangedQuoteAssetAmount),
+            oldPosition.openNotional + positionResp.exchangedQuoteAssetAmount, //In Quote Asset (e.g. USDC)
             latestCumulativePremiumFraction,
             oldPosition.liquidityHistoryIndex,
             _blockNumber()
@@ -980,32 +914,28 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         IAmm _amm,
         Side _side,
         address _trader,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _leverage,
-        Decimal.decimal memory _baseAssetAmountLimit,
+        uint256 _quoteAssetAmount,
+        uint256 _leverage,
+        uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
     ) internal returns (PositionResp memory) {
-        Decimal.decimal memory openNotional = _quoteAssetAmount.mulD(_leverage);
-        (Decimal.decimal memory oldPositionNotional, SignedDecimal.signedDecimal memory unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(
-            _amm,
-            _trader,
-            PnlCalcOption.SPOT_PRICE
-        );
+        uint256 openNotional = _quoteAssetAmount.mulD(_leverage);
+        (uint256 oldPositionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
         PositionResp memory positionResp;
 
         // reduce position if old position is larger
-        if (oldPositionNotional.toUint() > openNotional.toUint()) {
-            updateOpenInterestNotional(_amm, MixedDecimal.fromDecimal(openNotional).mulScalar(-1));
+        if (oldPositionNotional > openNotional) {
+            updateOpenInterestNotional(_amm, openNotional.toInt() * -1);
             Position memory oldPosition = getPosition(_amm, _trader);
             positionResp.exchangedPositionSize = swapInput(_amm, _side, openNotional, _baseAssetAmountLimit, _canOverFluctuationLimit);
 
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
-            if (oldPosition.size.toInt() != 0) {
-                positionResp.realizedPnl = unrealizedPnl.mulD(positionResp.exchangedPositionSize.abs()).divD(oldPosition.size.abs());
+            if (oldPosition.size != 0) {
+                positionResp.realizedPnl = unrealizedPnl.mulD(positionResp.exchangedPositionSize.abs().toInt()).divD(oldPosition.size.abs().toInt());
             }
-            Decimal.decimal memory remainMargin;
-            SignedDecimal.signedDecimal memory latestCumulativePremiumFraction;
+            uint256 remainMargin;
+            int256 latestCumulativePremiumFraction;
             (remainMargin, positionResp.badDebt, positionResp.fundingPayment, latestCumulativePremiumFraction) = calcRemainMarginWithFundingPayment(
                 _amm,
                 oldPosition,
@@ -1013,20 +943,20 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
             );
 
             // positionResp.unrealizedPnlAfter = unrealizedPnl - realizedPnl
-            positionResp.unrealizedPnlAfter = unrealizedPnl.subD(positionResp.realizedPnl);
+            positionResp.unrealizedPnlAfter = unrealizedPnl - positionResp.realizedPnl;
             positionResp.exchangedQuoteAssetAmount = openNotional;
 
             // calculate openNotional (it's different depends on long or short side)
             // long: unrealizedPnl = positionNotional - openNotional => openNotional = positionNotional - unrealizedPnl
             // short: unrealizedPnl = openNotional - positionNotional => openNotional = positionNotional + unrealizedPnl
             // positionNotional = oldPositionNotional - exchangedQuoteAssetAmount
-            SignedDecimal.signedDecimal memory remainOpenNotional = oldPosition.size.toInt() > 0
-                ? MixedDecimal.fromDecimal(oldPositionNotional).subD(positionResp.exchangedQuoteAssetAmount).subD(positionResp.unrealizedPnlAfter)
-                : positionResp.unrealizedPnlAfter.addD(oldPositionNotional).subD(positionResp.exchangedQuoteAssetAmount);
-            require(remainOpenNotional.toInt() > 0, "value of openNotional <= 0");
+            int256 remainOpenNotional = oldPosition.size > 0
+                ? oldPositionNotional.toInt() - positionResp.exchangedQuoteAssetAmount.toInt() - positionResp.unrealizedPnlAfter
+                : positionResp.unrealizedPnlAfter + oldPositionNotional.toInt() - positionResp.exchangedQuoteAssetAmount.toInt();
+            require(remainOpenNotional > 0, "value of openNotional <= 0");
 
             positionResp.position = Position(
-                oldPosition.size.addD(positionResp.exchangedPositionSize),
+                oldPosition.size + positionResp.exchangedPositionSize,
                 remainMargin,
                 remainOpenNotional.abs(),
                 latestCumulativePremiumFraction,
@@ -1043,40 +973,40 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         IAmm _amm,
         Side _side,
         address _trader,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _leverage,
-        Decimal.decimal memory _baseAssetAmountLimit
+        uint256 _quoteAssetAmount,
+        uint256 _leverage,
+        uint256 _baseAssetAmountLimit
     ) internal returns (PositionResp memory positionResp) {
         // new position size is larger than or equal to the old position size
         // so either close or close then open a larger position
-        PositionResp memory closePositionResp = internalClosePosition(_amm, _trader, Decimal.zero());
+        PositionResp memory closePositionResp = internalClosePosition(_amm, _trader, 0);
 
         // the old position is underwater. trader should close a position first
-        require(closePositionResp.badDebt.toUint() == 0, "reduce an underwater position");
+        require(closePositionResp.badDebt == 0, "reduce an underwater position");
 
         // update open notional after closing position
-        Decimal.decimal memory openNotional = _quoteAssetAmount.mulD(_leverage).subD(closePositionResp.exchangedQuoteAssetAmount);
+        uint256 openNotional = _quoteAssetAmount.mulD(_leverage) - closePositionResp.exchangedQuoteAssetAmount;
 
         // if remain exchangedQuoteAssetAmount is too small (eg. 1wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
-        if (openNotional.divD(_leverage).toUint() == 0) {
+        if (openNotional.divD(_leverage) == 0) {
             positionResp = closePositionResp;
         } else {
-            Decimal.decimal memory updatedBaseAssetAmountLimit;
-            if (_baseAssetAmountLimit.toUint() > closePositionResp.exchangedPositionSize.toUint()) {
-                updatedBaseAssetAmountLimit = _baseAssetAmountLimit.subD(closePositionResp.exchangedPositionSize.abs());
+            uint256 updatedBaseAssetAmountLimit;
+            if (_baseAssetAmountLimit > closePositionResp.exchangedPositionSize.toUint()) {
+                updatedBaseAssetAmountLimit = _baseAssetAmountLimit - closePositionResp.exchangedPositionSize.abs();
             }
 
             PositionResp memory increasePositionResp = internalIncreasePosition(_amm, _side, openNotional, updatedBaseAssetAmountLimit, _leverage);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
-                exchangedQuoteAssetAmount: closePositionResp.exchangedQuoteAssetAmount.addD(increasePositionResp.exchangedQuoteAssetAmount),
-                badDebt: closePositionResp.badDebt.addD(increasePositionResp.badDebt),
-                fundingPayment: closePositionResp.fundingPayment.addD(increasePositionResp.fundingPayment),
-                exchangedPositionSize: closePositionResp.exchangedPositionSize.addD(increasePositionResp.exchangedPositionSize),
-                realizedPnl: closePositionResp.realizedPnl.addD(increasePositionResp.realizedPnl),
-                unrealizedPnlAfter: SignedDecimal.zero(),
-                marginToVault: closePositionResp.marginToVault.addD(increasePositionResp.marginToVault)
+                exchangedQuoteAssetAmount: closePositionResp.exchangedQuoteAssetAmount + increasePositionResp.exchangedQuoteAssetAmount,
+                badDebt: closePositionResp.badDebt + increasePositionResp.badDebt,
+                fundingPayment: closePositionResp.fundingPayment + increasePositionResp.fundingPayment,
+                exchangedPositionSize: closePositionResp.exchangedPositionSize + increasePositionResp.exchangedPositionSize,
+                realizedPnl: closePositionResp.realizedPnl + increasePositionResp.realizedPnl,
+                unrealizedPnlAfter: 0,
+                marginToVault: closePositionResp.marginToVault + increasePositionResp.marginToVault
             });
         }
         return positionResp;
@@ -1085,51 +1015,44 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function internalClosePosition(
         IAmm _amm,
         address _trader,
-        Decimal.decimal memory _quoteAssetAmountLimit
+        uint256 _quoteAssetAmountLimit
     ) private returns (PositionResp memory positionResp) {
         // check conditions
         Position memory oldPosition = getPosition(_amm, _trader);
         requirePositionSize(oldPosition.size);
 
-        (, SignedDecimal.signedDecimal memory unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        (
-            Decimal.decimal memory remainMargin,
-            Decimal.decimal memory badDebt,
-            SignedDecimal.signedDecimal memory fundingPayment,
+        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = calcRemainMarginWithFundingPayment(_amm, oldPosition, unrealizedPnl);
 
-        ) = calcRemainMarginWithFundingPayment(_amm, oldPosition, unrealizedPnl);
-
-        positionResp.exchangedPositionSize = oldPosition.size.mulScalar(-1);
+        positionResp.exchangedPositionSize = oldPosition.size * -1;
         positionResp.realizedPnl = unrealizedPnl;
         positionResp.badDebt = badDebt;
         positionResp.fundingPayment = fundingPayment;
-        positionResp.marginToVault = MixedDecimal.fromDecimal(remainMargin).mulScalar(-1);
+        positionResp.marginToVault = remainMargin.toInt() * -1;
         // for amm.swapOutput, the direction is in base asset, from the perspective of Amm
         positionResp.exchangedQuoteAssetAmount = _amm.swapOutput(
-            oldPosition.size.toInt() > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+            oldPosition.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
             oldPosition.size.abs(),
             _quoteAssetAmountLimit
         );
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
-        updateOpenInterestNotional(_amm, unrealizedPnl.addD(badDebt).addD(oldPosition.openNotional).mulScalar(-1));
+        updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
         clearPosition(_amm, _trader);
     }
 
     function swapInput(
         IAmm _amm,
         Side _side,
-        Decimal.decimal memory _inputAmount,
-        Decimal.decimal memory _minOutputAmount,
+        uint256 _inputAmount,
+        uint256 _minOutputAmount,
         bool _canOverFluctuationLimit
-    ) internal returns (SignedDecimal.signedDecimal memory) {
+    ) internal returns (int256) {
         // for amm.swapInput, the direction is in quote asset, from the perspective of Amm
         IAmm.Dir dir = (_side == Side.BUY) ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
-        SignedDecimal.signedDecimal memory outputAmount = MixedDecimal.fromDecimal(
-            _amm.swapInput(dir, _inputAmount, _minOutputAmount, _canOverFluctuationLimit)
-        );
+        int256 outputAmount = _amm.swapInput(dir, _inputAmount, _minOutputAmount, _canOverFluctuationLimit).toInt();
         if (IAmm.Dir.REMOVE_FROM_AMM == dir) {
-            return outputAmount.mulScalar(-1);
+            return outputAmount * -1;
         }
         return outputAmount;
     }
@@ -1137,82 +1060,85 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function transferFee(
         address _from,
         IAmm _amm,
-        Decimal.decimal memory _positionNotional
-    ) internal returns (Decimal.decimal memory) {
+        uint256 _positionNotional
+    ) internal returns (uint256) {
         // the logic of toll fee can be removed if the bytecode size is too large
-        (Decimal.decimal memory toll, Decimal.decimal memory spread) = _amm.calcFee(_positionNotional);
-        bool hasToll = toll.toUint() > 0;
-        bool hasSpread = spread.toUint() > 0;
+        (uint256 toll, uint256 spread) = _amm.calcFee(_positionNotional);
+        bool hasToll = toll > 0;
+        bool hasSpread = spread > 0;
         if (hasToll || hasSpread) {
             IERC20 quoteAsset = _amm.quoteAsset();
 
             // transfer spread to insurance fund
             if (hasSpread) {
-                _transferFrom(quoteAsset, _from, address(insuranceFund), spread);
+                quoteAsset.transferFrom(_from, address(insuranceFund), spread);
+                //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
             }
 
             // transfer toll to feePool
             if (hasToll) {
-                require(address(feePool) != address(0), "Invalid feePool");
-                _transferFrom(quoteAsset, _from, address(feePool), toll);
+                require(address(feePool) != address(0), "Invalid"); //Invalid feePool
+                quoteAsset.transferFrom(_from, address(feePool), toll);
+                //_transferFrom(quoteAsset, _from, address(feePool), toll);
             }
 
             // fee = spread + toll
-            return toll.addD(spread);
+            return toll + spread;
         }
     }
 
     function withdraw(
         IERC20 _token,
         address _receiver,
-        Decimal.decimal memory _amount
+        uint256 _amount
     ) internal {
         // if withdraw amount is larger than entire balance of vault
         // means this trader's profit comes from other under collateral position's future loss
         // and the balance of entire vault is not enough
         // need money from IInsuranceFund to pay first, and record this prepaidBadDebt
         // in this case, insurance fund loss must be zero
-        Decimal.decimal memory totalTokenBalance = _balanceOf(_token, address(this));
-        if (totalTokenBalance.toUint() < _amount.toUint()) {
-            Decimal.decimal memory balanceShortage = _amount.subD(totalTokenBalance);
-            prepaidBadDebt[address(_token)] = prepaidBadDebt[address(_token)].addD(balanceShortage);
+        uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
+        if (totalTokenBalance < _amount) {
+            uint256 balanceShortage = _amount - totalTokenBalance;
+            prepaidBadDebt[address(_token)] = prepaidBadDebt[address(_token)] + balanceShortage;
             insuranceFund.withdraw(_token, balanceShortage);
         }
-
-        _transfer(_token, _receiver, _amount);
+        _token.transfer(_receiver, _amount);
+        //_transfer(_token, _receiver, _amount);
     }
 
-    function realizeBadDebt(IERC20 _token, Decimal.decimal memory _badDebt) internal {
-        Decimal.decimal memory badDebtBalance = prepaidBadDebt[address(_token)];
-        if (badDebtBalance.toUint() > _badDebt.toUint()) {
+    function realizeBadDebt(IERC20 _token, uint256 _badDebt) internal {
+        uint256 badDebtBalance = prepaidBadDebt[address(_token)];
+        if (badDebtBalance > _badDebt) {
             // no need to move extra tokens because vault already prepay bad debt, only need to update the numbers
-            prepaidBadDebt[address(_token)] = badDebtBalance.subD(_badDebt);
+            prepaidBadDebt[address(_token)] = badDebtBalance - _badDebt;
         } else {
             // in order to realize all the bad debt vault need extra tokens from insuranceFund
-            insuranceFund.withdraw(_token, _badDebt.subD(badDebtBalance));
-            prepaidBadDebt[address(_token)] = Decimal.zero();
+            insuranceFund.withdraw(_token, _badDebt - badDebtBalance);
+            prepaidBadDebt[address(_token)] = 0;
         }
     }
 
-    function transferToInsuranceFund(IERC20 _token, Decimal.decimal memory _amount) internal {
-        Decimal.decimal memory totalTokenBalance = _balanceOf(_token, address(this));
-        _transfer(_token, address(insuranceFund), totalTokenBalance.toUint() < _amount.toUint() ? totalTokenBalance : _amount);
+    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal {
+        uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
+        _token.transfer(address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
+        //_transfer(_token, address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
     }
 
     /**
      * @dev assume this will be removes soon once the guarded period has ended. caller need to ensure amm exist
      */
-    function updateOpenInterestNotional(IAmm _amm, SignedDecimal.signedDecimal memory _amount) internal {
+    function updateOpenInterestNotional(IAmm _amm, int256 _amount) internal {
         // when cap = 0 means no cap
-        uint256 cap = _amm.getOpenInterestNotionalCap().toUint();
+        uint256 cap = _amm.getOpenInterestNotionalCap();
         address ammAddr = address(_amm);
         if (cap > 0) {
-            SignedDecimal.signedDecimal memory updatedOpenInterestNotional = _amount.addD(openInterestNotionalMap[ammAddr]);
+            int256 updatedOpenInterestNotional = _amount + openInterestNotionalMap[ammAddr].toInt();
             // the reduced open interest can be larger than total when profit is too high and other position are bankrupt
-            if (updatedOpenInterestNotional.toInt() < 0) {
-                updatedOpenInterestNotional = SignedDecimal.zero();
+            if (updatedOpenInterestNotional < 0) {
+                updatedOpenInterestNotional = 0;
             }
-            if (_amount.toInt() > 0) {
+            if (_amount > 0) {
                 // whitelist won't be restrict by open interest cap
                 require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "over limit");
             }
@@ -1227,28 +1153,28 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function calcRemainMarginWithFundingPayment(
         IAmm _amm,
         Position memory _oldPosition,
-        SignedDecimal.signedDecimal memory _marginDelta
+        int256 _marginDelta
     )
         private
         view
         returns (
-            Decimal.decimal memory remainMargin,
-            Decimal.decimal memory badDebt,
-            SignedDecimal.signedDecimal memory fundingPayment,
-            SignedDecimal.signedDecimal memory latestCumulativePremiumFraction
+            uint256 remainMargin,
+            uint256 badDebt,
+            int256 fundingPayment,
+            int256 latestCumulativePremiumFraction
         )
     {
         // calculate funding payment
         latestCumulativePremiumFraction = getLatestCumulativePremiumFraction(_amm);
-        if (_oldPosition.size.toInt() != 0) {
-            fundingPayment = latestCumulativePremiumFraction.subD(_oldPosition.lastUpdatedCumulativePremiumFraction).mulD(_oldPosition.size);
+        if (_oldPosition.size != 0) {
+            fundingPayment = (latestCumulativePremiumFraction - _oldPosition.lastUpdatedCumulativePremiumFraction).mulD(_oldPosition.size);
         }
 
         // calculate remain margin
-        SignedDecimal.signedDecimal memory signedRemainMargin = _marginDelta.subD(fundingPayment).addD(_oldPosition.margin);
+        int256 signedRemainMargin = _marginDelta - fundingPayment + _oldPosition.margin.toInt();
 
         // if remain margin is negative, set to zero and leave the rest to bad debt
-        if (signedRemainMargin.toInt() < 0) {
+        if (signedRemainMargin < 0) {
             badDebt = signedRemainMargin.abs();
         } else {
             remainMargin = signedRemainMargin.abs();
@@ -1259,42 +1185,32 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     function calcFreeCollateral(
         IAmm _amm,
         address _trader,
-        Decimal.decimal memory _marginWithFundingPayment
-    ) internal view returns (SignedDecimal.signedDecimal memory) {
+        uint256 _marginWithFundingPayment
+    ) internal view returns (int256) {
         Position memory pos = getPosition(_amm, _trader);
-        (SignedDecimal.signedDecimal memory unrealizedPnl, Decimal.decimal memory positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(
-            _amm,
-            _trader,
-            PnlPreferenceOption.MIN_PNL
-        );
+        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(_amm, _trader, PnlPreferenceOption.MIN_PNL);
 
         // min(margin + funding, margin + funding + unrealized PnL) - position value * initMarginRatio
-        SignedDecimal.signedDecimal memory accountValue = unrealizedPnl.addD(_marginWithFundingPayment);
-        SignedDecimal.signedDecimal memory minCollateral = unrealizedPnl.toInt() > 0
-            ? MixedDecimal.fromDecimal(_marginWithFundingPayment)
-            : accountValue;
+        int256 accountValue = unrealizedPnl + _marginWithFundingPayment.toInt();
+        int256 minCollateral = unrealizedPnl > 0 ? _marginWithFundingPayment.toInt() : accountValue;
 
         // margin requirement
         // if holding a long position, using open notional (mapping to quote debt in Curie)
         // if holding a short position, using position notional (mapping to base debt in Curie)
-        SignedDecimal.signedDecimal memory marginRequirement = pos.size.toInt() > 0
-            ? MixedDecimal.fromDecimal(pos.openNotional).mulD(initMarginRatio)
-            : MixedDecimal.fromDecimal(positionNotional).mulD(initMarginRatio);
+        int256 marginRequirement = pos.size > 0
+            ? pos.openNotional.toInt().mulD(initMarginRatio.toInt())
+            : positionNotional.toInt().mulD(initMarginRatio.toInt());
 
-        return minCollateral.subD(marginRequirement);
+        return minCollateral - marginRequirement;
     }
 
     function getPreferencePositionNotionalAndUnrealizedPnl(
         IAmm _amm,
         address _trader,
         PnlPreferenceOption _pnlPreference
-    ) internal view returns (SignedDecimal.signedDecimal memory unrealizedPnl, Decimal.decimal memory positionNotional) {
-        (Decimal.decimal memory spotPositionNotional, SignedDecimal.signedDecimal memory spotPricePnl) = (
-            getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE)
-        );
-        (Decimal.decimal memory twapPositionNotional, SignedDecimal.signedDecimal memory twapPricePnl) = (
-            getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.TWAP)
-        );
+    ) internal view returns (int256 unrealizedPnl, uint256 positionNotional) {
+        (uint256 spotPositionNotional, int256 spotPricePnl) = (getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE));
+        (uint256 twapPositionNotional, int256 twapPricePnl) = (getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.TWAP));
 
         // if MAX_PNL
         //    spotPnL >  twapPnL return (spotPnL, spotPositionNotional)
@@ -1302,7 +1218,7 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         // if MIN_PNL
         //    spotPnL >  twapPnL return (twapPnL, twapPositionNotional)
         //    spotPnL <= twapPnL return (spotPnL, spotPositionNotional)
-        (unrealizedPnl, positionNotional) = (_pnlPreference == PnlPreferenceOption.MAX_PNL) == (spotPricePnl.toInt() > twapPricePnl.toInt())
+        (unrealizedPnl, positionNotional) = (_pnlPreference == PnlPreferenceOption.MAX_PNL) == (spotPricePnl > twapPricePnl)
             ? (spotPricePnl, spotPositionNotional)
             : (twapPricePnl, twapPositionNotional);
     }
@@ -1311,13 +1227,13 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         position = ammMap[address(_amm)].positionMap[_trader];
     }
 
-    function _msgSender() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (address payable) {
-        return super._msgSender();
-    }
+    // function _msgSender() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (address payable) {
+    //     return super._msgSender();
+    // }
 
-    function _msgData() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (bytes memory ret) {
-        return super._msgData();
-    }
+    // function _msgData() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (bytes memory ret) {
+    //     return super._msgData();
+    // }
 
     //
     // REQUIRE FUNCTIONS
@@ -1327,16 +1243,16 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
         require(_open == _amm.open(), _open ? "amm was closed" : "amm is open");
     }
 
-    function requireNonZeroInput(Decimal.decimal memory _decimal) private pure {
-        require(_decimal.toUint() != 0, "input is 0");
+    function requireNonZeroInput(uint256 _decimal) private pure {
+        require(_decimal != 0, "input is 0");
     }
 
-    function requirePositionSize(SignedDecimal.signedDecimal memory _size) private pure {
-        require(_size.toInt() != 0, "positionSize is 0");
+    function requirePositionSize(int256 _size) private pure {
+        require(_size != 0, "positionSize is 0");
     }
 
-    function requireValidTokenAmount(IERC20 _token, Decimal.decimal memory _decimal) private view {
-        require(_toUint(_token, _decimal) != 0, "invalid token amount");
+    function requireValidTokenAmount(IERC20 _token, uint256 _decimal) private view {
+        require(_decimal != 0, "invalid token amount");
     }
 
     function requireNotRestrictionMode(IAmm _amm) private view {
@@ -1347,11 +1263,11 @@ contract ClearingHouse is DecimalERC20, OwnerPausableUpgradeSafe, ReentrancyGuar
     }
 
     function requireMoreMarginRatio(
-        SignedDecimal.signedDecimal memory _marginRatio,
-        Decimal.decimal memory _baseMarginRatio,
+        int256 _marginRatio,
+        uint256 _baseMarginRatio,
         bool _largerThanOrEqualTo
     ) private pure {
-        int256 remainingMarginRatio = _marginRatio.subD(_baseMarginRatio).toInt();
+        int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "Margin ratio not meet criteria");
     }
 }

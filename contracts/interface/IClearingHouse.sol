@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: BSD-3-CLAUSE
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
-import { Decimal } from "../utils/Decimal.sol";
-import { SignedDecimal } from "../utils/SignedDecimal.sol";
 import { IAmm } from "./IAmm.sol";
 
 interface IClearingHouse {
-    enum Side { BUY, SELL }
+    enum Side {
+        BUY,
+        SELL
+    }
 
     /// @notice This struct records personal position information
     /// @param size denominated in amm.baseAsset
@@ -17,36 +17,36 @@ interface IClearingHouse {
     /// @param liquidityHistoryIndex
     /// @param blockNumber the block number of the last position
     struct Position {
-        SignedDecimal.signedDecimal size;
-        Decimal.decimal margin;
-        Decimal.decimal openNotional;
-        SignedDecimal.signedDecimal lastUpdatedCumulativePremiumFraction;
+        int256 size;
+        uint256 margin;
+        uint256 openNotional;
+        int256 lastUpdatedCumulativePremiumFraction;
         uint256 liquidityHistoryIndex;
         uint256 blockNumber;
     }
 
-    function addMargin(IAmm _amm, Decimal.decimal calldata _addedMargin) external;
+    function addMargin(IAmm _amm, uint256 _addedMargin) external;
 
-    function removeMargin(IAmm _amm, Decimal.decimal calldata _removedMargin) external;
+    function removeMargin(IAmm _amm, uint256 _removedMargin) external;
 
     function settlePosition(IAmm _amm) external;
 
     function openPosition(
         IAmm _amm,
         Side _side,
-        Decimal.decimal calldata _quoteAssetAmount,
-        Decimal.decimal calldata _leverage,
-        Decimal.decimal calldata _baseAssetAmountLimit
+        uint256 _quoteAssetAmount,
+        uint256 _leverage,
+        uint256 _baseAssetAmountLimit
     ) external;
 
-    function closePosition(IAmm _amm, Decimal.decimal calldata _quoteAssetAmountLimit) external;
+    function closePosition(IAmm _amm, uint256 _quoteAssetAmountLimit) external;
 
     function liquidate(IAmm _amm, address _trader) external;
 
     function payFunding(IAmm _amm) external;
 
     // VIEW FUNCTIONS
-    function getMarginRatio(IAmm _amm, address _trader) external view returns (SignedDecimal.signedDecimal memory);
+    function getMarginRatio(IAmm _amm, address _trader) external view returns (int256);
 
     function getPosition(IAmm _amm, address _trader) external view returns (Position memory);
 }

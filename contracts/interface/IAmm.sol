@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
-import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { Decimal } from "../utils/Decimal.sol";
-import { SignedDecimal } from "../utils/SignedDecimal.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IAmm {
     /**
@@ -12,90 +9,75 @@ interface IAmm {
      * @param ADD_TO_AMM add asset to Amm
      * @param REMOVE_FROM_AMM remove asset from Amm
      */
-    enum Dir { ADD_TO_AMM, REMOVE_FROM_AMM }
+    enum Dir {
+        ADD_TO_AMM,
+        REMOVE_FROM_AMM
+    }
 
     struct LiquidityChangedSnapshot {
-        SignedDecimal.signedDecimal cumulativeNotional;
+        int256 cumulativeNotional;
         // the base/quote reserve of amm right before liquidity changed
-        Decimal.decimal quoteAssetReserve;
-        Decimal.decimal baseAssetReserve;
+        uint256 quoteAssetReserve;
+        uint256 baseAssetReserve;
         // total position size owned by amm after last snapshot taken
         // `totalPositionSize` = currentBaseAssetReserve - lastLiquidityChangedHistoryItem.baseAssetReserve + prevTotalPositionSize
-        SignedDecimal.signedDecimal totalPositionSize;
+        int256 totalPositionSize;
     }
 
     function swapInput(
         Dir _dir,
-        Decimal.decimal calldata _quoteAssetAmount,
-        Decimal.decimal calldata _baseAssetAmountLimit,
+        uint256 _quoteAssetAmount,
+        uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
-    ) external returns (Decimal.decimal memory);
+    ) external returns (uint256);
 
     function swapOutput(
         Dir _dir,
-        Decimal.decimal calldata _baseAssetAmount,
-        Decimal.decimal calldata _quoteAssetAmountLimit
-    ) external returns (Decimal.decimal memory);
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetAmountLimit
+    ) external returns (uint256);
 
     function shutdown() external;
 
-    function settleFunding() external returns (SignedDecimal.signedDecimal memory);
+    function settleFunding() external returns (int256);
 
-    function calcFee(Decimal.decimal calldata _quoteAssetAmount)
-        external
-        view
-        returns (Decimal.decimal memory, Decimal.decimal memory);
+    function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
 
     //
     // VIEW
     //
 
-    function isOverFluctuationLimit(Dir _dirOfBase, Decimal.decimal memory _baseAssetAmount)
-        external
-        view
-        returns (bool);
+    function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 
     function calcBaseAssetAfterLiquidityMigration(
-        SignedDecimal.signedDecimal memory _baseAssetAmount,
-        Decimal.decimal memory _fromQuoteReserve,
-        Decimal.decimal memory _fromBaseReserve
-    ) external view returns (SignedDecimal.signedDecimal memory);
+        int256 _baseAssetAmount,
+        uint256 _fromQuoteReserve,
+        uint256 _fromBaseReserve
+    ) external view returns (int256);
 
-    function getInputTwap(Dir _dir, Decimal.decimal calldata _quoteAssetAmount)
-        external
-        view
-        returns (Decimal.decimal memory);
+    function getInputTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputTwap(Dir _dir, Decimal.decimal calldata _baseAssetAmount)
-        external
-        view
-        returns (Decimal.decimal memory);
+    function getOutputTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
-    function getInputPrice(Dir _dir, Decimal.decimal calldata _quoteAssetAmount)
-        external
-        view
-        returns (Decimal.decimal memory);
+    function getInputPrice(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputPrice(Dir _dir, Decimal.decimal calldata _baseAssetAmount)
-        external
-        view
-        returns (Decimal.decimal memory);
+    function getOutputPrice(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
     function getInputPriceWithReserves(
         Dir _dir,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _quoteAssetPoolAmount,
-        Decimal.decimal memory _baseAssetPoolAmount
-    ) external pure returns (Decimal.decimal memory);
+        uint256 _quoteAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) external pure returns (uint256);
 
     function getOutputPriceWithReserves(
         Dir _dir,
-        Decimal.decimal memory _baseAssetAmount,
-        Decimal.decimal memory _quoteAssetPoolAmount,
-        Decimal.decimal memory _baseAssetPoolAmount
-    ) external pure returns (Decimal.decimal memory);
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) external pure returns (uint256);
 
-    function getSpotPrice() external view returns (Decimal.decimal memory);
+    function getSpotPrice() external view returns (uint256);
 
     function getLiquidityHistoryLength() external view returns (uint256);
 
@@ -105,21 +87,21 @@ interface IAmm {
     function open() external view returns (bool);
 
     // can not be overridden by state variable due to type `Deciaml.decimal`
-    function getSettlementPrice() external view returns (Decimal.decimal memory);
+    function getSettlementPrice() external view returns (uint256);
 
-    function getBaseAssetDeltaThisFundingPeriod() external view returns (SignedDecimal.signedDecimal memory);
+    function getBaseAssetDeltaThisFundingPeriod() external view returns (int256);
 
-    function getCumulativeNotional() external view returns (SignedDecimal.signedDecimal memory);
+    function getCumulativeNotional() external view returns (int256);
 
-    function getMaxHoldingBaseAsset() external view returns (Decimal.decimal memory);
+    function getMaxHoldingBaseAsset() external view returns (uint256);
 
-    function getOpenInterestNotionalCap() external view returns (Decimal.decimal memory);
+    function getOpenInterestNotionalCap() external view returns (uint256);
 
     function getLiquidityChangedSnapshots(uint256 i) external view returns (LiquidityChangedSnapshot memory);
 
-    function getBaseAssetDelta() external view returns (SignedDecimal.signedDecimal memory);
+    function getBaseAssetDelta() external view returns (int256);
 
-    function getUnderlyingPrice() external view returns (Decimal.decimal memory);
+    function getUnderlyingPrice() external view returns (uint256);
 
     function isOverSpreadLimit() external view returns (bool);
 }
