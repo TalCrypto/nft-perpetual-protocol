@@ -1,21 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
-import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import { Decimal } from "./utils/Decimal.sol";
-import { SignedDecimal } from "./utils/SignedDecimal.sol";
-import { MixedDecimal } from "./utils/MixedDecimal.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
 import { ClearingHouse } from "./ClearingHouse.sol";
 
+import { IntMath } from "./utils/IntMath.sol";
+import { UIntMath } from "./utils/UIntMath.sol";
+
 contract ClearingHouseViewer {
-    using SafeMath for uint256;
-    using Decimal for Decimal.decimal;
-    using SignedDecimal for SignedDecimal.signedDecimal;
-    using MixedDecimal for SignedDecimal.signedDecimal;
+    using UIntMath for uint256;
+    using IntMath for int256;
 
     ClearingHouse public clearingHouse;
 
@@ -23,7 +19,7 @@ contract ClearingHouseViewer {
     // FUNCTIONS
     //
 
-    constructor(ClearingHouse _clearingHouse) public {
+    constructor(ClearingHouse _clearingHouse) {
         clearingHouse = _clearingHouse;
     }
 
@@ -42,8 +38,8 @@ contract ClearingHouseViewer {
         IAmm _amm,
         address _trader,
         ClearingHouse.PnlCalcOption _pnlCalcOption
-    ) external view returns (SignedDecimal.signedDecimal memory) {
-        (, SignedDecimal.signedDecimal memory unrealizedPnl) = (clearingHouse.getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption));
+    ) external view returns (int256) {
+        (, int256 unrealizedPnl) = (clearingHouse.getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption));
         return unrealizedPnl;
     }
 
@@ -53,15 +49,15 @@ contract ClearingHouseViewer {
      * @param _trader trader address
      * @return margin personal balance with funding payment in 18 digits
      */
-    function getPersonalBalanceWithFundingPayment(IERC20 _quoteToken, address _trader) external view returns (Decimal.decimal memory margin) {
+    function getPersonalBalanceWithFundingPayment(IERC20 _quoteToken, address _trader) external view returns (uint256 margin) {
         IInsuranceFund insuranceFund = clearingHouse.insuranceFund();
         IAmm[] memory amms = insuranceFund.getAllAmms();
         for (uint256 i = 0; i < amms.length; i++) {
             if (IAmm(amms[i]).quoteAsset() != _quoteToken) {
                 continue;
             }
-            Decimal.decimal memory posMargin = getPersonalPositionWithFundingPayment(amms[i], _trader).margin;
-            margin = margin.addD(posMargin);
+            uint256 posMargin = getPersonalPositionWithFundingPayment(amms[i], _trader).margin;
+            margin = margin + posMargin;
         }
     }
 
@@ -73,10 +69,9 @@ contract ClearingHouseViewer {
      */
     function getPersonalPositionWithFundingPayment(IAmm _amm, address _trader) public view returns (ClearingHouse.Position memory position) {
         position = clearingHouse.getPosition(_amm, _trader);
-        SignedDecimal.signedDecimal memory marginWithFundingPayment = MixedDecimal.fromDecimal(position.margin).addD(
-            getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm))
-        );
-        position.margin = marginWithFundingPayment.toInt() >= 0 ? marginWithFundingPayment.abs() : Decimal.zero();
+        int256 marginWithFundingPayment = position.margin.toInt() +
+            getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm));
+        position.margin = marginWithFundingPayment >= 0 ? marginWithFundingPayment.abs() : 0;
     }
 
     /**
@@ -87,10 +82,10 @@ contract ClearingHouseViewer {
      */
     function isPositionNeedToBeMigrated(IAmm _amm, address _trader) external view returns (bool) {
         ClearingHouse.Position memory unadjustedPosition = clearingHouse.getUnadjustedPosition(_amm, _trader);
-        if (unadjustedPosition.size.toInt() == 0) {
+        if (unadjustedPosition.size == 0) {
             return false;
         }
-        uint256 latestLiquidityIndex = _amm.getLiquidityHistoryLength().sub(1);
+        uint256 latestLiquidityIndex = _amm.getLiquidityHistoryLength() - 1;
         if (unadjustedPosition.liquidityHistoryIndex == latestLiquidityIndex) {
             return false;
         }
@@ -103,7 +98,7 @@ contract ClearingHouseViewer {
      * @param _trader trader address
      * @return personal margin ratio in 18 digits
      */
-    function getMarginRatio(IAmm _amm, address _trader) external view returns (SignedDecimal.signedDecimal memory) {
+    function getMarginRatio(IAmm _amm, address _trader) external view returns (int256) {
         return clearingHouse.getMarginRatio(_amm, _trader);
     }
 
@@ -113,36 +108,34 @@ contract ClearingHouseViewer {
      * @param _trader trader address
      * @return withdrawable margin in 18 digits
      */
-    function getFreeCollateral(IAmm _amm, address _trader) external view returns (SignedDecimal.signedDecimal memory) {
+    function getFreeCollateral(IAmm _amm, address _trader) external view returns (int256) {
         // get trader's margin
         ClearingHouse.Position memory position = getPersonalPositionWithFundingPayment(_amm, _trader);
 
         // get trader's unrealized PnL and choose the least beneficial one for the trader
-        (Decimal.decimal memory spotPositionNotional, SignedDecimal.signedDecimal memory spotPricePnl) = (
+        (uint256 spotPositionNotional, int256 spotPricePnl) = (
             clearingHouse.getPositionNotionalAndUnrealizedPnl(_amm, _trader, ClearingHouse.PnlCalcOption.SPOT_PRICE)
         );
-        (Decimal.decimal memory twapPositionNotional, SignedDecimal.signedDecimal memory twapPricePnl) = (
+        (uint256 twapPositionNotional, int256 twapPricePnl) = (
             clearingHouse.getPositionNotionalAndUnrealizedPnl(_amm, _trader, ClearingHouse.PnlCalcOption.TWAP)
         );
 
-        SignedDecimal.signedDecimal memory unrealizedPnl;
-        Decimal.decimal memory positionNotional;
-        (unrealizedPnl, positionNotional) = (spotPricePnl.toInt() > twapPricePnl.toInt())
+        int256 unrealizedPnl;
+        uint256 positionNotional;
+        (unrealizedPnl, positionNotional) = (spotPricePnl > twapPricePnl)
             ? (twapPricePnl, twapPositionNotional)
             : (spotPricePnl, spotPositionNotional);
 
         // min(margin + funding, margin + funding + unrealized PnL) - position value * initMarginRatio
-        SignedDecimal.signedDecimal memory accountValue = unrealizedPnl.addD(position.margin);
-        SignedDecimal.signedDecimal memory minCollateral = accountValue.subD(position.margin).toInt() > 0
-            ? MixedDecimal.fromDecimal(position.margin)
-            : accountValue;
+        int256 accountValue = unrealizedPnl + position.margin.toInt();
+        int256 minCollateral = accountValue - position.margin.toInt() > 0 ? position.margin.toInt() : accountValue;
 
-        Decimal.decimal memory initMarginRatio = Decimal.decimal(clearingHouse.initMarginRatio());
-        SignedDecimal.signedDecimal memory marginRequirement = position.size.toInt() > 0
-            ? MixedDecimal.fromDecimal(position.openNotional).mulD(initMarginRatio)
-            : MixedDecimal.fromDecimal(positionNotional).mulD(initMarginRatio);
+        uint256 initMarginRatio = clearingHouse.initMarginRatio();
+        int256 marginRequirement = position.size > 0
+            ? position.openNotional.toInt().mulD(initMarginRatio.toInt())
+            : positionNotional.toInt().mulD(initMarginRatio.toInt());
 
-        return minCollateral.subD(marginRequirement);
+        return minCollateral - marginRequirement;
     }
 
     //
@@ -150,14 +143,10 @@ contract ClearingHouseViewer {
     //
 
     // negative means trader paid and vice versa
-    function getFundingPayment(ClearingHouse.Position memory _position, SignedDecimal.signedDecimal memory _latestCumulativePremiumFraction)
-        private
-        pure
-        returns (SignedDecimal.signedDecimal memory)
-    {
+    function getFundingPayment(ClearingHouse.Position memory _position, int256 _latestCumulativePremiumFraction) private pure returns (int256) {
         return
-            _position.size.toInt() == 0
-                ? SignedDecimal.zero()
-                : _latestCumulativePremiumFraction.subD(_position.lastUpdatedCumulativePremiumFraction).mulD(_position.size).mulScalar(-1);
+            _position.size == 0
+                ? int256(0)
+                : (_latestCumulativePremiumFraction - _position.lastUpdatedCumulativePremiumFraction).mulD(_position.size) * -1;
     }
 }

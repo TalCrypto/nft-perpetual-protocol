@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
-
-import { Decimal } from "../utils/Decimal.sol";
+pragma solidity 0.8.9;
 
 interface IInflationMonitor {
     function isOverMintThreshold() external view returns (bool);
 
-    function appendMintedTokenHistory(Decimal.decimal calldata _amount) external;
+    function appendMintedTokenHistory(uint256 _amount) external;
 }

@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
-import { PerpFiOwnableUpgrade } from "./utils/PerpFiOwnableUpgrade.sol";
-import { ReentrancyGuardUpgradeSafe } from "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { Decimal } from "./utils/Decimal.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IExchangeWrapper } from "./interface/IExchangeWrapper.sol";
 import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
-import { DecimalERC20 } from "./utils/DecimalERC20.sol";
 import { IMinter } from "./interface/IMinter.sol";
 import { IAmm } from "./interface/IAmm.sol";
 import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
+import { UIntMath } from "./utils/UIntMath.sol";
 
-contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, ReentrancyGuardUpgradeSafe, DecimalERC20 {
-    using Decimal for Decimal.decimal;
+contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
+    using UIntMath for uint256;
 
     //
     // EVENTS
@@ -130,12 +128,12 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
 
         // exchange and transfer to the quoteToken with the most value. if no more quoteToken, buy protocol tokens
         // TODO use curve or balancer fund token for pooling the fees will be less painful
-        if (balanceOf(_token).toUint() > 0) {
+        if (balanceOf(_token) > 0) {
             address outputToken = getTokenWithMaxValue();
             if (outputToken == address(0)) {
                 outputToken = address(perpToken);
             }
-            swapInput(_token, IERC20(outputToken), balanceOf(_token), Decimal.zero());
+            swapInput(_token, IERC20(outputToken), balanceOf(_token), 0);
         }
 
         emit TokenRemoved(address(_token));
@@ -145,20 +143,20 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
      * @notice withdraw token to caller
      * @param _amount the amount of quoteToken caller want to withdraw
      */
-    function withdraw(IERC20 _quoteToken, Decimal.decimal calldata _amount) external override {
+    function withdraw(IERC20 _quoteToken, uint256 _amount) external override {
         require(beneficiary == _msgSender(), "caller is not beneficiary");
         require(isQuoteTokenExisted(_quoteToken), "Asset is not supported");
 
-        Decimal.decimal memory quoteBalance = balanceOf(_quoteToken);
-        if (_amount.toUint() > quoteBalance.toUint()) {
-            Decimal.decimal memory insufficientAmount = _amount.subD(quoteBalance);
+        uint256 quoteBalance = balanceOf(_quoteToken);
+        if (_amount > quoteBalance) {
+            uint256 insufficientAmount = _amount - quoteBalance;
             swapEnoughQuoteAmount(_quoteToken, insufficientAmount);
             quoteBalance = balanceOf(_quoteToken);
         }
-        require(quoteBalance.toUint() >= _amount.toUint(), "Fund not enough");
+        require(quoteBalance >= _amount, "Fund not enough");
 
-        _transfer(_quoteToken, _msgSender(), _amount);
-        emit Withdrawn(_msgSender(), _amount.toUint());
+        _quoteToken.transfer(_msgSender(), _amount);
+        emit Withdrawn(_msgSender(), _amount);
     }
 
     //
@@ -201,11 +199,12 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
 
         IERC20 denominatedToken = quoteTokens[0];
         IERC20 maxValueToken = denominatedToken;
-        Decimal.decimal memory valueOfMaxValueToken = balanceOf(denominatedToken);
+        uint256 valueOfMaxValueToken = balanceOf(denominatedToken);
         for (uint256 i = 1; i < numOfQuoteTokens; i++) {
             IERC20 quoteToken = quoteTokens[i];
-            Decimal.decimal memory quoteTokenValue = exchange.getInputPrice(quoteToken, denominatedToken, balanceOf(quoteToken));
-            if (quoteTokenValue.cmp(valueOfMaxValueToken) > 0) {
+            uint256 quoteTokenValue = exchange.getInputPrice(quoteToken, denominatedToken, balanceOf(quoteToken));
+            if (quoteTokenValue > valueOfMaxValueToken) {
+                // if (quoteTokenValue.cmp(valueOfMaxValueToken) > 0) {
                 maxValueToken = quoteToken;
                 valueOfMaxValueToken = quoteTokenValue;
             }
@@ -216,54 +215,54 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
     function swapInput(
         IERC20 inputToken,
         IERC20 outputToken,
-        Decimal.decimal memory inputTokenSold,
-        Decimal.decimal memory minOutputTokenBought
-    ) internal returns (Decimal.decimal memory received) {
-        if (inputTokenSold.toUint() == 0) {
-            return Decimal.zero();
+        uint256 inputTokenSold,
+        uint256 minOutputTokenBought
+    ) internal returns (uint256 received) {
+        if (inputTokenSold == 0) {
+            return 0;
         }
-        _approve(inputToken, address(exchange), inputTokenSold);
-        received = exchange.swapInput(inputToken, outputToken, inputTokenSold, minOutputTokenBought, Decimal.zero());
-        require(received.toUint() > 0, "Exchange swap error");
+        inputToken.approve(address(exchange), inputTokenSold);
+        received = exchange.swapInput(inputToken, outputToken, inputTokenSold, minOutputTokenBought, 0);
+        require(received > 0, "Exchange swap error");
     }
 
     function swapOutput(
         IERC20 inputToken,
         IERC20 outputToken,
-        Decimal.decimal memory outputTokenBought,
-        Decimal.decimal memory maxInputTokenSold
-    ) internal returns (Decimal.decimal memory received) {
-        if (outputTokenBought.toUint() == 0) {
-            return Decimal.zero();
+        uint256 outputTokenBought,
+        uint256 maxInputTokenSold
+    ) internal returns (uint256 received) {
+        if (outputTokenBought == 0) {
+            return 0;
         }
-        _approve(inputToken, address(exchange), maxInputTokenSold);
-        received = exchange.swapOutput(inputToken, outputToken, outputTokenBought, maxInputTokenSold, Decimal.zero());
-        require(received.toUint() > 0, "Exchange swap error");
+        inputToken.approve(address(exchange), maxInputTokenSold);
+        received = exchange.swapOutput(inputToken, outputToken, outputTokenBought, maxInputTokenSold, 0);
+        require(received > 0, "Exchange swap error");
     }
 
-    function swapEnoughQuoteAmount(IERC20 _quoteToken, Decimal.decimal memory _requiredQuoteAmount) internal {
+    function swapEnoughQuoteAmount(IERC20 _quoteToken, uint256 _requiredQuoteAmount) internal {
         IERC20[] memory orderedTokens = getOrderedQuoteTokens(_quoteToken);
         for (uint256 i = 0; i < orderedTokens.length; i++) {
             // get how many amount of quote token i is still required
-            Decimal.decimal memory swappedQuoteToken;
-            Decimal.decimal memory otherQuoteRequiredAmount = exchange.getOutputPrice(orderedTokens[i], _quoteToken, _requiredQuoteAmount);
+            uint256 swappedQuoteToken;
+            uint256 otherQuoteRequiredAmount = exchange.getOutputPrice(orderedTokens[i], _quoteToken, _requiredQuoteAmount);
 
             // if balance of token i can afford the left debt, swap and return
-            if (otherQuoteRequiredAmount.toUint() <= balanceOf(orderedTokens[i]).toUint()) {
-                swappedQuoteToken = swapInput(orderedTokens[i], _quoteToken, otherQuoteRequiredAmount, Decimal.zero());
+            if (otherQuoteRequiredAmount <= balanceOf(orderedTokens[i])) {
+                swappedQuoteToken = swapInput(orderedTokens[i], _quoteToken, otherQuoteRequiredAmount, 0);
                 return;
             }
 
             // if balance of token i can't afford the left debt, show hand and move to the next one
-            swappedQuoteToken = swapInput(orderedTokens[i], _quoteToken, balanceOf(orderedTokens[i]), Decimal.zero());
-            _requiredQuoteAmount = _requiredQuoteAmount.subD(swappedQuoteToken);
+            swappedQuoteToken = swapInput(orderedTokens[i], _quoteToken, balanceOf(orderedTokens[i]), 0);
+            _requiredQuoteAmount = _requiredQuoteAmount - swappedQuoteToken;
         }
 
         // if all the quote tokens can't afford the debt, ask staking token to mint
-        if (_requiredQuoteAmount.toUint() > 0) {
-            Decimal.decimal memory requiredPerpAmount = exchange.getOutputPrice(perpToken, _quoteToken, _requiredQuoteAmount);
+        if (_requiredQuoteAmount > 0) {
+            uint256 requiredPerpAmount = exchange.getOutputPrice(perpToken, _quoteToken, _requiredQuoteAmount);
             minter.mintForLoss(requiredPerpAmount);
-            swapInput(perpToken, _quoteToken, requiredPerpAmount, Decimal.zero());
+            swapInput(perpToken, _quoteToken, requiredPerpAmount, 0);
         }
     }
 
@@ -287,11 +286,11 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
         // insertion sort
         for (uint256 i = 0; i < getQuoteTokenLength(); i++) {
             IERC20 currentToken = quoteTokens[i];
-            Decimal.decimal memory currentPerpValue = exchange.getInputPrice(currentToken, perpToken, balanceOf(currentToken));
+            uint256 currentPerpValue = exchange.getInputPrice(currentToken, perpToken, balanceOf(currentToken));
 
             for (uint256 j = i; j > 0; j--) {
-                Decimal.decimal memory subsetPerpValue = exchange.getInputPrice(tokens[j - 1], perpToken, balanceOf(tokens[j - 1]));
-                if (currentPerpValue.toUint() > subsetPerpValue.toUint()) {
+                uint256 subsetPerpValue = exchange.getInputPrice(tokens[j - 1], perpToken, balanceOf(tokens[j - 1]));
+                if (currentPerpValue > subsetPerpValue) {
                     tokens[j] = tokens[j - 1];
                     tokens[j - 1] = currentToken;
                 }
@@ -310,7 +309,7 @@ contract InsuranceFund is IInsuranceFund, PerpFiOwnableUpgrade, BlockContext, Re
         }
     }
 
-    function balanceOf(IERC20 _quoteToken) internal view returns (Decimal.decimal memory) {
-        return _balanceOf(_quoteToken, address(this));
+    function balanceOf(IERC20 _quoteToken) internal view returns (uint256) {
+        return _quoteToken.balanceOf(address(this));
     }
 }

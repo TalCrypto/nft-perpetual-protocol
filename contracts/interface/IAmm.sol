@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IPriceFeed } from "./IPriceFeed.sol";
 
 interface IAmm {
     /**
@@ -83,6 +84,16 @@ interface IAmm {
 
     // overridden by state variable
     function quoteAsset() external view returns (IERC20);
+
+    function priceFeedKey() external view returns (bytes32);
+
+    function tradeLimitRatio() external view returns (uint256);
+
+    function fundingPeriod() external view returns (uint256);
+
+    function priceFeed() external view returns (IPriceFeed);
+
+    function getReserve() external view returns (uint256, uint256);
 
     function open() external view returns (bool);
 
