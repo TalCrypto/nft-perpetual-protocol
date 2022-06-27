@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "es2018",
+        "module": "commonjs",
+        "strict": false,
+        "esModuleInterop": true,
+        "outDir": "dist"
+      },
+    "include": [
+        "test/**/*",
+        "./scripts/**/*",
+        "./publish/*.ts",
+        "./publish/**/*.ts",
+        "./publish/settings/*.json",
+        "./ethereum.json",
+        "./typechain-types/**/*.ts"
+    ],
+    "exclude": ["./src"],
+    "files": [
+        "./hardhat.config.ts"
+    ]
+}
