@@ -17,6 +17,10 @@ library UIntMath {
         return int256(x);
     }
 
+    function modD(uint256 x, uint256 y) internal pure returns (uint256) {
+        return (x * unit(18)) % y;
+    }
+
     /// @dev Multiplies x and y, assuming they are both fixed point with 18 digits.
     function mulD(uint256 x, uint256 y) internal pure returns (uint256) {
         return mulD(x, y, 18);

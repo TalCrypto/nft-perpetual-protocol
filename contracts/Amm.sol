@@ -1,22 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-pragma solidity 0.6.9;
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.9;
 
 import { BlockContext } from "./utils/BlockContext.sol";
-import { IPriceFeed } from "./interface/IPriceFeed.sol";
-import { SafeMath } from "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import { IERC20 } from "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import { Decimal } from "./utils/Decimal.sol";
-import { SignedDecimal } from "./utils/SignedDecimal.sol";
-import { MixedDecimal } from "./utils/MixedDecimal.sol";
-import { PerpFiOwnableUpgrade } from "./utils/PerpFiOwnableUpgrade.sol";
-import { IAmm } from "./interface/IAmm.sol";
+import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { IAmm } from "./interfaces/IAmm.sol";
+import { IntMath } from "./utils/IntMath.sol";
+import { UIntMath } from "./utils/UIntMath.sol";
 
-contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
-    using SafeMath for uint256;
-    using Decimal for Decimal.decimal;
-    using SignedDecimal for SignedDecimal.signedDecimal;
-    using MixedDecimal for SignedDecimal.signedDecimal;
+contract Amm is IAmm, OwnableUpgradeable, BlockContext {
+    using UIntMath for uint256;
+    using IntMath for int256;
 
     //
     // CONSTANT
@@ -57,8 +52,8 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
     // enum and struct
     //
     struct ReserveSnapshot {
-        Decimal.decimal quoteAssetReserve;
-        Decimal.decimal baseAssetReserve;
+        uint256 quoteAssetReserve;
+        uint256 baseAssetReserve;
         uint256 timestamp;
         uint256 blockNumber;
     }
@@ -78,7 +73,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
     struct TwapInputAsset {
         Dir dir;
-        Decimal.decimal assetAmount;
+        uint256 assetAmount;
         QuoteAssetDir inOrOut;
     }
 
@@ -100,31 +95,31 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
     // DEPRECATED
     // update during every swap and calculate total amm pnl per funding period
-    SignedDecimal.signedDecimal private baseAssetDeltaThisFundingPeriod;
+    int256 private baseAssetDeltaThisFundingPeriod;
 
     // update during every swap and used when shutting amm down. it's trader's total base asset size
-    SignedDecimal.signedDecimal public totalPositionSize;
+    int256 public totalPositionSize;
 
     // latest funding rate = ((twap market price - twap oracle price) / twap oracle price) / 24
-    SignedDecimal.signedDecimal public fundingRate;
+    int256 public fundingRate;
 
-    SignedDecimal.signedDecimal private cumulativeNotional;
+    int256 private cumulativeNotional;
 
-    Decimal.decimal private settlementPrice;
-    Decimal.decimal public tradeLimitRatio;
-    Decimal.decimal public quoteAssetReserve;
-    Decimal.decimal public baseAssetReserve;
-    Decimal.decimal public fluctuationLimitRatio;
+    uint256 private settlementPrice;
+    uint256 public tradeLimitRatio;
+    uint256 public quoteAssetReserve;
+    uint256 public baseAssetReserve;
+    uint256 public fluctuationLimitRatio;
 
     // owner can update
-    Decimal.decimal public tollRatio;
-    Decimal.decimal public spreadRatio;
-    Decimal.decimal public tollAmount;
-    Decimal.decimal private maxHoldingBaseAsset;
-    Decimal.decimal private openInterestNotionalCap;
+    uint256 public tollRatio;
+    uint256 public spreadRatio;
+    uint256 public tollAmount;
+    uint256 private maxHoldingBaseAsset;
+    uint256 private openInterestNotionalCap;
 
     // init cumulativePositionMultiplier is 1, will be updated every time when amm reserve increase/decrease
-    Decimal.decimal private cumulativePositionMultiplier;
+    uint256 private cumulativePositionMultiplier;
 
     // snapshot of amm reserve when change liquidity's invariant
     LiquidityChangedSnapshot[] private liquidityChangedSnapshots;
@@ -177,29 +172,29 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         );
         __Ownable_init();
 
-        quoteAssetReserve = Decimal.decimal(_quoteAssetReserve);
-        baseAssetReserve = Decimal.decimal(_baseAssetReserve);
-        tradeLimitRatio = Decimal.decimal(_tradeLimitRatio);
-        tollRatio = Decimal.decimal(_tollRatio);
-        spreadRatio = Decimal.decimal(_spreadRatio);
-        fluctuationLimitRatio = Decimal.decimal(_fluctuationLimitRatio);
+        quoteAssetReserve = _quoteAssetReserve;
+        baseAssetReserve = _baseAssetReserve;
+        tradeLimitRatio = _tradeLimitRatio;
+        tollRatio = _tollRatio;
+        spreadRatio = _spreadRatio;
+        fluctuationLimitRatio = _fluctuationLimitRatio;
         fundingPeriod = _fundingPeriod;
-        fundingBufferPeriod = _fundingPeriod.div(2);
+        fundingBufferPeriod = _fundingPeriod / 2;
         spotPriceTwapInterval = 1 hours;
         priceFeedKey = _priceFeedKey;
         quoteAsset = IERC20(_quoteAsset);
         priceFeed = _priceFeed;
-        cumulativePositionMultiplier = Decimal.one();
+        cumulativePositionMultiplier = 1 ether;
         liquidityChangedSnapshots.push(
             LiquidityChangedSnapshot({
-                cumulativeNotional: SignedDecimal.zero(),
+                cumulativeNotional: 0,
                 baseAssetReserve: baseAssetReserve,
                 quoteAssetReserve: quoteAssetReserve,
-                totalPositionSize: SignedDecimal.zero()
+                totalPositionSize: 0
             })
         );
         reserveSnapshots.push(ReserveSnapshot(quoteAssetReserve, baseAssetReserve, _blockTimestamp(), _blockNumber()));
-        emit ReserveSnapshotted(quoteAssetReserve.toUint(), baseAssetReserve.toUint(), _blockTimestamp());
+        emit ReserveSnapshotted(quoteAssetReserve, baseAssetReserve, _blockTimestamp());
     }
 
     /**
@@ -213,31 +208,31 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      */
     function swapInput(
         Dir _dirOfQuote,
-        Decimal.decimal calldata _quoteAssetAmount,
-        Decimal.decimal calldata _baseAssetAmountLimit,
+        uint256 _quoteAssetAmount,
+        uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
-    ) external override onlyOpen onlyCounterParty returns (Decimal.decimal memory) {
-        if (_quoteAssetAmount.toUint() == 0) {
-            return Decimal.zero();
+    ) external override onlyOpen onlyCounterParty returns (uint256) {
+        if (_quoteAssetAmount == 0) {
+            return 0;
         }
         if (_dirOfQuote == Dir.REMOVE_FROM_AMM) {
-            require(quoteAssetReserve.mulD(tradeLimitRatio).toUint() >= _quoteAssetAmount.toUint(), "over trading limit");
+            require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "over trading limit");
         }
 
-        Decimal.decimal memory baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
+        uint256 baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
         // If LONG, exchanged base amount should be more than _baseAssetAmountLimit,
         // otherwise(SHORT), exchanged base amount should be less than _baseAssetAmountLimit.
         // In SHORT case, more position means more debt so should not be larger than _baseAssetAmountLimit
-        if (_baseAssetAmountLimit.toUint() != 0) {
+        if (_baseAssetAmountLimit != 0) {
             if (_dirOfQuote == Dir.ADD_TO_AMM) {
-                require(baseAssetAmount.toUint() >= _baseAssetAmountLimit.toUint(), "Less than minimal base token");
+                require(baseAssetAmount >= _baseAssetAmountLimit, "Less than minimal base token");
             } else {
-                require(baseAssetAmount.toUint() <= _baseAssetAmountLimit.toUint(), "More than maximal base token");
+                require(baseAssetAmount <= _baseAssetAmountLimit, "More than maximal base token");
             }
         }
 
         updateReserve(_dirOfQuote, _quoteAssetAmount, baseAssetAmount, _canOverFluctuationLimit);
-        emit SwapInput(_dirOfQuote, _quoteAssetAmount.toUint(), baseAssetAmount.toUint());
+        emit SwapInput(_dirOfQuote, _quoteAssetAmount, baseAssetAmount);
         return baseAssetAmount;
     }
 
@@ -251,9 +246,9 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      */
     function swapOutput(
         Dir _dirOfBase,
-        Decimal.decimal calldata _baseAssetAmount,
-        Decimal.decimal calldata _quoteAssetAmountLimit
-    ) external override onlyOpen onlyCounterParty returns (Decimal.decimal memory) {
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetAmountLimit
+    ) external override onlyOpen onlyCounterParty returns (uint256) {
         return implSwapOutput(_dirOfBase, _baseAssetAmount, _quoteAssetAmountLimit);
     }
 
@@ -262,49 +257,49 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @dev only allow to update while reaching `nextFundingTime`
      * @return premium fraction of this period in 18 digits
      */
-    function settleFunding() external override onlyOpen onlyCounterParty returns (SignedDecimal.signedDecimal memory) {
+    function settleFunding() external override onlyOpen onlyCounterParty returns (int256) {
         require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(1 hour) / 1 day
         // premiumFraction = premium * timeFraction
-        Decimal.decimal memory underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        SignedDecimal.signedDecimal memory premium = MixedDecimal.fromDecimal(getTwapPrice(spotPriceTwapInterval)).subD(underlyingPrice);
-        SignedDecimal.signedDecimal memory premiumFraction = premium.mulScalar(fundingPeriod).divScalar(int256(1 days));
+        uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
+        int256 premium = getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt();
+        int256 premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
 
         // update funding rate = premiumFraction / twapIndexPrice
         updateFundingRate(premiumFraction, underlyingPrice);
 
         // in order to prevent multiple funding settlement during very short time after network congestion
-        uint256 minNextValidFundingTime = _blockTimestamp().add(fundingBufferPeriod);
+        uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
 
         // floor((nextFundingTime + fundingPeriod) / 3600) * 3600
-        uint256 nextFundingTimeOnHourStart = nextFundingTime.add(fundingPeriod).div(1 hours).mul(1 hours);
+        uint256 nextFundingTimeOnHourStart = ((nextFundingTime + fundingPeriod) / (1 hours)) * (1 hours);
 
         // max(nextFundingTimeOnHourStart, minNextValidFundingTime)
         nextFundingTime = nextFundingTimeOnHourStart > minNextValidFundingTime ? nextFundingTimeOnHourStart : minNextValidFundingTime;
 
         // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
         // reset funding related states
-        baseAssetDeltaThisFundingPeriod = SignedDecimal.zero();
+        baseAssetDeltaThisFundingPeriod = 0;
 
         return premiumFraction;
     }
 
     function calcBaseAssetAfterLiquidityMigration(
-        SignedDecimal.signedDecimal memory _baseAssetAmount,
-        Decimal.decimal memory _fromQuoteReserve,
-        Decimal.decimal memory _fromBaseReserve
-    ) public view override returns (SignedDecimal.signedDecimal memory) {
-        if (_baseAssetAmount.toUint() == 0) {
+        int256 _baseAssetAmount,
+        uint256 _fromQuoteReserve,
+        uint256 _fromBaseReserve
+    ) public view override returns (int256) {
+        if (_baseAssetAmount == 0) {
             return _baseAssetAmount;
         }
 
-        bool isPositiveValue = _baseAssetAmount.toInt() > 0 ? true : false;
+        bool isPositiveValue = _baseAssetAmount > 0 ? true : false;
 
         // measure the trader position's notional value on the old curve
         // (by simulating closing the position)
-        Decimal.decimal memory posNotional = getOutputPriceWithReserves(
+        uint256 posNotional = getOutputPriceWithReserves(
             isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
             _baseAssetAmount.abs(),
             _fromQuoteReserve,
@@ -312,10 +307,8 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         );
 
         // calculate and apply the required size on the new curve
-        SignedDecimal.signedDecimal memory newBaseAsset = MixedDecimal.fromDecimal(
-            getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional)
-        );
-        return newBaseAsset.mulScalar(isPositiveValue ? 1 : int256(-1));
+        int256 newBaseAsset = getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional).toInt();
+        return newBaseAsset * (isPositiveValue ? int256(1) : int256(-1));
     }
 
     /**
@@ -351,7 +344,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @dev only owner can call this function
      * @param _fluctuationLimitRatio fluctuation limit rate in 18 digits, 0 means skip the checking
      */
-    function setFluctuationLimitRatio(Decimal.decimal memory _fluctuationLimitRatio) public onlyOwner {
+    function setFluctuationLimitRatio(uint256 _fluctuationLimitRatio) public onlyOwner {
         fluctuationLimitRatio = _fluctuationLimitRatio;
     }
 
@@ -375,7 +368,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
         open = _open;
         if (_open) {
-            nextFundingTime = _blockTimestamp().add(fundingPeriod).div(1 hours).mul(1 hours);
+            nextFundingTime = ((_blockTimestamp() + fundingPeriod) / (1 hours)) * (1 hours);
         }
     }
 
@@ -384,7 +377,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @dev only owner can call
      * @param _tollRatio new toll ratio in 18 digits
      */
-    function setTollRatio(Decimal.decimal memory _tollRatio) public onlyOwner {
+    function setTollRatio(uint256 _tollRatio) public onlyOwner {
         tollRatio = _tollRatio;
     }
 
@@ -393,7 +386,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @dev only owner can call
      * @param _spreadRatio new toll spread in 18 digits
      */
-    function setSpreadRatio(Decimal.decimal memory _spreadRatio) public onlyOwner {
+    function setSpreadRatio(uint256 _spreadRatio) public onlyOwner {
         spreadRatio = _spreadRatio;
     }
 
@@ -403,10 +396,10 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
      * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
      */
-    function setCap(Decimal.decimal memory _maxHoldingBaseAsset, Decimal.decimal memory _openInterestNotionalCap) public onlyOwner {
+    function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) public onlyOwner {
         maxHoldingBaseAsset = _maxHoldingBaseAsset;
         openInterestNotionalCap = _openInterestNotionalCap;
-        emit CapChanged(maxHoldingBaseAsset.toUint(), openInterestNotionalCap.toUint());
+        emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
     }
 
     /**
@@ -424,20 +417,20 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
     // VIEW FUNCTIONS
     //
 
-    function isOverFluctuationLimit(Dir _dirOfBase, Decimal.decimal memory _baseAssetAmount) external view override returns (bool) {
+    function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view override returns (bool) {
         // Skip the check if the limit is 0
-        if (fluctuationLimitRatio.toUint() == 0) {
+        if (fluctuationLimitRatio == 0) {
             return false;
         }
 
-        (Decimal.decimal memory upperLimit, Decimal.decimal memory lowerLimit) = getPriceBoundariesOfLastBlock();
+        (uint256 upperLimit, uint256 lowerLimit) = getPriceBoundariesOfLastBlock();
 
-        Decimal.decimal memory quoteAssetExchanged = getOutputPrice(_dirOfBase, _baseAssetAmount);
-        Decimal.decimal memory price = (_dirOfBase == Dir.REMOVE_FROM_AMM)
-            ? quoteAssetReserve.addD(quoteAssetExchanged).divD(baseAssetReserve.subD(_baseAssetAmount))
-            : quoteAssetReserve.subD(quoteAssetExchanged).divD(baseAssetReserve.addD(_baseAssetAmount));
+        uint256 quoteAssetExchanged = getOutputPrice(_dirOfBase, _baseAssetAmount);
+        uint256 price = (_dirOfBase == Dir.REMOVE_FROM_AMM)
+            ? (quoteAssetReserve + quoteAssetExchanged).divD(baseAssetReserve - _baseAssetAmount)
+            : (quoteAssetReserve - quoteAssetExchanged).divD(baseAssetReserve + _baseAssetAmount);
 
-        if (price.cmp(upperLimit) <= 0 && price.cmp(lowerLimit) >= 0) {
+        if (price <= upperLimit && price >= lowerLimit) {
             return false;
         }
         return true;
@@ -450,7 +443,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _quoteAssetAmount quote asset amount
      * @return base asset amount
      */
-    function getInputTwap(Dir _dirOfQuote, Decimal.decimal memory _quoteAssetAmount) public view override returns (Decimal.decimal memory) {
+    function getInputTwap(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
         return implGetInputAssetTwapPrice(_dirOfQuote, _quoteAssetAmount, QuoteAssetDir.QUOTE_IN, 15 minutes);
     }
 
@@ -461,7 +454,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _baseAssetAmount base asset amount
      * @return quote asset amount
      */
-    function getOutputTwap(Dir _dirOfBase, Decimal.decimal memory _baseAssetAmount) public view override returns (Decimal.decimal memory) {
+    function getOutputTwap(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
         return implGetInputAssetTwapPrice(_dirOfBase, _baseAssetAmount, QuoteAssetDir.QUOTE_OUT, 15 minutes);
     }
 
@@ -471,7 +464,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _quoteAssetAmount quote asset amount
      * @return base asset amount
      */
-    function getInputPrice(Dir _dirOfQuote, Decimal.decimal memory _quoteAssetAmount) public view override returns (Decimal.decimal memory) {
+    function getInputPrice(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
         return getInputPriceWithReserves(_dirOfQuote, _quoteAssetAmount, quoteAssetReserve, baseAssetReserve);
     }
 
@@ -481,7 +474,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _baseAssetAmount base asset amount
      * @return quote asset amount
      */
-    function getOutputPrice(Dir _dirOfBase, Decimal.decimal memory _baseAssetAmount) public view override returns (Decimal.decimal memory) {
+    function getOutputPrice(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
         return getOutputPriceWithReserves(_dirOfBase, _baseAssetAmount, quoteAssetReserve, baseAssetReserve);
     }
 
@@ -489,30 +482,30 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @notice get underlying price provided by oracle
      * @return underlying price
      */
-    function getUnderlyingPrice() public view override returns (Decimal.decimal memory) {
-        return Decimal.decimal(priceFeed.getPrice(priceFeedKey));
+    function getUnderlyingPrice() public view override returns (uint256) {
+        return uint256(priceFeed.getPrice(priceFeedKey));
     }
 
     /**
      * @notice get underlying twap price provided by oracle
      * @return underlying price
      */
-    function getUnderlyingTwapPrice(uint256 _intervalInSeconds) public view returns (Decimal.decimal memory) {
-        return Decimal.decimal(priceFeed.getTwapPrice(priceFeedKey, _intervalInSeconds));
+    function getUnderlyingTwapPrice(uint256 _intervalInSeconds) public view returns (uint256) {
+        return uint256(priceFeed.getTwapPrice(priceFeedKey, _intervalInSeconds));
     }
 
     /**
      * @notice get spot price based on current quote/base asset reserve.
      * @return spot price
      */
-    function getSpotPrice() public view override returns (Decimal.decimal memory) {
+    function getSpotPrice() public view override returns (uint256) {
         return quoteAssetReserve.divD(baseAssetReserve);
     }
 
     /**
      * @notice get twap price
      */
-    function getTwapPrice(uint256 _intervalInSeconds) public view returns (Decimal.decimal memory) {
+    function getTwapPrice(uint256 _intervalInSeconds) public view returns (uint256) {
         return implGetReserveTwapPrice(_intervalInSeconds);
     }
 
@@ -520,7 +513,7 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @notice get current quote/base asset reserve.
      * @return (quote asset reserve, base asset reserve)
      */
-    function getReserve() external view returns (Decimal.decimal memory, Decimal.decimal memory) {
+    function getReserve() external view returns (uint256, uint256) {
         return (quoteAssetReserve, baseAssetReserve);
     }
 
@@ -532,12 +525,12 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         return liquidityChangedSnapshots.length;
     }
 
-    function getCumulativeNotional() external view override returns (SignedDecimal.signedDecimal memory) {
+    function getCumulativeNotional() external view override returns (int256) {
         return cumulativeNotional;
     }
 
     function getLatestLiquidityChangedSnapshots() public view returns (LiquidityChangedSnapshot memory) {
-        return liquidityChangedSnapshots[liquidityChangedSnapshots.length.sub(1)];
+        return liquidityChangedSnapshots[liquidityChangedSnapshots.length - 1];
     }
 
     function getLiquidityChangedSnapshots(uint256 i) external view override returns (LiquidityChangedSnapshot memory) {
@@ -545,34 +538,34 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         return liquidityChangedSnapshots[i];
     }
 
-    function getSettlementPrice() external view override returns (Decimal.decimal memory) {
+    function getSettlementPrice() external view override returns (uint256) {
         return settlementPrice;
     }
 
     // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-    function getBaseAssetDeltaThisFundingPeriod() external view override returns (SignedDecimal.signedDecimal memory) {
+    function getBaseAssetDeltaThisFundingPeriod() external view override returns (int256) {
         return baseAssetDeltaThisFundingPeriod;
     }
 
-    function getMaxHoldingBaseAsset() external view override returns (Decimal.decimal memory) {
+    function getMaxHoldingBaseAsset() external view override returns (uint256) {
         return maxHoldingBaseAsset;
     }
 
-    function getOpenInterestNotionalCap() external view override returns (Decimal.decimal memory) {
+    function getOpenInterestNotionalCap() external view override returns (uint256) {
         return openInterestNotionalCap;
     }
 
-    function getBaseAssetDelta() external view override returns (SignedDecimal.signedDecimal memory) {
+    function getBaseAssetDelta() external view override returns (int256) {
         return totalPositionSize;
     }
 
     function isOverSpreadLimit() external view override returns (bool) {
-        Decimal.decimal memory oraclePrice = getUnderlyingPrice();
-        require(oraclePrice.toUint() > 0, "underlying price is 0");
-        Decimal.decimal memory marketPrice = getSpotPrice();
-        Decimal.decimal memory oracleSpreadRatioAbs = MixedDecimal.fromDecimal(marketPrice).subD(oraclePrice).divD(oraclePrice).abs();
+        uint256 oraclePrice = getUnderlyingPrice();
+        require(oraclePrice > 0, "underlying price is 0");
+        uint256 marketPrice = getSpotPrice();
+        uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
 
-        return oracleSpreadRatioAbs.toUint() >= MAX_ORACLE_SPREAD_RATIO ? true : false;
+        return oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
     /**
@@ -580,9 +573,9 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      * @param _quoteAssetAmount quoteAssetAmount
      * @return total tx fee
      */
-    function calcFee(Decimal.decimal calldata _quoteAssetAmount) external view override returns (Decimal.decimal memory, Decimal.decimal memory) {
-        if (_quoteAssetAmount.toUint() == 0) {
-            return (Decimal.zero(), Decimal.zero());
+    function calcFee(uint256 _quoteAssetAmount) external view override returns (uint256, uint256) {
+        if (_quoteAssetAmount == 0) {
+            return (0, 0);
         }
         return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
     }
@@ -604,35 +597,35 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
     function getInputPriceWithReserves(
         Dir _dirOfQuote,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _quoteAssetPoolAmount,
-        Decimal.decimal memory _baseAssetPoolAmount
-    ) public pure override returns (Decimal.decimal memory) {
-        if (_quoteAssetAmount.toUint() == 0) {
-            return Decimal.zero();
+        uint256 _quoteAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) public pure override returns (uint256) {
+        if (_quoteAssetAmount == 0) {
+            return 0;
         }
 
         bool isAddToAmm = _dirOfQuote == Dir.ADD_TO_AMM;
-        SignedDecimal.signedDecimal memory invariant = MixedDecimal.fromDecimal(_quoteAssetPoolAmount.mulD(_baseAssetPoolAmount));
-        SignedDecimal.signedDecimal memory baseAssetAfter;
-        Decimal.decimal memory quoteAssetAfter;
-        Decimal.decimal memory baseAssetBought;
+        int256 invariant = _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount).toInt();
+        int256 baseAssetAfter;
+        uint256 quoteAssetAfter;
+        uint256 baseAssetBought;
         if (isAddToAmm) {
-            quoteAssetAfter = _quoteAssetPoolAmount.addD(_quoteAssetAmount);
+            quoteAssetAfter = _quoteAssetPoolAmount + _quoteAssetAmount;
         } else {
-            quoteAssetAfter = _quoteAssetPoolAmount.subD(_quoteAssetAmount);
+            quoteAssetAfter = _quoteAssetPoolAmount - _quoteAssetAmount;
         }
-        require(quoteAssetAfter.toUint() != 0, "quote asset after is 0");
+        require(quoteAssetAfter != 0, "quote asset after is 0");
 
-        baseAssetAfter = invariant.divD(quoteAssetAfter);
-        baseAssetBought = baseAssetAfter.subD(_baseAssetPoolAmount).abs();
+        baseAssetAfter = invariant.divD(quoteAssetAfter.toInt());
+        baseAssetBought = (baseAssetAfter - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (invariant.abs().modD(quoteAssetAfter).toUint() != 0) {
+        if (invariant.abs().modD(quoteAssetAfter) != 0) {
             if (isAddToAmm) {
-                baseAssetBought = baseAssetBought.subD(Decimal.decimal(1));
+                baseAssetBought = baseAssetBought - 1;
             } else {
-                baseAssetBought = baseAssetBought.addD(Decimal.decimal(1));
+                baseAssetBought = baseAssetBought + 1;
             }
         }
 
@@ -641,36 +634,36 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
     function getOutputPriceWithReserves(
         Dir _dirOfBase,
-        Decimal.decimal memory _baseAssetAmount,
-        Decimal.decimal memory _quoteAssetPoolAmount,
-        Decimal.decimal memory _baseAssetPoolAmount
-    ) public pure override returns (Decimal.decimal memory) {
-        if (_baseAssetAmount.toUint() == 0) {
-            return Decimal.zero();
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) public pure override returns (uint256) {
+        if (_baseAssetAmount == 0) {
+            return 0;
         }
 
         bool isAddToAmm = _dirOfBase == Dir.ADD_TO_AMM;
-        SignedDecimal.signedDecimal memory invariant = MixedDecimal.fromDecimal(_quoteAssetPoolAmount.mulD(_baseAssetPoolAmount));
-        SignedDecimal.signedDecimal memory quoteAssetAfter;
-        Decimal.decimal memory baseAssetAfter;
-        Decimal.decimal memory quoteAssetSold;
+        int256 invariant = _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount).toInt();
+        int256 quoteAssetAfter;
+        uint256 baseAssetAfter;
+        uint256 quoteAssetSold;
 
         if (isAddToAmm) {
-            baseAssetAfter = _baseAssetPoolAmount.addD(_baseAssetAmount);
+            baseAssetAfter = _baseAssetPoolAmount + _baseAssetAmount;
         } else {
-            baseAssetAfter = _baseAssetPoolAmount.subD(_baseAssetAmount);
+            baseAssetAfter = _baseAssetPoolAmount - _baseAssetAmount;
         }
-        require(baseAssetAfter.toUint() != 0, "base asset after is 0");
+        require(baseAssetAfter != 0, "base asset after is 0");
 
-        quoteAssetAfter = invariant.divD(baseAssetAfter);
-        quoteAssetSold = quoteAssetAfter.subD(_quoteAssetPoolAmount).abs();
+        quoteAssetAfter = invariant.divD(baseAssetAfter.toInt());
+        quoteAssetSold = (quoteAssetAfter - _quoteAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (invariant.abs().modD(baseAssetAfter).toUint() != 0) {
+        if (invariant.abs().modD(baseAssetAfter) != 0) {
             if (isAddToAmm) {
-                quoteAssetSold = quoteAssetSold.subD(Decimal.decimal(1));
+                quoteAssetSold = quoteAssetSold - 1;
             } else {
-                quoteAssetSold = quoteAssetSold.addD(Decimal.decimal(1));
+                quoteAssetSold = quoteAssetSold + 1;
             }
         }
 
@@ -681,9 +674,9 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
     // INTERNAL FUNCTIONS
     //
     // update funding rate = premiumFraction / twapIndexPrice
-    function updateFundingRate(SignedDecimal.signedDecimal memory _premiumFraction, Decimal.decimal memory _underlyingPrice) private {
-        fundingRate = _premiumFraction.divD(_underlyingPrice);
-        emit FundingRateUpdated(fundingRate.toInt(), _underlyingPrice.toUint());
+    function updateFundingRate(int256 _premiumFraction, uint256 _underlyingPrice) private {
+        fundingRate = _premiumFraction.divD(_underlyingPrice.toInt());
+        emit FundingRateUpdated(fundingRate, _underlyingPrice);
     }
 
     function addReserveSnapshot() internal {
@@ -696,48 +689,48 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         } else {
             reserveSnapshots.push(ReserveSnapshot(quoteAssetReserve, baseAssetReserve, _blockTimestamp(), currentBlock));
         }
-        emit ReserveSnapshotted(quoteAssetReserve.toUint(), baseAssetReserve.toUint(), _blockTimestamp());
+        emit ReserveSnapshotted(quoteAssetReserve, baseAssetReserve, _blockTimestamp());
     }
 
     function implSwapOutput(
         Dir _dirOfBase,
-        Decimal.decimal memory _baseAssetAmount,
-        Decimal.decimal memory _quoteAssetAmountLimit
-    ) internal returns (Decimal.decimal memory) {
-        if (_baseAssetAmount.toUint() == 0) {
-            return Decimal.zero();
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetAmountLimit
+    ) internal returns (uint256) {
+        if (_baseAssetAmount == 0) {
+            return 0;
         }
         if (_dirOfBase == Dir.REMOVE_FROM_AMM) {
-            require(baseAssetReserve.mulD(tradeLimitRatio).toUint() >= _baseAssetAmount.toUint(), "over trading limit");
+            require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "over trading limit");
         }
 
-        Decimal.decimal memory quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
+        uint256 quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
         Dir dirOfQuote = _dirOfBase == Dir.ADD_TO_AMM ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM;
         // If SHORT, exchanged quote amount should be less than _quoteAssetAmountLimit,
         // otherwise(LONG), exchanged base amount should be more than _quoteAssetAmountLimit.
         // In the SHORT case, more quote assets means more payment so should not be more than _quoteAssetAmountLimit
-        if (_quoteAssetAmountLimit.toUint() != 0) {
+        if (_quoteAssetAmountLimit != 0) {
             if (dirOfQuote == Dir.REMOVE_FROM_AMM) {
                 // SHORT
-                require(quoteAssetAmount.toUint() >= _quoteAssetAmountLimit.toUint(), "Less than minimal quote token");
+                require(quoteAssetAmount >= _quoteAssetAmountLimit, "Less than minimal quote token");
             } else {
                 // LONG
-                require(quoteAssetAmount.toUint() <= _quoteAssetAmountLimit.toUint(), "More than maximal quote token");
+                require(quoteAssetAmount <= _quoteAssetAmountLimit, "More than maximal quote token");
             }
         }
 
         // as mentioned in swapOutput(), it always allows going over fluctuation limit because
         // it is only used by close/liquidate positions
         updateReserve(dirOfQuote, quoteAssetAmount, _baseAssetAmount, true);
-        emit SwapOutput(_dirOfBase, quoteAssetAmount.toUint(), _baseAssetAmount.toUint());
+        emit SwapOutput(_dirOfBase, quoteAssetAmount, _baseAssetAmount);
         return quoteAssetAmount;
     }
 
     // the direction is in quote asset
     function updateReserve(
         Dir _dirOfQuote,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _baseAssetAmount,
+        uint256 _quoteAssetAmount,
+        uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
     ) internal {
         // check if it's over fluctuationLimitRatio
@@ -745,19 +738,19 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         checkIsOverBlockFluctuationLimit(_dirOfQuote, _quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
 
         if (_dirOfQuote == Dir.ADD_TO_AMM) {
-            quoteAssetReserve = quoteAssetReserve.addD(_quoteAssetAmount);
-            baseAssetReserve = baseAssetReserve.subD(_baseAssetAmount);
+            quoteAssetReserve = quoteAssetReserve + _quoteAssetAmount;
+            baseAssetReserve = baseAssetReserve - _baseAssetAmount;
             // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod.subD(_baseAssetAmount);
-            totalPositionSize = totalPositionSize.addD(_baseAssetAmount);
-            cumulativeNotional = cumulativeNotional.addD(_quoteAssetAmount);
+            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod - _baseAssetAmount.toInt();
+            totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
+            cumulativeNotional = cumulativeNotional + _quoteAssetAmount.toInt();
         } else {
-            quoteAssetReserve = quoteAssetReserve.subD(_quoteAssetAmount);
-            baseAssetReserve = baseAssetReserve.addD(_baseAssetAmount);
+            quoteAssetReserve = quoteAssetReserve - _quoteAssetAmount;
+            baseAssetReserve = baseAssetReserve + _baseAssetAmount;
             // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod.addD(_baseAssetAmount);
-            totalPositionSize = totalPositionSize.subD(_baseAssetAmount);
-            cumulativeNotional = cumulativeNotional.subD(_quoteAssetAmount);
+            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod + _baseAssetAmount.toInt();
+            totalPositionSize = totalPositionSize - _baseAssetAmount.toInt();
+            cumulativeNotional = cumulativeNotional - _quoteAssetAmount.toInt();
         }
 
         // addReserveSnapshot must be after checking price fluctuation
@@ -766,33 +759,33 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
 
     function implGetInputAssetTwapPrice(
         Dir _dirOfQuote,
-        Decimal.decimal memory _assetAmount,
+        uint256 _assetAmount,
         QuoteAssetDir _inOut,
         uint256 _interval
-    ) internal view returns (Decimal.decimal memory) {
+    ) internal view returns (uint256) {
         TwapPriceCalcParams memory params;
         params.opt = TwapCalcOption.INPUT_ASSET;
-        params.snapshotIndex = reserveSnapshots.length.sub(1);
+        params.snapshotIndex = reserveSnapshots.length - 1;
         params.asset.dir = _dirOfQuote;
         params.asset.assetAmount = _assetAmount;
         params.asset.inOrOut = _inOut;
         return calcTwap(params, _interval);
     }
 
-    function implGetReserveTwapPrice(uint256 _interval) internal view returns (Decimal.decimal memory) {
+    function implGetReserveTwapPrice(uint256 _interval) internal view returns (uint256) {
         TwapPriceCalcParams memory params;
         params.opt = TwapCalcOption.RESERVE_ASSET;
-        params.snapshotIndex = reserveSnapshots.length.sub(1);
+        params.snapshotIndex = reserveSnapshots.length - 1;
         return calcTwap(params, _interval);
     }
 
-    function calcTwap(TwapPriceCalcParams memory _params, uint256 _interval) internal view returns (Decimal.decimal memory) {
-        Decimal.decimal memory currentPrice = getPriceWithSpecificSnapshot(_params);
+    function calcTwap(TwapPriceCalcParams memory _params, uint256 _interval) internal view returns (uint256) {
+        uint256 currentPrice = getPriceWithSpecificSnapshot(_params);
         if (_interval == 0) {
             return currentPrice;
         }
 
-        uint256 baseTimestamp = _blockTimestamp().sub(_interval);
+        uint256 baseTimestamp = _blockTimestamp() - _interval;
         ReserveSnapshot memory currentSnapshot = reserveSnapshots[_params.snapshotIndex];
         // return the latest snapshot price directly
         // if only one snapshot or the timestamp of latest snapshot is earlier than asking for
@@ -801,15 +794,15 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         }
 
         uint256 previousTimestamp = currentSnapshot.timestamp;
-        uint256 period = _blockTimestamp().sub(previousTimestamp);
-        Decimal.decimal memory weightedPrice = currentPrice.mulScalar(period);
+        uint256 period = _blockTimestamp() - previousTimestamp;
+        uint256 weightedPrice = currentPrice * period;
         while (true) {
             // if snapshot history is too short
             if (_params.snapshotIndex == 0) {
-                return weightedPrice.divScalar(period);
+                return weightedPrice / period;
             }
 
-            _params.snapshotIndex = _params.snapshotIndex.sub(1);
+            _params.snapshotIndex = _params.snapshotIndex - 1;
             currentSnapshot = reserveSnapshots[_params.snapshotIndex];
             currentPrice = getPriceWithSpecificSnapshot(_params);
 
@@ -819,19 +812,19 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
                 // now is 1000, _interval is 100, then target timestamp is 900. If timestamp of current round is 970,
                 // and timestamp of NEXT round is 880, then the weighted time period will be (970 - 900) = 70,
                 // instead of (970 - 880)
-                weightedPrice = weightedPrice.addD(currentPrice.mulScalar(previousTimestamp.sub(baseTimestamp)));
+                weightedPrice = weightedPrice + (currentPrice * (previousTimestamp - baseTimestamp));
                 break;
             }
 
-            uint256 timeFraction = previousTimestamp.sub(currentSnapshot.timestamp);
-            weightedPrice = weightedPrice.addD(currentPrice.mulScalar(timeFraction));
-            period = period.add(timeFraction);
+            uint256 timeFraction = previousTimestamp - currentSnapshot.timestamp;
+            weightedPrice = weightedPrice + (currentPrice * timeFraction);
+            period = period + timeFraction;
             previousTimestamp = currentSnapshot.timestamp;
         }
-        return weightedPrice.divScalar(_interval);
+        return weightedPrice / _interval;
     }
 
-    function getPriceWithSpecificSnapshot(TwapPriceCalcParams memory params) internal view virtual returns (Decimal.decimal memory) {
+    function getPriceWithSpecificSnapshot(TwapPriceCalcParams memory params) internal view virtual returns (uint256) {
         ReserveSnapshot memory snapshot = reserveSnapshots[params.snapshotIndex];
 
         // RESERVE_ASSET means price comes from quoteAssetReserve/baseAssetReserve
@@ -839,8 +832,8 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         if (params.opt == TwapCalcOption.RESERVE_ASSET) {
             return snapshot.quoteAssetReserve.divD(snapshot.baseAssetReserve);
         } else if (params.opt == TwapCalcOption.INPUT_ASSET) {
-            if (params.asset.assetAmount.toUint() == 0) {
-                return Decimal.zero();
+            if (params.asset.assetAmount == 0) {
+                return 0;
             }
             if (params.asset.inOrOut == QuoteAssetDir.QUOTE_IN) {
                 return getInputPriceWithReserves(params.asset.dir, params.asset.assetAmount, snapshot.quoteAssetReserve, snapshot.baseAssetReserve);
@@ -851,17 +844,17 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         revert("not supported option");
     }
 
-    function getPriceBoundariesOfLastBlock() internal view returns (Decimal.decimal memory, Decimal.decimal memory) {
+    function getPriceBoundariesOfLastBlock() internal view returns (uint256, uint256) {
         uint256 len = reserveSnapshots.length;
-        ReserveSnapshot memory latestSnapshot = reserveSnapshots[len.sub(1)];
+        ReserveSnapshot memory latestSnapshot = reserveSnapshots[len - 1];
         // if the latest snapshot is the same as current block, get the previous one
         if (latestSnapshot.blockNumber == _blockNumber() && len > 1) {
-            latestSnapshot = reserveSnapshots[len.sub(2)];
+            latestSnapshot = reserveSnapshots[len - 2];
         }
 
-        Decimal.decimal memory lastPrice = latestSnapshot.quoteAssetReserve.divD(latestSnapshot.baseAssetReserve);
-        Decimal.decimal memory upperLimit = lastPrice.mulD(Decimal.one().addD(fluctuationLimitRatio));
-        Decimal.decimal memory lowerLimit = lastPrice.mulD(Decimal.one().subD(fluctuationLimitRatio));
+        uint256 lastPrice = latestSnapshot.quoteAssetReserve.divD(latestSnapshot.baseAssetReserve);
+        uint256 upperLimit = lastPrice.mulD(1 ether + fluctuationLimitRatio);
+        uint256 lowerLimit = lastPrice.mulD(1 ether - fluctuationLimitRatio);
         return (upperLimit, lowerLimit);
     }
 
@@ -872,12 +865,12 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
      */
     function checkIsOverBlockFluctuationLimit(
         Dir _dirOfQuote,
-        Decimal.decimal memory _quoteAssetAmount,
-        Decimal.decimal memory _baseAssetAmount,
+        uint256 _quoteAssetAmount,
+        uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
     ) internal view {
         // Skip the check if the limit is 0
-        if (fluctuationLimitRatio.toUint() == 0) {
+        if (fluctuationLimitRatio == 0) {
             return;
         }
 
@@ -895,30 +888,26 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         // once it exceeds the boundary, all the rest txs in this block fail
         //
 
-        (Decimal.decimal memory upperLimit, Decimal.decimal memory lowerLimit) = getPriceBoundariesOfLastBlock();
+        (uint256 upperLimit, uint256 lowerLimit) = getPriceBoundariesOfLastBlock();
 
-        Decimal.decimal memory price = quoteAssetReserve.divD(baseAssetReserve);
-        require(price.cmp(upperLimit) <= 0 && price.cmp(lowerLimit) >= 0, "price is already over fluctuation limit");
+        uint256 price = quoteAssetReserve.divD(baseAssetReserve);
+        require(price <= upperLimit && price >= lowerLimit, "price is already over fluctuation limit");
 
         if (!_canOverFluctuationLimit) {
             price = (_dirOfQuote == Dir.ADD_TO_AMM)
-                ? quoteAssetReserve.addD(_quoteAssetAmount).divD(baseAssetReserve.subD(_baseAssetAmount))
-                : quoteAssetReserve.subD(_quoteAssetAmount).divD(baseAssetReserve.addD(_baseAssetAmount));
-            require(price.cmp(upperLimit) <= 0 && price.cmp(lowerLimit) >= 0, "price is over fluctuation limit");
+                ? (quoteAssetReserve + _quoteAssetAmount).divD(baseAssetReserve - _baseAssetAmount)
+                : (quoteAssetReserve - _quoteAssetAmount).divD(baseAssetReserve + _baseAssetAmount);
+            require(price <= upperLimit && price >= lowerLimit, "price is over fluctuation limit");
         }
     }
 
-    function checkLiquidityMultiplierLimit(SignedDecimal.signedDecimal memory _positionSize, Decimal.decimal memory _liquidityMultiplier)
-        internal
-        view
-    {
+    function checkLiquidityMultiplierLimit(int256 _positionSize, uint256 _liquidityMultiplier) internal view {
         // have lower bound when position size is long
-        if (_positionSize.toInt() > 0) {
-            Decimal.decimal memory liquidityMultiplierLowerBound = _positionSize
-                .addD(Decimal.decimal(MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING))
-                .divD(baseAssetReserve)
+        if (_positionSize > 0) {
+            uint256 liquidityMultiplierLowerBound = (_positionSize + MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING.toInt())
+                .divD(baseAssetReserve.toInt())
                 .abs();
-            require(_liquidityMultiplier.cmp(liquidityMultiplierLowerBound) >= 0, "illegal liquidity multiplier");
+            require(_liquidityMultiplier >= liquidityMultiplierLowerBound, "illegal liquidity multiplier");
         }
     }
 
@@ -926,16 +915,14 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         LiquidityChangedSnapshot memory latestLiquiditySnapshot = getLatestLiquidityChangedSnapshots();
 
         // get last liquidity changed history to calc new quote/base reserve
-        Decimal.decimal memory previousK = latestLiquiditySnapshot.baseAssetReserve.mulD(latestLiquiditySnapshot.quoteAssetReserve);
-        SignedDecimal.signedDecimal memory lastInitBaseReserveInNewCurve = latestLiquiditySnapshot.totalPositionSize.addD(
-            latestLiquiditySnapshot.baseAssetReserve
-        );
-        SignedDecimal.signedDecimal memory lastInitQuoteReserveInNewCurve = MixedDecimal.fromDecimal(previousK).divD(lastInitBaseReserveInNewCurve);
+        uint256 previousK = latestLiquiditySnapshot.baseAssetReserve.mulD(latestLiquiditySnapshot.quoteAssetReserve);
+        int256 lastInitBaseReserveInNewCurve = latestLiquiditySnapshot.totalPositionSize + latestLiquiditySnapshot.baseAssetReserve.toInt();
+        int256 lastInitQuoteReserveInNewCurve = previousK.toInt().divD(lastInitBaseReserveInNewCurve);
 
         // settlementPrice = SUM(Open Position Notional Value) / SUM(Position Size)
         // `Open Position Notional Value` = init quote reserve - current quote reserve
         // `Position Size` = init base reserve - current base reserve
-        SignedDecimal.signedDecimal memory positionNotionalValue = lastInitQuoteReserveInNewCurve.subD(quoteAssetReserve);
+        int256 positionNotionalValue = lastInitQuoteReserveInNewCurve - quoteAssetReserve.toInt();
 
         // if total position size less than IGNORABLE_DIGIT_FOR_SHUTDOWN, treat it as 0 positions due to rounding error
         if (totalPositionSize.toUint() > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
@@ -943,6 +930,6 @@ contract Amm is IAmm, PerpFiOwnableUpgrade, BlockContext {
         }
 
         open = false;
-        emit Shutdown(settlementPrice.toUint());
+        emit Shutdown(settlementPrice);
     }
 }

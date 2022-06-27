@@ -10,5 +10,14 @@ contract OwnerPausableUpgradeSafe is OwnableUpgradeable, PausableUpgradeable {
         __Pausable_init();
     }
 
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
+    }
+
+
     uint256[50] private __gap;
 }
