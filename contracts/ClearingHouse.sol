@@ -5,9 +5,9 @@ import { BlockContext } from "./utils/BlockContext.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { OwnerPausableUpgradeSafe } from "./OwnerPausable.sol";
-import { IAmm } from "./interface/IAmm.sol";
-import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
-import { IMultiTokenRewardRecipient } from "./interface/IMultiTokenRewardRecipient.sol";
+import { IAmm } from "./interfaces/IAmm.sol";
+import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
+import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipient.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 

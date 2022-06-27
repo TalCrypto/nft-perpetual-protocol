@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IAmm } from "./interface/IAmm.sol";
-import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
+import { IAmm } from "./interfaces/IAmm.sol";
+import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { ClearingHouse } from "./ClearingHouse.sol";
 
 import { IntMath } from "./utils/IntMath.sol";

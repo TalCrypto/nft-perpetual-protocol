@@ -4,12 +4,12 @@ pragma solidity 0.8.9;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IExchangeWrapper } from "./interface/IExchangeWrapper.sol";
-import { IInsuranceFund } from "./interface/IInsuranceFund.sol";
+import { IExchangeWrapper } from "./interfaces/IExchangeWrapper.sol";
+import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
-import { IMinter } from "./interface/IMinter.sol";
-import { IAmm } from "./interface/IAmm.sol";
-import { IInflationMonitor } from "./interface/IInflationMonitor.sol";
+import { IMinter } from "./interfaces/IMinter.sol";
+import { IAmm } from "./interfaces/IAmm.sol";
+import { IInflationMonitor } from "./interfaces/IInflationMonitor.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
