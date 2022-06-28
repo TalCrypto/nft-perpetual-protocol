@@ -20,7 +20,7 @@ import {
   TollPool__factory,
   TollPool,
 } from "../../typechain-types";
-import { toBN } from "./number";
+import { toFullDigitBN } from "./number";
 
 // const ERC20Fake = artifacts.require("ERC20Fake") as ERC20Fake__factory
 // const AmmFake = artifacts.require("AmmFake") as AmmFake__factory
@@ -97,8 +97,8 @@ export async function deployAmm(params: {
     priceFeedAddr,
     fluctuation,
     fundingPeriod = BigNumber.from(8 * 60 * 60), // 8hr
-    baseAssetReserve = toBN(100),
-    quoteAssetReserve = toBN(1000),
+    baseAssetReserve = toFullDigitBN(100),
+    quoteAssetReserve = toFullDigitBN(1000),
     priceFeedKey = "ETH",
     tollRatio = BigNumber.from(0),
     spreadRatio = BigNumber.from(0),
@@ -106,7 +106,7 @@ export async function deployAmm(params: {
   return new AmmFake__factory(deployer).deploy(
     quoteAssetReserve.toString(),
     baseAssetReserve.toString(),
-    toBN(0.9).toString(), // tradeLimitRatio
+    toFullDigitBN(0.9).toString(), // tradeLimitRatio
     fundingPeriod.toString(),
     priceFeedAddr.toString(),
     ethers.utils.formatBytes32String(priceFeedKey),

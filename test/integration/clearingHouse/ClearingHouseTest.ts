@@ -18,7 +18,7 @@ import {
 //import { ClearingHouse } from "../../../types/web3/ClearingHouse"
 import { PnlCalcOption, Side } from "../../helper/contract"
 import { fullDeploy } from "../../helper/deploy"
-import { toBN } from "../../helper/number"
+import { toFullDigitBN } from "../../helper/number"
 //import { signEIP712MetaTx } from "../../helper/web3"
 
 use(solidity)
@@ -72,11 +72,11 @@ describe("ClearingHouse Test", () => {
     }
 
     async function approve(account: Signer, spender: string, amount: number): Promise<void> {
-        await quoteToken.connect(account).approve(spender, toBN(amount, +(await quoteToken.decimals())))
+        await quoteToken.connect(account).approve(spender, toFullDigitBN(amount, +(await quoteToken.decimals())))
     }
 
     async function transfer(from: Signer, to: string, amount: number): Promise<void> {
-        await quoteToken.connect(from).transfer(to, toBN(amount, +(await quoteToken.decimals())))
+        await quoteToken.connect(from).transfer(to, toFullDigitBN(amount, +(await quoteToken.decimals())))
     }
 
     function toBytes32(str: string): string {
@@ -110,11 +110,11 @@ describe("ClearingHouse Test", () => {
         clearingHouse = contracts.clearingHouse
 
         // Each of Alice & Bob have 5000 DAI
-        await quoteToken.transfer(alice.getAddress(), toBN(5000, +(await quoteToken.decimals())))
-        await quoteToken.transfer(bob.getAddress(), toBN(5000, +(await quoteToken.decimals())))
-        await quoteToken.transfer(insuranceFund.address, toBN(5000, +(await quoteToken.decimals())))
+        await quoteToken.transfer(alice.getAddress(), toFullDigitBN(5000, +(await quoteToken.decimals())))
+        await quoteToken.transfer(bob.getAddress(), toFullDigitBN(5000, +(await quoteToken.decimals())))
+        await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())))
 
-        await amm.setCap(toBN(0), toBN(0))
+        await amm.setCap(toFullDigitBN(0), toFullDigitBN(0))
 
         await syncAmmPriceToOracle()
     })
@@ -123,10 +123,10 @@ describe("ClearingHouse Test", () => {
         it("return 0 margin when alice's position is underwater", async () => {
             // given alice takes 10x short position (size: -150) with 60 margin
             await approve(alice, clearingHouse.address, 60)
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toBN(60), toBN(10), toBN(150))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150))
 
             // given the underlying twap price is $2.1, and current snapShot price is 400B/250Q = $1.6
-            await mockPriceFeed.setTwapPrice(toBN(2.1))
+            await mockPriceFeed.setTwapPrice(toFullDigitBN(2.1))
 
             // when the new fundingRate is -50% which means underlyingPrice < snapshotPrice
             await gotoNextFundingTime()
@@ -134,38 +134,38 @@ describe("ClearingHouse Test", () => {
 
             let a = await clearingHouse.getLatestCumulativePremiumFraction(amm.address)
 
-            expect((await clearingHouse.getLatestCumulativePremiumFraction(amm.address))).to.eq(toBN(-0.5))
+            expect((await clearingHouse.getLatestCumulativePremiumFraction(amm.address))).to.eq(toFullDigitBN(-0.5))
 
             // then alice need to pay 150 * 50% = $75
             // {size: -150, margin: 300} => {size: -150, margin: 0}
             const alicePosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.getAddress())
-            expect(alicePosition.size).to.eq(toBN(-150))
-            expect(alicePosition.margin).to.eq(toBN(0))
+            expect(alicePosition.size).to.eq(toFullDigitBN(-150))
+            expect(alicePosition.margin).to.eq(toFullDigitBN(0))
         })
     })
 
     describe("openInterestNotional", () => {
         beforeEach(async () => {
-            await amm.setCap(toBN(0), toBN(600))
+            await amm.setCap(toFullDigitBN(0), toFullDigitBN(600))
             await approve(alice, clearingHouse.address, 600)
             await approve(bob, clearingHouse.address, 600)
         })
 
         it("increase when increase position", async () => {
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(600), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(600))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(600))
         })
 
         it("reduce when reduce position", async () => {
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(600), toBN(1), toBN(0))
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toBN(300), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(300))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(300))
         })
 
         it("reduce when close position", async () => {
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(400), toBN(1), toBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(400), toFullDigitBN(1), toFullDigitBN(0))
 
-            await clearingHouse.connect(alice).closePosition(amm.address, toBN(0))
+            await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))
 
             // expect the result will be almost 0 (with a few rounding error)
             const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address)
@@ -174,28 +174,28 @@ describe("ClearingHouse Test", () => {
 
         it("increase when traders open positions in different direction", async () => {
             await approve(alice, clearingHouse.address, 300)
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(300), toBN(1), toBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0))
             await approve(bob, clearingHouse.address, 300)
-            await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toBN(300), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(600))
+            await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(600))
         })
 
         it("increase when traders open larger position in reverse direction", async () => {
             await approve(alice, clearingHouse.address, 600)
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(250), toBN(1), toBN(0))
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toBN(450), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(200))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(200))
         })
 
         it("is 0 when everyone close position", async () => {
             // avoid two closing positions from exceeding the fluctuation limit
-            await amm.setFluctuationLimitRatio(toBN(0.8))
+            await amm.setFluctuationLimitRatio(toFullDigitBN(0.8))
 
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(250), toBN(1), toBN(0))
-            await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toBN(250), toBN(1), toBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0))
+            await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0))
 
-            await clearingHouse.connect(alice).closePosition(amm.address, toBN(0))
-            await clearingHouse.connect(bob).closePosition(amm.address, toBN(0))
+            await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))
+            await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0))
 
             // expect the result will be almost 0 (with a few rounding error)
             const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address)
@@ -204,8 +204,8 @@ describe("ClearingHouse Test", () => {
 
         it("is 0 when everyone close position, one of them is bankrupt position", async () => {
             await clearingHouse.setBackstopLiquidityProvider(bob.getAddress(), true)
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toBN(250), toBN(1), toBN(0))
-            await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toBN(250), toBN(1), toBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0))
+            await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0))
 
             // when alice close, it create bad debt (bob's position is bankrupt), so we can only liquidate her position
             // await clearingHouse.closePosition(amm.address, toDecimal(0), { from: alice })
@@ -213,7 +213,7 @@ describe("ClearingHouse Test", () => {
 
             // bypass the restrict mode
             await forwardBlockTimestamp(15)
-            await clearingHouse.connect(bob).closePosition(amm.address, toBN(0))
+            await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0))
 
             // expect the result will be almost 0 (with a few rounding error)
             const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address)
@@ -221,24 +221,24 @@ describe("ClearingHouse Test", () => {
         })
 
         it("stop trading if it's over openInterestCap", async () => {
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(600), toBN(1), toBN(0))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0))
             await expect(
-                clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(1), toBN(1), toBN(0))
+                clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))
             ).to.be.revertedWith("over limit")
         })
 
         it("won't be limited by the open interest cap if the trader is the whitelist", async () => {
             await approve(alice, clearingHouse.address, 700)
             await clearingHouse.setWhitelist(alice.getAddress())
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(700), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(700))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(700), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(700))
         })
 
         it("won't stop trading if it's reducing position, even it's more than cap", async () => {
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toBN(600), toBN(1), toBN(0))
-            await amm.setCap(toBN(0), toBN(300))
-            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toBN(300), toBN(1), toBN(0))
-            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toBN(300))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0))
+            await amm.setCap(toFullDigitBN(0), toFullDigitBN(300))
+            await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0))
+            expect((await clearingHouse.openInterestNotionalMap(amm.address))).eq(toFullDigitBN(300))
         })
     })
 

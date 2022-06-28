@@ -10,6 +10,6 @@ export interface Decimal {
 }
 
 // noinspection JSMethodCanBeStatic
-export function toBN(val: number | string, decimals = DEFAULT_TOKEN_DECIMALS): BigNumber {
+export function toFullDigitBN(val: number | string, decimals = DEFAULT_TOKEN_DECIMALS): BigNumber {
   return utils.parseUnits(val.toString(), decimals);
 }

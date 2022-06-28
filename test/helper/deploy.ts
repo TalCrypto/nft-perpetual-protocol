@@ -20,7 +20,7 @@ import {
     deployTollPool,
     deployL2MockPriceFeed
 } from "./contract"
-import { toBN } from "./number"
+import { toFullDigitBN } from "./number"
 
 export interface PerpContracts {
     quoteToken: ERC20Fake
@@ -51,16 +51,16 @@ export interface ContractDeployArgs {
 const quoteTokenDecimals = 18
 
 const DEFAULT_CONTRACT_DEPLOY_ARGS: ContractDeployArgs = {
-    quoteTokenAmount: toBN(20000000, quoteTokenDecimals),
-    perpInitSupply: toBN(1000000),
+    quoteTokenAmount: toFullDigitBN(20000000, quoteTokenDecimals),
+    perpInitSupply: toFullDigitBN(1000000),
     perpRewardVestingPeriod: BigNumber.from(0),
-    perpInflationRate: toBN(0.01), // 1%
+    perpInflationRate: toFullDigitBN(0.01), // 1%
     perpMintDuration: BigNumber.from(7 * 24 * 60 * 60), // 1 week
     perpDecayRate: BigNumber.from(0),
     tollRatio: BigNumber.from(0),
     spreadRatio: BigNumber.from(0),
-    quoteAssetReserve: toBN(1000),
-    baseAssetReserve: toBN(100),
+    quoteAssetReserve: toFullDigitBN(1000),
+    baseAssetReserve: toFullDigitBN(100),
     startSchedule: true,
 }
 
@@ -81,15 +81,15 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
     } = args
     
     const quoteToken = await deployErc20Fake(sender!, quoteTokenAmount, "Tether", "USDT", BigNumber.from(quoteTokenDecimals))
-    const priceFeed = await deployL2MockPriceFeed(sender!, toBN(100))
+    const priceFeed = await deployL2MockPriceFeed(sender!, toFullDigitBN(100))
 
     const insuranceFund = await deployInsuranceFund(sender!,priceFeed.address, priceFeed.address)//("exchangeWrapper.address", "minter.address")
 
     const clearingHouse = await deployClearingHouse(
         sender!,
-        toBN(0.05),
-        toBN(0.05),
-        toBN(0.05),
+        toFullDigitBN(0.05),
+        toFullDigitBN(0.05),
+        toFullDigitBN(0.05),
         insuranceFund.address,
         insuranceFund.address,//"metaTxGateway.address",
     )
@@ -108,7 +108,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
         quoteAssetTokenAddr: quoteToken.address,
         priceFeedAddr: priceFeed.address,
         fundingPeriod: BigNumber.from(86400), // to make calculation easier we set fundingPeriod = 1 day
-        fluctuation: toBN(0),
+        fluctuation: toFullDigitBN(0),
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         quoteAssetReserve: quoteAssetReserve!,
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
