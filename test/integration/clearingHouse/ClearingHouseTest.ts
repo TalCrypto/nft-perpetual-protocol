@@ -16,7 +16,6 @@ import {
     L2PriceFeedMock,
 } from "../../../typechain-types"
 //import { ClearingHouse } from "../../../types/web3/ClearingHouse"
-import { assertionHelper } from "../../helper/assertion-plugin"
 import { PnlCalcOption, Side } from "../../helper/contract"
 import { fullDeploy } from "../../helper/deploy"
 import { toBN } from "../../helper/number"
