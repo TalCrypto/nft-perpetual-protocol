@@ -15,7 +15,7 @@ contract AmmFake is Amm {
         uint256 _fluctuation,
         uint256 _tollRatio,
         uint256 _spreadRatio
-    ) public {
+    ) {
         Amm.initialize(
             _dcQuoteAssetReserve,
             _dcBaseAssetReserve,

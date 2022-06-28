@@ -11,7 +11,7 @@ contract TraderWallet {
 
     enum ActionType { OPEN, CLOSE, LIQUIDATE }
 
-    constructor(ClearingHouseFake _clearingHouse, IERC20 _token) public {
+    constructor(ClearingHouseFake _clearingHouse, IERC20 _token) {
         clearingHouse = _clearingHouse;
         _token.approve(address(clearingHouse), uint256(2**256 - 1));
     }
