@@ -24,7 +24,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
     event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
     event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
-    event PositionAdjusted(address indexed amm, address indexed trader, int256 newPositionSize, uint256 oldLiquidityIndex, uint256 newLiquidityIndex);
+    event PositionAdjusted(
+        address indexed amm,
+        address indexed trader,
+        int256 newPositionSize,
+        uint256 oldLiquidityIndex,
+        uint256 newLiquidityIndex
+    );
     event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
     event RestrictionModeEntered(address amm, uint256 blockNumber);
 
@@ -288,7 +294,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // check condition
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
-        requireValidTokenAmount(quoteToken, _addedMargin);
+        requireValidTokenAmount(_addedMargin);
 
         address trader = _msgSender();
         Position memory position = getPosition(_amm, trader);
@@ -311,7 +317,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // check condition
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
-        requireValidTokenAmount(quoteToken, _removedMargin);
+        requireValidTokenAmount(_removedMargin);
 
         address trader = _msgSender();
         // realize funding payment if there's no bad debt
@@ -319,11 +325,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         // update margin and cumulativePremiumFraction
         int256 marginDelta = _removedMargin.toInt() * -1;
-        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, int256 latestCumulativePremiumFraction) = calcRemainMarginWithFundingPayment(
-            _amm,
-            position,
-            marginDelta
-        );
+        (
+            uint256 remainMargin,
+            uint256 badDebt,
+            int256 fundingPayment,
+            int256 latestCumulativePremiumFraction
+        ) = calcRemainMarginWithFundingPayment(_amm, position, marginDelta);
         require(badDebt == 0, "margin is not enough");
         position.margin = remainMargin;
         position.lastUpdatedCumulativePremiumFraction = latestCumulativePremiumFraction;
@@ -362,7 +369,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         } else {
             // returnedFund = positionSize * (settlementPrice - openPrice) + positionMargin
             // openPrice = positionOpenNotional / positionSize.abs()
-            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) + pos.margin.toInt();
+            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) +
+                pos.margin.toInt();
             // if `returnedFund` is negative, trader can't get anything back
             if (returnedFund > 0) {
                 settledValue = returnedFund.abs();
@@ -424,7 +432,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     ) public whenNotPaused nonReentrant {
         requireAmm(_amm, true);
         IERC20 quoteToken = _amm.quoteAsset();
-        requireValidTokenAmount(quoteToken, _quoteAssetAmount);
+        requireValidTokenAmount(_quoteAssetAmount);
         requireNonZeroInput(_leverage);
         requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
         requireNotRestrictionMode(_amm);
@@ -508,7 +516,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // if over fluctuation limit, then close partial position. Otherwise close all.
             // if partialLiquidationRatio is 1, then close whole position
             if (_amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) && partialLiquidationRatio < 1 ether) {
-                uint256 partiallyClosedPositionNotional = _amm.getOutputPrice(dirOfBase, position.size.mulD(partialLiquidationRatio.toInt()).abs());
+                uint256 partiallyClosedPositionNotional = _amm.getOutputPrice(
+                    dirOfBase,
+                    position.size.mulD(partialLiquidationRatio.toInt()).abs()
+                );
 
                 positionResp = openReversePosition(
                     _amm,
@@ -625,7 +636,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function getMarginRatio(IAmm _amm, address _trader) public view returns (int256) {
         Position memory position = getPosition(_amm, _trader);
         requirePositionSize(position.size);
-        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(_amm, _trader, PnlPreferenceOption.MAX_PNL);
+        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(
+            _amm,
+            _trader,
+            PnlPreferenceOption.MAX_PNL
+        );
         return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
     }
 
@@ -931,15 +946,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
             if (oldPosition.size != 0) {
-                positionResp.realizedPnl = unrealizedPnl.mulD(positionResp.exchangedPositionSize.abs().toInt()).divD(oldPosition.size.abs().toInt());
+                positionResp.realizedPnl = unrealizedPnl.mulD(positionResp.exchangedPositionSize.abs().toInt()).divD(
+                    oldPosition.size.abs().toInt()
+                );
             }
             uint256 remainMargin;
             int256 latestCumulativePremiumFraction;
-            (remainMargin, positionResp.badDebt, positionResp.fundingPayment, latestCumulativePremiumFraction) = calcRemainMarginWithFundingPayment(
-                _amm,
-                oldPosition,
-                positionResp.realizedPnl
-            );
+            (
+                remainMargin,
+                positionResp.badDebt,
+                positionResp.fundingPayment,
+                latestCumulativePremiumFraction
+            ) = calcRemainMarginWithFundingPayment(_amm, oldPosition, positionResp.realizedPnl);
 
             // positionResp.unrealizedPnlAfter = unrealizedPnl - realizedPnl
             positionResp.unrealizedPnlAfter = unrealizedPnl - positionResp.realizedPnl;
@@ -996,7 +1014,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 updatedBaseAssetAmountLimit = _baseAssetAmountLimit - closePositionResp.exchangedPositionSize.abs();
             }
 
-            PositionResp memory increasePositionResp = internalIncreasePosition(_amm, _side, openNotional, updatedBaseAssetAmountLimit, _leverage);
+            PositionResp memory increasePositionResp = internalIncreasePosition(
+                _amm,
+                _side,
+                openNotional,
+                updatedBaseAssetAmountLimit,
+                _leverage
+            );
             positionResp = PositionResp({
                 position: increasePositionResp.position,
                 exchangedQuoteAssetAmount: closePositionResp.exchangedQuoteAssetAmount + increasePositionResp.exchangedQuoteAssetAmount,
@@ -1021,7 +1045,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         requirePositionSize(oldPosition.size);
 
         (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = calcRemainMarginWithFundingPayment(_amm, oldPosition, unrealizedPnl);
+        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = calcRemainMarginWithFundingPayment(
+            _amm,
+            oldPosition,
+            unrealizedPnl
+        );
 
         positionResp.exchangedPositionSize = oldPosition.size * -1;
         positionResp.realizedPnl = unrealizedPnl;
@@ -1187,7 +1215,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 _marginWithFundingPayment
     ) internal view returns (int256) {
         Position memory pos = getPosition(_amm, _trader);
-        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(_amm, _trader, PnlPreferenceOption.MIN_PNL);
+        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(
+            _amm,
+            _trader,
+            PnlPreferenceOption.MIN_PNL
+        );
 
         // min(margin + funding, margin + funding + unrealized PnL) - position value * initMarginRatio
         int256 accountValue = unrealizedPnl + _marginWithFundingPayment.toInt();
@@ -1208,7 +1240,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address _trader,
         PnlPreferenceOption _pnlPreference
     ) internal view returns (int256 unrealizedPnl, uint256 positionNotional) {
-        (uint256 spotPositionNotional, int256 spotPricePnl) = (getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE));
+        (uint256 spotPositionNotional, int256 spotPricePnl) = (
+            getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE)
+        );
         (uint256 twapPositionNotional, int256 twapPricePnl) = (getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.TWAP));
 
         // if MAX_PNL
@@ -1250,7 +1284,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         require(_size != 0, "positionSize is 0");
     }
 
-    function requireValidTokenAmount(IERC20 _token, uint256 _decimal) private view {
+    function requireValidTokenAmount(uint256 _decimal) private pure {
         require(_decimal != 0, "invalid token amount");
     }
 

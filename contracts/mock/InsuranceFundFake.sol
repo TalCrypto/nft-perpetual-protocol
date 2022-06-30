@@ -8,11 +8,7 @@ contract InsuranceFundFake is InsuranceFund {
     uint256 private number = 10001;
 
     // make internal function testable
-    function testGetOrderedQuoteTokens(IERC20 _exceptionQuoteToken)
-        external
-        view
-        returns (IERC20[] memory orderedTokens)
-    {
+    function testGetOrderedQuoteTokens(IERC20 _exceptionQuoteToken) external view returns (IERC20[] memory orderedTokens) {
         return getOrderedQuoteTokens(_exceptionQuoteToken);
     }
 

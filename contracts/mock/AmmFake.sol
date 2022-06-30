@@ -60,23 +60,23 @@ contract AmmFake is Amm {
 
     function getInputPriceWithReservesPublic(
         Dir _dir,
-        uint256  _quoteAssetAmount,
-        uint256  _quoteAssetPoolAmount,
-        uint256  _baseAssetPoolAmount
-    ) public view returns (uint256 ) {
+        uint256 _quoteAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) public view returns (uint256) {
         return getInputPriceWithReserves(_dir, _quoteAssetAmount, _quoteAssetPoolAmount, _baseAssetPoolAmount);
     }
 
     function getOutputPriceWithReservesPublic(
         Dir _dir,
-        uint256  _baseAssetAmount,
-        uint256  _quoteAssetPoolAmount,
-        uint256  _baseAssetPoolAmount
-    ) public view returns (uint256 ) {
+        uint256 _baseAssetAmount,
+        uint256 _quoteAssetPoolAmount,
+        uint256 _baseAssetPoolAmount
+    ) public view returns (uint256) {
         return getOutputPriceWithReserves(_dir, _baseAssetAmount, _quoteAssetPoolAmount, _baseAssetPoolAmount);
     }
 
-    function mockSetReserve(uint256  _quoteReserve, uint256  _baseReserve) public {
+    function mockSetReserve(uint256 _quoteReserve, uint256 _baseReserve) public {
         quoteAssetReserve = _quoteReserve;
         baseAssetReserve = _baseReserve;
     }

@@ -18,6 +18,5 @@ contract OwnerPausableUpgradeSafe is OwnableUpgradeable, PausableUpgradeable {
         _unpause();
     }
 
-
     uint256[50] private __gap;
 }

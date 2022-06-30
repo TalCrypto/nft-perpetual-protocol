@@ -19,7 +19,9 @@ contract AmmReader {
 
     function getAmmStates(address _amm) external view returns (AmmStates memory) {
         IAmm amm = IAmm(_amm);
-        (bool getSymbolSuccess, bytes memory quoteAssetSymbolData) = address(amm.quoteAsset()).staticcall(abi.encodeWithSignature("symbol()"));
+        (bool getSymbolSuccess, bytes memory quoteAssetSymbolData) = address(amm.quoteAsset()).staticcall(
+            abi.encodeWithSignature("symbol()")
+        );
         (uint256 quoteAssetReserve, uint256 baseAssetReserve) = amm.getReserve();
 
         bytes32 priceFeedKey = amm.priceFeedKey();

@@ -189,12 +189,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         return priceFeedMap[_priceFeedKey].priceData[len - _numOfRoundBack - 1].price;
     }
 
-    function getPreviousTimestamp(bytes32 _priceFeedKey, uint256 _numOfRoundBack)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function getPreviousTimestamp(bytes32 _priceFeedKey, uint256 _numOfRoundBack) public view override returns (uint256) {
         require(isExistedKey(_priceFeedKey), "key not existed");
 
         uint256 len = getPriceFeedLength(_priceFeedKey);

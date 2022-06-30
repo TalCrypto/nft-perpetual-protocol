@@ -67,7 +67,11 @@ contract ClearingHouseViewer {
      * @param _trader trader address
      * @return position ClearingHouse.Position struct
      */
-    function getPersonalPositionWithFundingPayment(IAmm _amm, address _trader) public view returns (ClearingHouse.Position memory position) {
+    function getPersonalPositionWithFundingPayment(IAmm _amm, address _trader)
+        public
+        view
+        returns (ClearingHouse.Position memory position)
+    {
         position = clearingHouse.getPosition(_amm, _trader);
         int256 marginWithFundingPayment = position.margin.toInt() +
             getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm));
@@ -143,7 +147,11 @@ contract ClearingHouseViewer {
     //
 
     // negative means trader paid and vice versa
-    function getFundingPayment(ClearingHouse.Position memory _position, int256 _latestCumulativePremiumFraction) private pure returns (int256) {
+    function getFundingPayment(ClearingHouse.Position memory _position, int256 _latestCumulativePremiumFraction)
+        private
+        pure
+        returns (int256)
+    {
         return
             _position.size == 0
                 ? int256(0)

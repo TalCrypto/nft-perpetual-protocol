@@ -836,9 +836,21 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 return 0;
             }
             if (params.asset.inOrOut == QuoteAssetDir.QUOTE_IN) {
-                return getInputPriceWithReserves(params.asset.dir, params.asset.assetAmount, snapshot.quoteAssetReserve, snapshot.baseAssetReserve);
+                return
+                    getInputPriceWithReserves(
+                        params.asset.dir,
+                        params.asset.assetAmount,
+                        snapshot.quoteAssetReserve,
+                        snapshot.baseAssetReserve
+                    );
             } else if (params.asset.inOrOut == QuoteAssetDir.QUOTE_OUT) {
-                return getOutputPriceWithReserves(params.asset.dir, params.asset.assetAmount, snapshot.quoteAssetReserve, snapshot.baseAssetReserve);
+                return
+                    getOutputPriceWithReserves(
+                        params.asset.dir,
+                        params.asset.assetAmount,
+                        snapshot.quoteAssetReserve,
+                        snapshot.baseAssetReserve
+                    );
             }
         }
         revert("not supported option");

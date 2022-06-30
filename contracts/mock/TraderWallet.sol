@@ -5,11 +5,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ClearingHouseFake } from "./ClearingHouseFake.sol";
 import { Amm } from "../Amm.sol";
 
-
 contract TraderWallet {
     ClearingHouseFake public clearingHouse;
 
-    enum ActionType { OPEN, CLOSE, LIQUIDATE }
+    enum ActionType {
+        OPEN,
+        CLOSE,
+        LIQUIDATE
+    }
 
     constructor(ClearingHouseFake _clearingHouse, IERC20 _token) {
         clearingHouse = _clearingHouse;

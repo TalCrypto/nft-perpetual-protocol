@@ -14,7 +14,7 @@ contract ClearingHouseFake is ClearingHouse {
         uint256 _maintenanceMarginRatio,
         uint256 _liquidationFeeRatio,
         IInsuranceFund _insuranceFund,
-        address _trustedForwarder
+        address
     ) {
         ClearingHouse.initialize(_initMarginRatio, _maintenanceMarginRatio, _liquidationFeeRatio, _insuranceFund);
     }

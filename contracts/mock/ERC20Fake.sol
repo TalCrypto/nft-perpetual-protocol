@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import {
-    ERC20PresetMinterPauserUpgradeable
-} from "@openzeppelin/contracts-upgradeable/token/ERC20/presets/ERC20PresetMinterPauserUpgradeable.sol";
+import { ERC20PresetMinterPauserUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/presets/ERC20PresetMinterPauserUpgradeable.sol";
 
 // TODO rename to UpgradableMintableERC20
 contract ERC20Fake is ERC20PresetMinterPauserUpgradeable {
@@ -11,7 +9,7 @@ contract ERC20Fake is ERC20PresetMinterPauserUpgradeable {
         uint256 initialSupply,
         string memory name,
         string memory symbol,
-        uint8 decimal
+        uint8
     ) public initializer {
         __ERC20PresetMinterPauser_init(name, symbol);
         //_setupDecimals(decimal);

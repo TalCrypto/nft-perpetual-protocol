@@ -9,7 +9,7 @@ library IntMath {
     }
 
     function toUint(int256 x) internal pure returns (uint256) {
-        return uint256(x);
+        return uint256(abs(x));
     }
 
     function abs(int256 x) internal pure returns (uint256) {
