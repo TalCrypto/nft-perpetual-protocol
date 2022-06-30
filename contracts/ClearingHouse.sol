@@ -578,7 +578,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 quoteAssetAmountLimit = isPartialClose ? _quoteAssetAmountLimit.mulD(partialLiquidationRatio) : _quoteAssetAmountLimit;
 
         if (position.size > 0) {
-            require(quoteAssetAmount >= quoteAssetAmountLimit, "More than maximal quote token");
+            require(quoteAssetAmount >= quoteAssetAmountLimit, "Less than minimal quote token");
         } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
             require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
         }

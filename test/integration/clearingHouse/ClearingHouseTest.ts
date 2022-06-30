@@ -2,9 +2,7 @@ import { expect, use } from "chai";
 import { Signer, BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-//import { ContractFullyQualifiedName } from "../../../publish/ContractName"
 import {
-  ClearingHouse,
   AmmFake,
   ClearingHouseFake,
   ClearingHouseViewer,
@@ -14,20 +12,14 @@ import {
   TraderWallet,
   L2PriceFeedMock,
 } from "../../../typechain-types";
-//import { ClearingHouse } from "../../../types/web3/ClearingHouse"
 import { PnlCalcOption, Side } from "../../helper/contract";
 import { fullDeploy } from "../../helper/deploy";
 import { toFullDigitBN } from "../../helper/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-//import { signEIP712MetaTx } from "../../helper/web3"
 
 use(solidity);
 
-//const TraderWallet = artifacts.require("TraderWallet") as TraderWallet__factory
-const EMPTY_STRING_IN_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000";
-
 describe("ClearingHouse Test", () => {
-  let addresses: string[];
   let admin: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -52,17 +44,13 @@ describe("ClearingHouse Test", () => {
   async function forwardBlockTimestamp(time: number): Promise<void> {
     const now = await amm.mock_getCurrentTimestamp();
     const newTime = now.add(time);
-    // await rewardsDistribution.mock_setBlockTimestamp(newTime)
     await amm.mock_setBlockTimestamp(newTime);
-    //await supplySchedule.mock_setBlockTimestamp(newTime)
     await clearingHouse.mock_setBlockTimestamp(newTime);
     const movedBlocks = time / 15 < 1 ? 1 : time / 15;
 
     const blockNumber = await amm.mock_getCurrentBlockNumber();
     const newBlockNumber = blockNumber.add(movedBlocks);
-    //await rewardsDistribution.mock_setBlockNumber(newBlockNumber)
     await amm.mock_setBlockNumber(newBlockNumber);
-    //await supplySchedule.mock_setBlockNumber(newBlockNumber)
     await clearingHouse.mock_setBlockNumber(newBlockNumber);
   }
 
@@ -91,16 +79,14 @@ describe("ClearingHouse Test", () => {
   }
 
   beforeEach(async () => {
-    //const accounts = await ethers.getSigners();
     const account = await ethers.getSigners();
-    let adminSigner = account[0];
     admin = account[0];
     alice = account[1];
     bob = account[2];
     carol = account[3];
     relayer = account[4];
 
-    const contracts = await fullDeploy({ sender: adminSigner });
+    const contracts = await fullDeploy({ sender: admin });
     amm = contracts.amm;
     insuranceFund = contracts.insuranceFund;
     quoteToken = contracts.quoteToken;
@@ -321,7 +307,9 @@ describe("ClearingHouse Test", () => {
 
       // then alice need to pay 1% of her position size as fundingPayment
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
-      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(299.625));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        toFullDigitBN(299.625)
+      );
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(299.625));
 
       // pay 1% funding again
@@ -329,7 +317,9 @@ describe("ClearingHouse Test", () => {
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
       expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.02));
-      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(299.25));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        toFullDigitBN(299.25)
+      );
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(299.25));
 
       // pay -1% funding
@@ -338,7 +328,9 @@ describe("ClearingHouse Test", () => {
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
       expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
-      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(299.625));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        toFullDigitBN(299.625)
+      );
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(299.625));
     });
 
@@ -351,7 +343,9 @@ describe("ClearingHouse Test", () => {
       // then alice need to pay 1% of her position size as fundingPayment
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
       expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
-      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(299.625));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        toFullDigitBN(299.625)
+      );
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(299.625));
 
       // pay -1% funding
@@ -368,7 +362,9 @@ describe("ClearingHouse Test", () => {
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
       expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.01));
-      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(300.375));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        toFullDigitBN(300.375)
+      );
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(300.375));
     });
 
@@ -698,12 +694,6 @@ describe("ClearingHouse Test", () => {
   });
 
   describe("liquidate", () => {
-    enum Action {
-      OPEN = 0,
-      CLOSE = 1,
-      LIQUIDATE = 2,
-    }
-
     beforeEach(async () => {
       await forwardBlockTimestamp(900);
       await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(0.25));
@@ -789,9 +779,9 @@ describe("ClearingHouse Test", () => {
       // partially liquidate 25%
       // liquidated positionNotional: getOutputPrice(20 (original position) * 0.25) = 68.455
       // if quoteAssetAmountLimit == 273.85 > 68.455 * 4 = 273.82, quote asset gets is less than expected, thus tx reverts
-      await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.85))).to.be.revertedWith(
-        "Less than minimal quote token"
-      );
+      await expect(
+        clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.85))
+      ).to.be.revertedWith("Less than minimal quote token");
 
       // if quoteAssetAmountLimit == 273.8 < 68.455 * 4 = 273.82, quote asset gets is more than expected
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.8));
@@ -1066,7 +1056,9 @@ describe("ClearingHouse Test", () => {
       await forwardBlockTimestamp(15);
       const positionBefore = await clearingHouse.getPosition(amm.address, alice.address);
       expect(positionBefore.openNotional).to.eq(toFullDigitBN(100));
-      expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).to.eq("-15384615384615384623");
+      expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).to.eq(
+        "-15384615384615384623"
+      );
       expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.TWAP)).to.eq("-9386059949440231138");
 
       // marginRatio = (margin + unrealizedPnL) / openNotional = (20 + (-9.39)) / 100 = 0.1061 > 0.05 = minMarginRatio
@@ -1121,7 +1113,13 @@ describe("ClearingHouse Test", () => {
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
     });
 
-    async function openSmallPositions(account: SignerWithAddress, side: Side, margin: BigNumber, leverage: BigNumber, count: number): Promise<void> {
+    async function openSmallPositions(
+      account: SignerWithAddress,
+      side: Side,
+      margin: BigNumber,
+      leverage: BigNumber,
+      count: number
+    ): Promise<void> {
       for (let i = 0; i < count; i++) {
         await clearingHouse.connect(account).openPosition(amm.address, side, margin, leverage, toFullDigitBN(0));
         await forwardBlockTimestamp(15);
@@ -1493,9 +1491,9 @@ describe("ClearingHouse Test", () => {
       // fluctuation: (13.225 - 10.4409438852) / 13.225 = 0.2105146401
       await syncAmmPriceToOracle();
 
-      await expect(traderWallet1.connect(admin).threeLiquidations(amm.address, alice.address, carol.address, relayer.address)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(
+        traderWallet1.connect(admin).threeLiquidations(amm.address, alice.address, carol.address, relayer.address)
+      ).to.be.revertedWith("price is already over fluctuation limit");
     });
   });
 
@@ -1816,7 +1814,9 @@ describe("ClearingHouse Test", () => {
         await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.5));
 
         await forwardBlockTimestamp(15);
-        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(119))).to.be.revertedWith("Less than minimal quote token");
+        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(119))).to.be.revertedWith(
+          "Less than minimal quote token"
+        );
       });
 
       // Case 2
@@ -1830,7 +1830,9 @@ describe("ClearingHouse Test", () => {
         await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(13.89));
 
         await forwardBlockTimestamp(15);
-        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(78))).to.be.revertedWith("More than maximal quote token");
+        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(78))).to.be.revertedWith(
+          "More than maximal quote token"
+        );
       });
     });
   });
@@ -1839,7 +1841,9 @@ describe("ClearingHouse Test", () => {
     it("pause by admin", async () => {
       const error = "Pausable: paused";
       await clearingHouse.pause();
-      await expect(clearingHouse.openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))).to.be.revertedWith(error);
+      await expect(
+        clearingHouse.openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.be.revertedWith(error);
 
       await expect(clearingHouse.addMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith(error);
       await expect(clearingHouse.removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith(error);
@@ -2045,7 +2049,8 @@ describe("ClearingHouse Test", () => {
           toFullDigitBN(10),
           toFullDigitBN(0),
           alice.address
-        )).to.be.revertedWith("only one action allowed");
+        )
+      ).to.be.revertedWith("only one action allowed");
     });
 
     it("close then open", async () => {
@@ -2066,7 +2071,9 @@ describe("ClearingHouse Test", () => {
     });
 
     it("not allowed to set backstop LP by non-owner", async () => {
-      await expect(clearingHouse.connect(alice).setBackstopLiquidityProvider(bob.address, true)).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(clearingHouse.connect(alice).setBackstopLiquidityProvider(bob.address, true)).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
   });
 });

@@ -214,7 +214,9 @@ describe("ClearingHouse - open/close position Test", () => {
 
       // create position 2
       // AMM after: 1000 : 100
-      const ret = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
+      const ret = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
 
       const pos = await clearingHouse.connect(alice).getPosition(amm.address, alice.address);
       expect(pos.size).to.eq(0);
@@ -305,7 +307,9 @@ describe("ClearingHouse - open/close position Test", () => {
       pos = await clearingHouse.getPosition(amm.address, alice.address);
       expect(pos.size).to.eq(-1);
       expect(pos.margin).to.eq("39999999999999999993");
-      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq("39999999999999999993");
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq(
+        "39999999999999999993"
+      );
     });
 
     it("open position - short, long and short", async () => {
@@ -330,7 +334,9 @@ describe("ClearingHouse - open/close position Test", () => {
 
       // sumMargin = sumNotionalSize((20 * 10) - 150 * 3) / leverage(3) = 83.33
       expect(pos.margin).to.eq("83333333333333333333");
-      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq("83333333333333333333");
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq(
+        "83333333333333333333"
+      );
 
       // create position 3 - short
       // AMM after: 1000 : 100
@@ -369,7 +375,9 @@ describe("ClearingHouse - open/close position Test", () => {
 
       // sumMargin = sumNotionalSize(250 - 450) / leverage(3) = 66.66
       expect(pos.margin).to.eq("66666666666666666666");
-      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq("66666666666666666666");
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).to.eq(
+        "66666666666666666666"
+      );
 
       // create position 3 - long
       // AMM after: 1000 : 100
@@ -607,7 +615,9 @@ describe("ClearingHouse - open/close position Test", () => {
         REMOVE_FROM_AMM = 1,
       }
       const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, "11111111111111111111");
-      const receiptOpen2 = await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, amount, toFullDigitBN(1), toFullDigitBN(0));
+      const receiptOpen2 = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, amount, toFullDigitBN(1), toFullDigitBN(0));
 
       await expectPositionChanged(receiptOpen2, {
         trader: alice.address,
@@ -648,7 +658,9 @@ describe("ClearingHouse - open/close position Test", () => {
       await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(2), toFullDigitBN(11.12));
 
       // got 24.155 position size
-      const receipt = await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0));
+      const receipt = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0));
 
       await expectPositionChanged(receipt, {
         positionNotional: toFullDigitBN(250),
@@ -665,7 +677,9 @@ describe("ClearingHouse - open/close position Test", () => {
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(2), toFullDigitBN(0));
 
       // got -26.738 position size
-      const receipt = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0));
+      const receipt = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0));
 
       await expectPositionChanged(receipt, {
         positionNotional: toFullDigitBN(250),
@@ -834,8 +848,8 @@ describe("ClearingHouse - open/close position Test", () => {
 
       // liquidator get half of the 5% liquidation fee = 294.11 * 2.5% ~= 7.352941
       // clearingHouse is depleted
-      expect(await quoteToken.balanceOf(clearingHouse.address)).eq(0);
-      expect(await quoteToken.balanceOf(carol.address)).eq("7352941");
+      expect(await quoteToken.balanceOf(clearingHouse.address)).eq(3);
+      expect(await quoteToken.balanceOf(carol.address)).eq("7352941176470588235");
     });
 
     // the test for pointing out the calculation of margin ratio should be based on positionNotional instead of openNotional
@@ -1216,47 +1230,40 @@ describe("ClearingHouse - open/close position Test", () => {
 
     it("open a long and a smaller short position under limit", async () => {
       // position size is 9.9
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(110), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(110), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
     });
 
     it("open two long positions under limit", async () => {
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
     });
 
     it("open a short position and a smaller long under limit", async () => {
       // position size is -9.89
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
     });
 
     it("open two short positions under limit", async () => {
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
 
       await expect(
         await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0))
@@ -1267,17 +1274,15 @@ describe("ClearingHouse - open/close position Test", () => {
       await amm.setCap(toFullDigitBN(20), toFullDigitBN(0));
 
       // position size is 20
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
       await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
 
       // position size is -19.05
-      await expect(clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(16), toFullDigitBN(10), toFullDigitBN(0))).to.emit(
-        clearingHouse,
-        "PositionChanged"
-      );
+      await expect(
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(16), toFullDigitBN(10), toFullDigitBN(0))
+      ).to.emit(clearingHouse, "PositionChanged");
     });
 
     it("force error, open a long position and over the limit", async () => {
@@ -1400,7 +1405,7 @@ describe("ClearingHouse - open/close position Test", () => {
       const receipt = await clearingHouse
         .connect(alice)
         .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
-      expectPositionChanged(receipt, {
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(600), // 300x2
@@ -1432,7 +1437,7 @@ describe("ClearingHouse - open/close position Test", () => {
         .openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(2), toFullDigitBN(139));
       const aliceBalance2 = await quoteToken.balanceOf(alice.address);
 
-      expectPositionChanged(receipt, {
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(100),
@@ -1461,7 +1466,7 @@ describe("ClearingHouse - open/close position Test", () => {
       // strike will take fees after traded with amm, fee = 600 * 10% = 60
       // alice actual get 600 - 60 = 540 when closing her entire 37.5 position
 
-      expectPositionChanged(receipt, {
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(600),
@@ -1482,15 +1487,19 @@ describe("ClearingHouse - open/close position Test", () => {
 
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(0));
 
-      const positionNotional = (await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE))[0];
+      const positionNotional = (
+        await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)
+      )[0];
 
       // alice need 600 to close her 37.5 position, she opens a reverse position to close manually
       // and she doesn't need to increase quoteToken's balance or allowance
-      const receipt = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, positionNotional, toFullDigitBN(1), toFullDigitBN(0));
+      const receipt = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, positionNotional, toFullDigitBN(1), toFullDigitBN(0));
 
       // then 37.5 contract worth 600 quoteAsset (openNotional doesn't change because no other trade)
 
-      expectPositionChanged(receipt, {
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(600),
@@ -1513,14 +1522,18 @@ describe("ClearingHouse - open/close position Test", () => {
 
       await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(0));
 
-      const positionNotional = (await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE))[0];
+      const positionNotional = (
+        await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)
+      )[0];
 
       // alice need 600 to close her 37.5 position, she opens a reverse position to close manually
       // and she doesn't need to increase quoteToken's balance or allowance
-      const receipt = await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, positionNotional, toFullDigitBN(1), toFullDigitBN(0));
+      const receipt = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, positionNotional, toFullDigitBN(1), toFullDigitBN(0));
 
       // then 37.5 contract worth 600 quoteAsset (openNotional doesn't change because no other trade)
-      expectPositionChanged(receipt, {
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(600),
@@ -1574,8 +1587,10 @@ describe("ClearingHouse - open/close position Test", () => {
       await amm.setTollRatio(toFullDigitBN(0));
 
       await approve(alice, clearingHouse.address, 360);
-      const receipt = await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(0));
-      expectPositionChanged(receipt, {
+      const receipt = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(0));
+      await expectPositionChanged(receipt, {
         trader: alice.address,
         amm: amm.address,
         positionNotional: toFullDigitBN(600), // 300x2
@@ -1679,7 +1694,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 20 long position worth 387.88 now
         // (1600 + quoteAssetDelta) * (62.5 + 20) = 100k, quoteAssetDelta = -387.878787878787878787
         // unrealizedPnl = positionNotional - cost = 387.878787878787878787 - 250 = 137.878787878787878787
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("137878787878787878787");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "137878787878787878787"
+        );
 
         // alice opens long position with 200 margin, 2x leverage
         // (1600 + 400) * (62.5 + baseAssetDelta) = 100k, baseAssetDelta = 12.5
@@ -1713,7 +1730,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 20 long position worth 166.67 now
         // (1000 + quoteAssetDelta) * (100 + 20) = 100k, quoteAssetDelta = -166.666666666666666666
         // unrealizedPnl = positionValue - cost = 166.666666666666666666 - 250 = -83.333333333333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-83333333333333333334");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-83333333333333333334"
+        );
 
         // alice opens long position with 50 margin, 5x leverage
         // (1000 + 250) * (100 + baseAssetDelta) = 100k, baseAssetDelta = -20
@@ -1774,7 +1793,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 25 short position worth 71.43 now
         // (500 + quoteAssetDelta) * (200 - 25) = 100k, quoteAssetDelta = -71.4285714286
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 200 - 71.4285714286 = 128.5714285714
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("128571428571428571428");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "128571428571428571428"
+        );
 
         // alice opens short position with 100 margin, 3x leverage
         // (500 - 300) * (200 + baseAssetDelta) = 100k, baseAssetDelta = 300
@@ -1808,7 +1829,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 25 short position worth 333.33 now
         // (1000 + quoteAssetDelta) * (100 - 25) = 100k, quoteAssetDelta = 333.3333333333
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 200 - 333.3333333333 = -133.3333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-133333333333333333334");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-133333333333333333334"
+        );
 
         // alice opens short position with 50 margin, 4x leverage
         // (1000 - 200) * (100 + baseAssetDelta) = 100k, baseAssetDelta = 25
@@ -1904,7 +1927,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 37.5 long position worth 857.14 now
         // (2000 + quoteAssetDelta) * (50 + 37.5) = 100k, quoteAssetDelta = -857.1428571429
         // unrealizedPnl = positionNotional - openNotional = 857.1428571429 - 600 = 257.1428571429
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("257142857142857142857");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "257142857142857142857"
+        );
 
         // alice reduce position in 400 quoteAsset amount
         // (2000 - 400) * (50 + baseAssetDelta) = 100k, baseAssetDelta = 12.5
@@ -1914,7 +1939,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // total position size = 37.5 - 12.5 = 25
         expect(position.size).to.eq(toFullDigitBN(25));
         // remain unrealizedPnl = unrealizedPnl - realizedPnl = 257.1428571429 - 85.7142857143 = 171.4285714286
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("171428571428571428572");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "171428571428571428572"
+        );
         // alice's 25 long position worth 457.14 now
         // (1600 + quoteAssetDelta) * (62.5 + 25) = 100k, quoteAssetDelta = -457.1428571429
         // openNotional = positionNotional - unrealizedPnl = 457.1428571429 - 171.4285714286 = 285.7142857143
@@ -1935,7 +1962,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 50 long position worth 711.11 now
         // (1600 + quoteAssetDelta) * (62.5 + 50) = 100k, quoteAssetDelta = -711.1111111111
         // unrealizedPnl = positionNotional - openNotional = 711.1111111111 - 1000 = -288.8888888888
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-288888888888888888889");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-288888888888888888889"
+        );
 
         // alice reduce position in 350 quoteAsset amount
         // (1600 - 350) * (62.5 + baseAssetDelta) = 100k, baseAssetDelta = 17.5
@@ -1945,7 +1974,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // total position size = 50 - 17.5 = 32.5
         expect(position.size).to.eq(toFullDigitBN(32.5));
         // remain unrealizedPnl = unrealizedPnl - realizedPnl = -288.8888888888 + 101.1111111111 = -187.7777777777
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-187777777777777777778");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-187777777777777777778"
+        );
         // alice's 32.5 long position worth 361.11 now
         // (1250 + quoteAssetDelta) * (80 + 32.5) = 100k, quoteAssetDelta = -361.1111111111
         // remainOpenNotional = remainPositionNotional - remainUnrealizedPnl = 361.1111111111 - (-187.7777777777) = 548.8888888888
@@ -1966,7 +1997,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 25 short position worth 229.37 now
         // (850 + quoteAssetDelta) * (117.6470588235 - 25) = 100k, quoteAssetDelta = 229.3650793654
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 200 - 229.3650793654 = -29.3650793654
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-29365079365079365079");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-29365079365079365079"
+        );
 
         // alice reduce position in 150 quoteAsset amount
         // (850 + 150) * (117.6470588235 + baseAssetDelta) = 100k, baseAssetDelta = -17.6470588235
@@ -1998,7 +2031,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 100 short position worth 266.67 now
         // (400 + quoteAssetDelta) * (250 - 100) = 100k, quoteAssetDelta = 266.6666666666
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 500 - 266.6666666666 = 233.3333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("233333333333333333333");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "233333333333333333333"
+        );
 
         // alice reduce position in 100 quoteAsset amount
         // (400 + 100) * (250 + baseAssetDelta) = 100k, baseAssetDelta = -50
@@ -2008,7 +2043,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // total position size = -100 + 50 = -50
         expect(position.size).to.eq(toFullDigitBN(-50));
         // remain unrealizedPnl = unrealizedPnl - realizedPnl = 233.3333333333 - 116.6666666666 = 116.6666666666
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("116666666666666666667");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "116666666666666666667"
+        );
         // alice's 50 short position worth 166.67 now
         // (500 + quoteAssetDelta) * (200 - 50) = 100k, quoteAssetDelta = 166.6666666666
         // openNotional = positionNotional + unrealizedPnl = 166.6666666666 + 116.6666666666 = 283.3333333332
@@ -2067,8 +2104,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // closeMargin = currentMargin * closeRatio = 100 * 100% = 100
         // transferred margin = closedMargin + realizedPnl = 100 + 0 = 100
 
-        await expect(receipt).to.emit(quoteToken, "Transfer")
-        .withArgs(clearingHouse.address, alice.address, toFullDigitBN(100, +(await quoteToken.decimals())));
+        await expect(receipt)
+          .to.emit(quoteToken, "Transfer")
+          .withArgs(clearingHouse.address, alice.address, toFullDigitBN(100, +(await quoteToken.decimals())));
 
         // fee = 200 * 1 * 10% = 20
         // TODO expect fee event
@@ -2098,18 +2136,18 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 20 long position worth 387.88 now
         // (1600 + quoteAssetDelta) * (62.5 + 20) = 100k, quoteAssetDelta = -387.8787878787
         // unrealizedPnl = positionNotional - cost = 387.8787878787 - 250 = 137.8787878787
-        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE);
+        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(
+          amm.address,
+          alice.address,
+          PnlCalcOption.SPOT_PRICE
+        );
 
         expect(currentPositionValue[1]).eq("137878787878787878787");
 
         // alice opens short position with 387.88 margin, 1x leverage. (close position manually)
-        const receipt = await clearingHouse.connect(alice).openPosition(
-          amm.address,
-          Side.SELL,
-          currentPositionValue[0],
-          toFullDigitBN(1),
-          toFullDigitBN(20)
-        );
+        const receipt = await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, currentPositionValue[0], toFullDigitBN(1), toFullDigitBN(20));
         const aliceBalance2 = await quoteToken.balanceOf(alice.address);
 
         // closeRatio = closePositionSize/positionSize = 100%
@@ -2139,17 +2177,17 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 50 long position worth 711.11 now
         // (1600 + quoteAssetDelta) * (62.5 + 50) = 100k, quoteAssetDelta = -711.111111111111111111
         // unrealizedPnl = positionNotional - openNotional = 711.111111111111111111 - 1000 = -288.888888888888888888
-        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE);
+        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(
+          amm.address,
+          alice.address,
+          PnlCalcOption.SPOT_PRICE
+        );
         expect(currentPositionValue[1]).eq("-288888888888888888889");
 
         // alice opens short position with 711.11 margin, 1x leverage. (close position manually)
-        const receipt = await clearingHouse.connect(alice).openPosition(
-          amm.address,
-          Side.SELL,
-          currentPositionValue[0],
-          toFullDigitBN(1),
-          toFullDigitBN(50)
-        );
+        const receipt = await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, currentPositionValue[0], toFullDigitBN(1), toFullDigitBN(50));
         const aliceBalance2 = await quoteToken.balanceOf(alice.address);
 
         // closeRatio = closePositionSize/positionSize = 100%
@@ -2178,17 +2216,17 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 25 short position worth 229.37 now
         // (850 + quoteAssetDelta) * (117.6470588235 - 25) = 100k, quoteAssetDelta = 229.3650793654
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 200 - 229.3650793654 = -29.3650793654
-        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE);
+        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(
+          amm.address,
+          alice.address,
+          PnlCalcOption.SPOT_PRICE
+        );
         expect(currentPositionValue[1]).eq("-29365079365079365079");
 
         // alice opens long position with 29.3650793654 margin, 1x leverage. (close position manually)
-        const receipt = await clearingHouse.connect(alice).openPosition(
-          amm.address,
-          Side.BUY,
-          currentPositionValue[0],
-          toFullDigitBN(1),
-          toFullDigitBN(25)
-        );
+        const receipt = await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, currentPositionValue[0], toFullDigitBN(1), toFullDigitBN(25));
         const aliceBalance2 = await quoteToken.balanceOf(alice.address);
 
         // closeRatio = closePositionSize/positionSize = 100%
@@ -2221,17 +2259,17 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 100 short position worth 266.67 now
         // (400 + quoteAssetDelta) * (250 - 100) = 100k, quoteAssetDelta = 266.666666666666666666
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 500 - 266.666666666666666666 = 233.333333333333333333
-        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE);
+        const currentPositionValue = await clearingHouse.getPositionNotionalAndUnrealizedPnl(
+          amm.address,
+          alice.address,
+          PnlCalcOption.SPOT_PRICE
+        );
         expect(currentPositionValue[1]).eq("233333333333333333333");
 
         // alice opens long position with 266.666666666666666666 margin, 1x leverage. (close position manually)
-        const receipt = await clearingHouse.connect(alice).openPosition(
-          amm.address,
-          Side.BUY,
-          currentPositionValue[0],
-          toFullDigitBN(1),
-          toFullDigitBN(100)
-        );
+        const receipt = await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, currentPositionValue[0], toFullDigitBN(1), toFullDigitBN(100));
         const aliceBalance2 = await quoteToken.balanceOf(alice.address);
 
         // closeRatio = closePositionSize/positionSize = 100%
@@ -2322,7 +2360,7 @@ describe("ClearingHouse - open/close position Test", () => {
       it("open long position, price up, then close entire position by opening another larger short", async () => {
         // alice opens long position with 25 margin, 10x leverage
         await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
-          // (1000 + 250) * (100 + baseAssetDelta) = 100k, baseAssetDelta = -20
+        // (1000 + 250) * (100 + baseAssetDelta) = 100k, baseAssetDelta = -20
 
         const aliceBalance1 = await quoteToken.balanceOf(alice.address);
 
@@ -2333,7 +2371,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 20 long position worth 387.88 now
         // (1600 + quoteAssetDelta) * (62.5 + 20) = 100k, quoteAssetDelta = -387.878787878787878787
         // unrealizedPnl = positionNotional - cost = 387.878787878787878787 - 250 = 137.878787878787878787
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("137878787878787878787");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "137878787878787878787"
+        );
 
         // alice opens short position with 100 margin, 8x leverage
         // (1600 - 800) * (62.5 + baseAssetDelta) = 100k, baseAssetDelta = 62.5
@@ -2381,7 +2421,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 20 long position worth 166.67 now
         // (1000 + quoteAssetDelta) * (100 + 20) = 100k, quoteAssetDelta = -166.666666666666666666
         // unrealizedPnl = positionValue - cost = 166.666666666666666666 - 250 = -83.333333333333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-83333333333333333334");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-83333333333333333334"
+        );
 
         // alice opens short position with 60 margin, 10x leverage
         // (1000 - 600) * (100 + baseAssetDelta) = 100k, baseAssetDelta = 150
@@ -2425,7 +2467,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 25 short position worth 333.333333333333333333 now
         // (1000 + quoteAssetDelta) * (100 - 25) = 100k, quoteAssetDelta = 333.333333333333333333
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 200 - 333.333333333333333333 = -133.333333333333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("-133333333333333333334");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "-133333333333333333334"
+        );
 
         // alice opens long position with 60 margin, 10x leverage
         // (1000 + 600) * (100 + baseAssetDelta) = 100k, baseAssetDelta = -37.5
@@ -2465,7 +2509,9 @@ describe("ClearingHouse - open/close position Test", () => {
         // alice's 100 short position worth 266.666666666666666666 now
         // (400 + quoteAssetDelta) * (250 - 100) = 100k, quoteAssetDelta = 266.666666666666666666
         // unrealizedPnl = positionValueWhenBorrowed - positionValueWhenReturned = 500 - 266.666666666666666666 = 233.333333333333333333
-        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq("233333333333333333333");
+        expect(await clearingHouseViewer.getUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).eq(
+          "233333333333333333333"
+        );
 
         // alice opens long position with 60 margin, 10x leverage
         // (400 + 600) * (250 + baseAssetDelta) = 100k, baseAssetDelta = -150
