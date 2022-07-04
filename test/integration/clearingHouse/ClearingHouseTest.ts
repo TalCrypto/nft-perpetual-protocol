@@ -959,6 +959,57 @@ describe("ClearingHouse Test", () => {
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(224));
     });
 
+    it("a long position is under water with positive remain margin, thus liquidating the whole position", async () => {
+      await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
+      await approve(alice, clearingHouse.address, 100);
+      await approve(bob, clearingHouse.address, 100);
+      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.05));
+
+      // when alice create a 25 margin * 10x position to get 20 long position
+      // AMM after: 1250 : 80
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+
+      // when bob create a 73.52941176 margin * 1x position to get 4 short position
+      // AMM after: 1190.476190 : 84
+      await forwardBlockTimestamp(15); // 15 secs. later
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(59.52381), toFullDigitBN(1), toFullDigitBN(0));
+
+      // the badDebt params of the two events are different
+      await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
+        .to.emit(clearingHouse, "PositionLiquidated")
+        .withArgs(
+          alice.address, // trader
+          amm.address, // amm
+          "228937728772189349135", // positionNotional
+          "20000000000000000000", // positionSize
+          "5723443219304733728", // liquidationFee
+          carol.address, // liquidator
+          "1785714447115384593" // badDebt
+        )
+        .to.emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          alice.address, // trader
+          amm.address, // amm
+          "0", // margin
+          "228937728772189349135", // positionNotional
+          "-20000000000000000000", // exchangedPositionSize
+          toFullDigitBN(0), // fee
+          "0", // positionSizeAfter
+          "-21062271227810650865", // realizedPnl
+          "0", // unrealizedPnlAfter
+          "0", // badDebt
+          "25000000000000000000", // liquidationPenalty
+          "9245562124203459263", // spotPrice
+          "0" // fundingPayment
+        );
+
+      expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("5723443219304733728");
+      // 5000 - (liquidationFee-(initial margin + realizedPnl))
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4998214285552884615407");
+    });
+
     it("a short position is under water, thus liquidating the complete position", async () => {
       await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
       await approve(alice, clearingHouse.address, 100);
@@ -1029,6 +1080,58 @@ describe("ClearingHouse Test", () => {
       expect(await quoteToken.balanceOf(carol.address)).to.eq("2793670659724776482");
       // 5000 - 3.49 - 2.79
       expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4993712676562293104914");
+    });
+
+    it("a short position is under water with positive remain margin, thus liquidating the whole position", async () => {
+      await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
+      await approve(alice, clearingHouse.address, 100);
+      await approve(bob, clearingHouse.address, 100);
+      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.05));
+
+      // when alice create a 20 margin * 10x position to get 25 short position
+      // AMM after: 800 : 125
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+
+      // when bob create a 33.333333 margin * 1x position to get 5 long position
+      // AMM after: 833.333333 : 120
+      await forwardBlockTimestamp(15); // 15 secs. later
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(33.333333), toFullDigitBN(1), toFullDigitBN(0));
+
+      await syncAmmPriceToOracle();
+
+      await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
+        .to.emit(clearingHouse, "PositionLiquidated")
+        .withArgs(
+          alice.address, // trader
+          amm.address, // amm
+          "219298245415512465429", // positionNotional
+          toFullDigitBN(25), // positionSize
+          "5482456135387811635", // liquidationFee
+          carol.address, // liquidator
+          "4780701550900277064" // badDebt
+        )
+        .to.emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          alice.address, // trader
+          amm.address, // amm
+          "0", // margin
+          "219298245415512465429", // positionNotional
+          "25000000000000000000", // exchangedPositionSize
+          toFullDigitBN(0), // fee
+          "0", // positionSizeAfter
+          "-19298245415512465429", // realizedPnl
+          "0", // unrealizedPnlAfter
+          "0", // badDebt
+          "20000000000000000000", // liquidationPenalty
+          "11080332398775331684", // spotPrice
+          "0" // fundingPayment
+        );
+
+      expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("5482456135387811635");
+      // 5000 - (liquidationFee-(initial margin + realizedPnl))
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4995219298449099722936");
     });
 
     it("force error, position not liquidatable due to TWAP over maintenance margin", async () => {
