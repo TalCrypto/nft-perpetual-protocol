@@ -823,6 +823,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 if (feeToLiquidator > remainMargin) {
                     liquidationBadDebt = feeToLiquidator - remainMargin;
                     totalBadDebt = totalBadDebt + liquidationBadDebt;
+                    remainMargin = 0;
                 } else {
                     remainMargin = remainMargin - feeToLiquidator;
                 }
