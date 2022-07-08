@@ -38,6 +38,8 @@ interface IAmm {
         uint256 _quoteAssetAmountLimit
     ) external returns (uint256);
 
+    function repeg(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
+
     function shutdown() external;
 
     function settleFunding() external returns (int256);

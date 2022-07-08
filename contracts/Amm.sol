@@ -35,6 +35,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
+    event Repeg(uint256 quoteAssetReserve, uint256 baseAssetReserve);
 
     //
     // MODIFIERS
@@ -285,6 +286,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         baseAssetDeltaThisFundingPeriod = 0;
 
         return premiumFraction;
+    }
+
+    /**
+     * Repeg both reserves in case of repegging and k-adjustment
+     */
+    function repeg(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
+        require(_quoteAssetReserve != 0, "quote asset reserve cannot be 0");
+        require(_baseAssetReserve != 0, "quote asset reserve cannot be 0");
+        quoteAssetReserve = _quoteAssetReserve;
+        baseAssetReserve = _baseAssetReserve;
+        addReserveSnapshot();
+        emit Repeg(quoteAssetReserve, baseAssetReserve);
     }
 
     function calcBaseAssetAfterLiquidityMigration(
@@ -617,11 +630,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(quoteAssetAfter != 0, "quote asset after is 0");
 
-        baseAssetAfter =  FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
+        baseAssetAfter = FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter)) {
+        if (
+            FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) !=
+            FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter)
+        ) {
             if (isAddToAmm) {
                 baseAssetBought = baseAssetBought - 1;
             } else {
@@ -658,7 +674,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter)) {
+        if (
+            FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) !=
+            FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter)
+        ) {
             if (isAddToAmm) {
                 quoteAssetSold = quoteAssetSold - 1;
             } else {
