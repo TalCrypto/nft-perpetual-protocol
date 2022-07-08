@@ -8,6 +8,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
+import { FullMath } from "./utils/FullMath.sol";
 
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using UIntMath for uint256;
@@ -606,8 +607,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         bool isAddToAmm = _dirOfQuote == Dir.ADD_TO_AMM;
-        int256 invariant = _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount).toInt();
-        int256 baseAssetAfter;
+        uint256 baseAssetAfter;
         uint256 quoteAssetAfter;
         uint256 baseAssetBought;
         if (isAddToAmm) {
@@ -617,11 +617,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(quoteAssetAfter != 0, "quote asset after is 0");
 
-        baseAssetAfter = invariant.divD(quoteAssetAfter.toInt());
-        baseAssetBought = (baseAssetAfter - _baseAssetPoolAmount.toInt()).abs();
+        baseAssetAfter =  FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
+        baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (invariant.abs().modD(quoteAssetAfter) != 0) {
+        if (FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter)) {
             if (isAddToAmm) {
                 baseAssetBought = baseAssetBought - 1;
             } else {
@@ -643,8 +643,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         bool isAddToAmm = _dirOfBase == Dir.ADD_TO_AMM;
-        int256 invariant = _quoteAssetPoolAmount.mulD(_baseAssetPoolAmount).toInt();
-        int256 quoteAssetAfter;
+        uint256 quoteAssetAfter;
         uint256 baseAssetAfter;
         uint256 quoteAssetSold;
 
@@ -655,11 +654,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(baseAssetAfter != 0, "base asset after is 0");
 
-        quoteAssetAfter = invariant.divD(baseAssetAfter.toInt());
-        quoteAssetSold = (quoteAssetAfter - _quoteAssetPoolAmount.toInt()).abs();
+        quoteAssetAfter = FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter);
+        quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (invariant.abs().modD(baseAssetAfter) != 0) {
+        if (FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter)) {
             if (isAddToAmm) {
                 quoteAssetSold = quoteAssetSold - 1;
             } else {
