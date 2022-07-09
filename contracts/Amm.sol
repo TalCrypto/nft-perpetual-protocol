@@ -95,9 +95,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //    The below state variables can not change the order    //
     //**********************************************************//
 
-    // DEPRECATED
-    // update during every swap and calculate total amm pnl per funding period
-    int256 private baseAssetDeltaThisFundingPeriod;
+    // // DEPRECATED
+    // // update during every swap and calculate total amm pnl per funding period
+    // int256 private baseAssetDeltaThisFundingPeriod;
 
     // update during every swap and used when shutting amm down. it's trader's total base asset size
     int256 public totalPositionSize;
@@ -281,9 +281,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         // max(nextFundingTimeOnHourStart, minNextValidFundingTime)
         nextFundingTime = nextFundingTimeOnHourStart > minNextValidFundingTime ? nextFundingTimeOnHourStart : minNextValidFundingTime;
 
-        // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-        // reset funding related states
-        baseAssetDeltaThisFundingPeriod = 0;
+        // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
+        // // reset funding related states
+        // baseAssetDeltaThisFundingPeriod = 0;
 
         return premiumFraction;
     }
@@ -556,10 +556,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return settlementPrice;
     }
 
-    // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-    function getBaseAssetDeltaThisFundingPeriod() external view override returns (int256) {
-        return baseAssetDeltaThisFundingPeriod;
-    }
+    // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
+    // function getBaseAssetDeltaThisFundingPeriod() external view override returns (int256) {
+    //     return baseAssetDeltaThisFundingPeriod;
+    // }
 
     function getMaxHoldingBaseAsset() external view override returns (uint256) {
         return maxHoldingBaseAsset;
@@ -759,14 +759,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             quoteAssetReserve = quoteAssetReserve + _quoteAssetAmount;
             baseAssetReserve = baseAssetReserve - _baseAssetAmount;
             // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod - _baseAssetAmount.toInt();
-            totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
+            // baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod - _baseAssetAmount.toInt();
+            // totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
             cumulativeNotional = cumulativeNotional + _quoteAssetAmount.toInt();
         } else {
             quoteAssetReserve = quoteAssetReserve - _quoteAssetAmount;
             baseAssetReserve = baseAssetReserve + _baseAssetAmount;
-            // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod + _baseAssetAmount.toInt();
+            // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
+            // baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod + _baseAssetAmount.toInt();
             totalPositionSize = totalPositionSize - _baseAssetAmount.toInt();
             cumulativeNotional = cumulativeNotional - _quoteAssetAmount.toInt();
         }
