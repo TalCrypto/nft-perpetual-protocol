@@ -38,7 +38,7 @@ interface IAmm {
         uint256 _quoteAssetAmountLimit
     ) external returns (uint256);
 
-    function repeg(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
+    function Adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
 
     function shutdown() external;
 
@@ -49,6 +49,27 @@ interface IAmm {
     //
     // VIEW
     //
+
+    function getRepegToOracleCost()
+        external
+        view
+        returns (
+            bool,
+            address,
+            int256,
+            uint256,
+            uint256
+        );
+
+    function getUpdateKResult(int256 budget)
+        external
+        view
+        returns (
+            address quote,
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        );
 
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 

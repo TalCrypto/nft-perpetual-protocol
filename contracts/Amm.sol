@@ -9,6 +9,7 @@ import { IAmm } from "./interfaces/IAmm.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
+import { AmmMath } from "./utils/AmmMath.sol";
 
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using UIntMath for uint256;
@@ -291,7 +292,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * Repeg both reserves in case of repegging and k-adjustment
      */
-    function repeg(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
+    function Adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
         require(_quoteAssetReserve != 0, "quote asset reserve cannot be 0");
         require(_baseAssetReserve != 0, "quote asset reserve cannot be 0");
         quoteAssetReserve = _quoteAssetReserve;
@@ -430,6 +431,31 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
+
+    function getRepegToOracleCost() external view override returns (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+        uint256 targetPrice = getUnderlyingPrice();
+        newBaseAssetReserve = baseAssetReserve;
+        newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
+        cost = AmmMath.adjustAmmCost(quoteAssetReserve, newBaseAssetReserve, totalPositionSize, newQuoteAssetReserve);
+        if(newQuoteAssetReserve == quoteAssetReserve) {
+            isUpdatable = false;
+        } else {
+            isUpdatable = true;
+        }
+        quote = address(quoteAsset);
+    }
+
+    function getUpdateKResult(int256 budget) external view returns(address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+        if(budget != 0) {
+            uint256 _quoteAssetReserve = quoteAssetReserve;
+            uint256 _baseAssetReserve = baseAssetReserve;
+            int256 _positionSize = totalPositionSize;
+            (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(_quoteAssetReserve, _baseAssetReserve, budget, _positionSize);
+            (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(_quoteAssetReserve, _baseAssetReserve, _positionSize, scaleNum, scaleDenom);
+            quote = address(quoteAsset); 
+        }
+    }
+
 
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view override returns (bool) {
         // Skip the check if the limit is 0

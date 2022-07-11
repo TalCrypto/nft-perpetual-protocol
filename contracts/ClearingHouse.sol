@@ -10,6 +10,8 @@ import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipient.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
+import { FullMath } from "./utils/FullMath.sol";
+import "hardhat/console.sol";
 
 // note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
 // (yes, the ordering is reversed comparing to Python)
@@ -33,6 +35,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     );
     event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
     event RestrictionModeEntered(address amm, uint256 blockNumber);
+    event AdjustAmm(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
 
     /// @notice This event is emitted when position change
     /// @param trader the address which execute this transaction
@@ -170,6 +173,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     // only admin
     uint256 public liquidationFeeRatio;
 
+    // only admin
+    uint256 public partialLiquidationRatio;
+
     // key by amm address. will be deprecated or replaced after guarded period.
     // it's not an accurate open interest, just a rough way to control the unexpected loss at the beginning
     mapping(address => uint256) public openInterestNotionalMap;
@@ -187,15 +193,19 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     // designed for arbitragers who can hold unlimited positions. will be removed after guarded period
     address internal whitelist;
 
+    mapping(address => bool) public backstopLiquidityProviderMap;
+
+    mapping(address => uint256) public adjustAmmFees;
+
+    // amm => token => revenue
+    mapping(address => mapping(address => int256)) public netRevenuesSinceLastFunding;
+
     uint256[50] private __gap;
     //**********************************************************//
     //    Can not change the order of above state variables     //
     //**********************************************************//
 
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
-    uint256 public partialLiquidationRatio;
-
-    mapping(address => bool) public backstopLiquidityProviderMap;
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     //
@@ -436,6 +446,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         requireNonZeroInput(_leverage);
         requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
         requireNotRestrictionMode(_amm);
+        updateAmm(_amm);
 
         address trader = _msgSender();
         PositionResp memory positionResp;
@@ -613,13 +624,16 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
         int256 totalTraderPositionSize = _amm.getBaseAssetDelta();
         int256 ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
-
+        //TODO
         IERC20 quoteAsset = _amm.quoteAsset();
+        // netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += ammFundingPaymentProfit;
         if (ammFundingPaymentProfit < 0) {
             insuranceFund.withdraw(quoteAsset, ammFundingPaymentProfit.abs());
         } else {
             transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
         }
+        // updateK(_amm, -ammFundingPaymentProfit);
+        // netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
     }
 
     //
@@ -1303,5 +1317,63 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "Margin ratio not meet criteria");
+    }
+
+    function updateAmm(IAmm _amm) private {
+        (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getRepegToOracleCost();
+        if(isUpdatable){
+            if(applyCost(address(_amm), quote, cost)) {
+                _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
+                emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+            }            
+        }
+    }
+
+    // negative cost is period revenue, if spread is low give back half in k increase
+    function updateK(IAmm _amm, int256 fundingImbalance) private {
+        address quote = address(_amm.quoteAsset());
+        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
+        int256 budget;
+        if(fundingImbalance < 0) {
+            budget = fundingImbalance/2;
+        } else if (netRevenue < fundingImbalance){
+            if(netRevenue < 0) {
+                budget = -fundingImbalance/2 ;
+            } else {
+                budget = (netRevenue - fundingImbalance) / 2;
+            }
+        }
+        ( , int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getUpdateKResult(budget);
+        if(applyCost(address(_amm), quote, cost)) {
+            _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }  
+    }
+
+    // positive cost is expense, negative cost is revenue
+    function applyCost(address _amm, address _quote, int256 _cost) private returns(bool) {
+
+        uint256 _adjustAmmFee = adjustAmmFees[_quote];
+        if (_cost > 0) {
+            uint256 cost = _cost.abs();
+            // check if adjustAmmFees can cover the loss
+            if (_adjustAmmFee >= cost) {
+                adjustAmmFees[_quote] = _adjustAmmFee - cost;
+            } else {
+                //TODO withdraw from other, not insurance fund which is for funding payment
+                uint256 costToInsuranceFund = cost - _adjustAmmFee;
+                if(IERC20(_quote).balanceOf(address(insuranceFund)) < costToInsuranceFund) {
+                    return false;
+                }
+                // withdraw lacking amount from insurance fund
+                insuranceFund.withdraw(IERC20(_quote), cost - _adjustAmmFee);
+                adjustAmmFees[_quote] = 0;
+            }
+        } else {
+            // increase the adjustAmmFees
+            adjustAmmFees[_quote] = _adjustAmmFee + _cost.abs();
+        }
+        netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
+        return true;
     }
 }
