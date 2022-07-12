@@ -292,7 +292,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * Repeg both reserves in case of repegging and k-adjustment
      */
-    function Adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
+    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
         require(_quoteAssetReserve != 0, "quote asset reserve cannot be 0");
         require(_baseAssetReserve != 0, "quote asset reserve cannot be 0");
         quoteAssetReserve = _quoteAssetReserve;

@@ -1333,7 +1333,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             .getRepegToOracleResult();
         if (isUpdatable) {
             if (applyCost(address(_amm), quote, cost)) {
-                _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
+                _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
                 emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
             }
         }
@@ -1355,7 +1355,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
         (, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
         if (applyCost(address(_amm), quote, cost)) {
-            _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }

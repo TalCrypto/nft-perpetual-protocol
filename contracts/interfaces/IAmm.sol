@@ -38,7 +38,7 @@ interface IAmm {
         uint256 _quoteAssetAmountLimit
     ) external returns (uint256);
 
-    function Adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
+    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
 
     function shutdown() external;
 
