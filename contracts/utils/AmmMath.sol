@@ -10,6 +10,7 @@ library AmmMath {
     using IntMath for int256;
     uint128 constant K_DECREASE_MAX = 22 * 1e15; //2.2% decrease
     uint128 constant K_INCREASE_MAX = 1 * 1e15; //0.1% increase
+
     /**
      * calculate cost of repegging
      * @return cost if > 0, insurance fund should charge it
@@ -23,11 +24,11 @@ library AmmMath {
         if (_quoteAssetReserve == _newQuoteAssetReserve || _positionSize == 0) {
             cost = 0;
         } else {
-            uint256 newBaseAssetReserve = _positionSize > 0
+            uint256 terminalBaseAssetReserve = _positionSize > 0
                 ? _baseAssetReserve + uint256(_positionSize)
                 : _baseAssetReserve - uint256(0 - _positionSize);
-            uint256 newTerminalQuoteAssetReserve = FullMath.mulDiv(_newQuoteAssetReserve, _baseAssetReserve, newBaseAssetReserve);
-            uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, newBaseAssetReserve);
+            uint256 newTerminalQuoteAssetReserve = FullMath.mulDiv(_newQuoteAssetReserve, _baseAssetReserve, terminalBaseAssetReserve);
+            uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, terminalBaseAssetReserve);
             uint256 newPositionNotionalSize = _newQuoteAssetReserve - newTerminalQuoteAssetReserve;
             uint256 positionNotionalSize = _quoteAssetReserve - terminalQuoteAssetReserve;
             if (newPositionNotionalSize < positionNotionalSize) {
@@ -38,13 +39,37 @@ library AmmMath {
         }
     }
 
+    function calcBudgetedQuoteReserve(
+        uint256 _quoteAssetReserve,
+        uint256 _baseAssetReserve,
+        int256 _positionSize,
+        uint256 _budget
+    ) internal pure returns (uint256 newQuoteAssetReserve) {
+        uint256 terminalBaseAssetReserve = _positionSize > 0
+            ? _baseAssetReserve + uint256(_positionSize)
+            : _baseAssetReserve - uint256(0 - _positionSize);
+        newQuoteAssetReserve = _positionSize > 0
+            ? FullMath.mulDiv(_budget + _quoteAssetReserve, terminalBaseAssetReserve, _positionSize.abs()) -
+                FullMath.mulDiv(_baseAssetReserve, _quoteAssetReserve, _positionSize.abs())
+            : FullMath.mulDiv(_baseAssetReserve, _quoteAssetReserve, _positionSize.abs()) -
+                FullMath.mulDiv(_budget + _quoteAssetReserve, terminalBaseAssetReserve, _positionSize.abs());
+    }
+
     function adjustKCost(
         uint256 _quoteAssetReserve,
         uint256 _baseAssetReserve,
         int256 _positionSize,
         uint256 _numerator,
         uint256 _denominator
-    ) internal pure returns (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    )
+        internal
+        pure
+        returns (
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        )
+    {
         if (_numerator == _denominator || _positionSize == 0) {
             cost = 0;
         } else {
@@ -85,11 +110,11 @@ library AmmMath {
         int256 denom2 = num1;
         uint256 numerator = (num1 - num2).abs();
         uint256 denominator = (denom1 + denom2).abs();
-        if(numerator > denominator) {
+        if (numerator > denominator) {
             uint256 kUpperBound = 1 ether + K_DECREASE_MAX;
             uint256 curChange = numerator.divD(denominator);
             uint256 maxChange = kUpperBound.divD(1 ether);
-            if(curChange > maxChange) {
+            if (curChange > maxChange) {
                 return (kUpperBound, 1 ether);
             } else {
                 return (numerator, denominator);
@@ -98,7 +123,7 @@ library AmmMath {
             uint256 kLowerBound = 1 ether - K_DECREASE_MAX;
             uint256 curChange = numerator.divD(denominator);
             uint256 maxChange = kLowerBound.divD(1 ether);
-            if(curChange < maxChange) {
+            if (curChange < maxChange) {
                 return (kLowerBound, 1 ether);
             } else {
                 return (numerator, denominator);

@@ -1329,8 +1329,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function repegAmm(IAmm _amm) private {
-        (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm
-            .getRepegToOracleResult();
+        address quote = address(_amm.quoteAsset());
+        uint256 budget = totalFees[address(_amm)][quote] / 2 - 1;
+        (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
         if (isUpdatable) {
             if (applyCost(address(_amm), quote, cost)) {
                 _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
@@ -1353,7 +1354,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 budget = (netRevenue - fundingImbalance) / 2;
             }
         }
-        (, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
+        (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
         if (applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
@@ -1371,7 +1372,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             uint256 cost = _cost.abs();
             // Only a portion of the protocol fees are allocated to repegging
             // This checks that the totalFees does not decrease too much after repeg
-            if (cost < totalFee / 2) {
+            if (cost <= totalFee / 2) {
                 totalFees[_amm][_quote] = totalFee - cost;
             } else {
                 return false;

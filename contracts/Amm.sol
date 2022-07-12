@@ -432,27 +432,32 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // VIEW FUNCTIONS
     //
 
-    function getRepegToOracleResult() external view override returns (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    function getFormulaicRepegResult(uint256 _budget) external view override returns (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
         uint256 targetPrice = getUnderlyingPrice();
-        newBaseAssetReserve = baseAssetReserve;
-        newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
-        cost = AmmMath.adjustAmmCost(quoteAssetReserve, newBaseAssetReserve, totalPositionSize, newQuoteAssetReserve);
-        if(newQuoteAssetReserve == quoteAssetReserve) {
+        uint256 _quoteAssetReserve = quoteAssetReserve;
+        uint256 _baseAssetReserve = baseAssetReserve;
+        int256 _positionSize = totalPositionSize;
+        newBaseAssetReserve = _baseAssetReserve;
+        newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve) + _quoteAssetReserve / 2;
+        cost = AmmMath.adjustAmmCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
+        if(cost > 0 && uint256(cost) > _budget) {
+            newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
+            cost = _budget.toInt();
+        }
+        if(newQuoteAssetReserve == _quoteAssetReserve) {
             isUpdatable = false;
         } else {
             isUpdatable = true;
         }
-        quote = address(quoteAsset);
     }
 
-    function getFormulaicUpdateKResult(int256 budget) external view returns(address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    function getFormulaicUpdateKResult(int256 budget) external view returns(int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
         if(budget != 0) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve;   //to optimize gas cost
             int256 _positionSize = totalPositionSize;       //to optimize gas cost
             (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(_quoteAssetReserve, _baseAssetReserve, budget, _positionSize);
             (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(_quoteAssetReserve, _baseAssetReserve, _positionSize, scaleNum, scaleDenom);
-            quote = address(quoteAsset); 
         }
     }
 

@@ -50,12 +50,11 @@ interface IAmm {
     // VIEW
     //
 
-    function getRepegToOracleResult()
+    function getFormulaicRepegResult(uint256 budget)
         external
         view
         returns (
             bool,
-            address,
             int256,
             uint256,
             uint256
@@ -65,7 +64,6 @@ interface IAmm {
         external
         view
         returns (
-            address quote,
             int256 cost,
             uint256 newQuoteAssetReserve,
             uint256 newBaseAssetReserve
