@@ -50,7 +50,7 @@ interface IAmm {
     // VIEW
     //
 
-    function getRepegToOracleCost()
+    function getRepegToOracleResult()
         external
         view
         returns (
@@ -61,7 +61,7 @@ interface IAmm {
             uint256
         );
 
-    function getUpdateKResult(int256 budget)
+    function getFormulaicUpdateKResult(int256 budget)
         external
         view
         returns (

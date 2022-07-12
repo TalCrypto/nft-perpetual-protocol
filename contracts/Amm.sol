@@ -432,7 +432,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // VIEW FUNCTIONS
     //
 
-    function getRepegToOracleCost() external view override returns (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    function getRepegToOracleResult() external view override returns (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
         uint256 targetPrice = getUnderlyingPrice();
         newBaseAssetReserve = baseAssetReserve;
         newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
@@ -445,11 +445,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quote = address(quoteAsset);
     }
 
-    function getUpdateKResult(int256 budget) external view returns(address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    function getFormulaicUpdateKResult(int256 budget) external view returns(address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
         if(budget != 0) {
-            uint256 _quoteAssetReserve = quoteAssetReserve;
-            uint256 _baseAssetReserve = baseAssetReserve;
-            int256 _positionSize = totalPositionSize;
+            uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
+            uint256 _baseAssetReserve = baseAssetReserve;   //to optimize gas cost
+            int256 _positionSize = totalPositionSize;       //to optimize gas cost
             (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(_quoteAssetReserve, _baseAssetReserve, budget, _positionSize);
             (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(_quoteAssetReserve, _baseAssetReserve, _positionSize, scaleNum, scaleDenom);
             quote = address(quoteAsset); 

@@ -195,12 +195,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
-    mapping(address => uint256) public adjustAmmFees;
+    mapping(address => mapping(address => uint256)) public totalFees;
 
-    // amm => token => revenue
+    // amm => token => revenue since last funding
     mapping(address => mapping(address => int256)) public netRevenuesSinceLastFunding;
 
     uint256[50] private __gap;
+
     //**********************************************************//
     //    Can not change the order of above state variables     //
     //**********************************************************//
@@ -316,6 +317,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         quoteToken.transferFrom(trader, address(this), _addedMargin);
         //_transferFrom(quoteToken, trader, address(this), _addedMargin);
         emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
+        repegAmm(_amm);
     }
 
     /**
@@ -355,6 +357,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // transfer token back to trader
         withdraw(quoteToken, trader, _removedMargin);
         emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
+        repegAmm(_amm);
     }
 
     /**
@@ -446,7 +449,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         requireNonZeroInput(_leverage);
         requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
         requireNotRestrictionMode(_amm);
-        updateAmm(_amm);
 
         address trader = _msgSender();
         PositionResp memory positionResp;
@@ -503,6 +505,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
+        repegAmm(_amm);
     }
 
     /**
@@ -576,6 +579,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
+        repegAmm(_amm);
     }
 
     function liquidateWithSlippage(
@@ -593,6 +597,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
             require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
         }
+        repegAmm(_amm);
 
         return (quoteAssetAmount, isPartialClose);
     }
@@ -605,6 +610,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      */
     function liquidate(IAmm _amm, address _trader) public nonReentrant {
         internalLiquidate(_amm, _trader);
+        repegAmm(_amm);
     }
 
     /**
@@ -624,16 +630,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
         int256 totalTraderPositionSize = _amm.getBaseAssetDelta();
         int256 ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
-        //TODO
         IERC20 quoteAsset = _amm.quoteAsset();
         // netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += ammFundingPaymentProfit;
         if (ammFundingPaymentProfit < 0) {
+            //TODO capped funding
             insuranceFund.withdraw(quoteAsset, ammFundingPaymentProfit.abs());
         } else {
-            transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
+            // transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
+            netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += ammFundingPaymentProfit;
+            totalFees[address(_amm)][address(quoteAsset)] += ammFundingPaymentProfit.abs();
         }
-        // updateK(_amm, -ammFundingPaymentProfit);
-        // netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
+        formulaicUpdateK(_amm, ammFundingPaymentProfit);
+        netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
     }
 
     //
@@ -729,10 +737,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @param _amm IAmm address
      * @return latest cumulative premium fraction in 18 digits
      */
-    function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256) {
+    function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256 latest) {
         uint256 len = ammMap[address(_amm)].cumulativePremiumFractions.length;
         if (len > 0) {
-            return ammMap[address(_amm)].cumulativePremiumFractions[len - 1];
+            latest = ammMap[address(_amm)].cumulativePremiumFractions[len - 1];
         }
     }
 
@@ -1103,7 +1111,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address _from,
         IAmm _amm,
         uint256 _positionNotional
-    ) internal returns (uint256) {
+    ) internal returns (uint256 fee) {
         // the logic of toll fee can be removed if the bytecode size is too large
         (uint256 toll, uint256 spread) = _amm.calcFee(_positionNotional);
         bool hasToll = toll > 0;
@@ -1111,9 +1119,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         if (hasToll || hasSpread) {
             IERC20 quoteAsset = _amm.quoteAsset();
 
-            // transfer spread to insurance fund
+            // transfer spread to market in order to use it to make market better
             if (hasSpread) {
-                quoteAsset.transferFrom(_from, address(insuranceFund), spread);
+                // quoteAsset.transferFrom(_from, address(insuranceFund), spread);
+                netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += int256(spread);
+                totalFees[address(_amm)][address(quoteAsset)] += spread;
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
             }
 
@@ -1124,8 +1134,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 //_transferFrom(quoteAsset, _from, address(feePool), toll);
             }
 
-            // fee = spread + toll
-            return toll + spread;
+            fee = toll + spread;
         }
     }
 
@@ -1319,59 +1328,57 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "Margin ratio not meet criteria");
     }
 
-    function updateAmm(IAmm _amm) private {
-        (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getRepegToOracleCost();
-        if(isUpdatable){
-            if(applyCost(address(_amm), quote, cost)) {
+    function repegAmm(IAmm _amm) private {
+        (bool isUpdatable, address quote, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm
+            .getRepegToOracleResult();
+        if (isUpdatable) {
+            if (applyCost(address(_amm), quote, cost)) {
                 _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
                 emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-            }            
+            }
         }
     }
 
     // negative cost is period revenue, if spread is low give back half in k increase
-    function updateK(IAmm _amm, int256 fundingImbalance) private {
+    function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
         int256 budget;
-        if(fundingImbalance < 0) {
-            budget = fundingImbalance/2;
-        } else if (netRevenue < fundingImbalance){
-            if(netRevenue < 0) {
-                budget = -fundingImbalance/2 ;
+        if (fundingImbalance < 0) {
+            budget = fundingImbalance / 2;
+        } else if (netRevenue < fundingImbalance) {
+            if (netRevenue < 0) {
+                budget = -fundingImbalance / 2;
             } else {
                 budget = (netRevenue - fundingImbalance) / 2;
             }
         }
-        ( , int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getUpdateKResult(budget);
-        if(applyCost(address(_amm), quote, cost)) {
+        (, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
+        if (applyCost(address(_amm), quote, cost)) {
             _amm.Adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }  
+        }
     }
 
     // positive cost is expense, negative cost is revenue
-    function applyCost(address _amm, address _quote, int256 _cost) private returns(bool) {
-
-        uint256 _adjustAmmFee = adjustAmmFees[_quote];
+    function applyCost(
+        address _amm,
+        address _quote,
+        int256 _cost
+    ) private returns (bool) {
+        uint256 totalFee = totalFees[_amm][_quote];
         if (_cost > 0) {
             uint256 cost = _cost.abs();
-            // check if adjustAmmFees can cover the loss
-            if (_adjustAmmFee >= cost) {
-                adjustAmmFees[_quote] = _adjustAmmFee - cost;
+            // Only a portion of the protocol fees are allocated to repegging
+            // This checks that the totalFees does not decrease too much after repeg
+            if (cost < totalFee / 2) {
+                totalFees[_amm][_quote] = totalFee - cost;
             } else {
-                //TODO withdraw from other, not insurance fund which is for funding payment
-                uint256 costToInsuranceFund = cost - _adjustAmmFee;
-                if(IERC20(_quote).balanceOf(address(insuranceFund)) < costToInsuranceFund) {
-                    return false;
-                }
-                // withdraw lacking amount from insurance fund
-                insuranceFund.withdraw(IERC20(_quote), cost - _adjustAmmFee);
-                adjustAmmFees[_quote] = 0;
+                return false;
             }
         } else {
-            // increase the adjustAmmFees
-            adjustAmmFees[_quote] = _adjustAmmFee + _cost.abs();
+            // increase the totalFees
+            totalFees[_amm][_quote] = totalFee + _cost.abs();
         }
         netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
         return true;
