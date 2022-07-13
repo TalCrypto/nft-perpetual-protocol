@@ -431,18 +431,28 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
-
-    function getFormulaicRepegResult(uint256 _budget) external view override returns (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+    //TODO add updatable var
+    function getFormulaicRepegResult(uint256 _budget)
+        external
+        view
+        override
+        returns (
+            bool isUpdatable,
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        )
+    {
         isUpdatable = isOverSpreadLimit();
         if (isUpdatable) {
             uint256 targetPrice = getUnderlyingPrice();
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
-            uint256 _baseAssetReserve = baseAssetReserve;   //to optimize gas cost
-            int256 _positionSize = totalPositionSize;       //to optimize gas cost
+            uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
+            int256 _positionSize = totalPositionSize; //to optimize gas cost
             newBaseAssetReserve = _baseAssetReserve;
             newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
             cost = AmmMath.adjustPegCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
-            if(cost > 0 && uint256(cost) > _budget) {
+            if (cost > 0 && uint256(cost) > _budget) {
                 newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
                 cost = _budget.toInt();
             }
@@ -450,16 +460,41 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
     }
 
-    function getFormulaicUpdateKResult(int256 budget) external view returns(int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
-        if(budget != 0) {
+    //TODO add updatable var
+    function getFormulaicUpdateKResult(int256 budget)
+        external
+        view
+        returns (
+            bool isUpdatable,
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        )
+    {
+        if (budget != 0) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
-            uint256 _baseAssetReserve = baseAssetReserve;   //to optimize gas cost
-            int256 _positionSize = totalPositionSize;       //to optimize gas cost
-            (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(_quoteAssetReserve, _baseAssetReserve, budget, _positionSize);
-            (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(_quoteAssetReserve, _baseAssetReserve, _positionSize, scaleNum, scaleDenom);
+            uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
+            int256 _positionSize = totalPositionSize; //to optimize gas cost
+            (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(
+                _quoteAssetReserve,
+                _baseAssetReserve,
+                budget,
+                _positionSize
+            );
+            if (scaleNum == scaleDenom) {
+                isUpdatable = false;
+            } else {
+                isUpdatable = true;
+                (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(
+                    _quoteAssetReserve,
+                    _baseAssetReserve,
+                    _positionSize,
+                    scaleNum,
+                    scaleDenom
+                );
+            }
         }
     }
-
 
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view override returns (bool) {
         // Skip the check if the limit is 0

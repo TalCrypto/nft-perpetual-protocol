@@ -64,6 +64,7 @@ interface IAmm {
         external
         view
         returns (
+            bool isUpdatable,
             int256 cost,
             uint256 newQuoteAssetReserve,
             uint256 newBaseAssetReserve
