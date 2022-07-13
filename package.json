@@ -5,6 +5,7 @@
     "test": "hardhat typechain && hardhat test"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/hardhat-upgrades": "^1.19.0",

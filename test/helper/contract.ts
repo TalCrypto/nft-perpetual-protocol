@@ -1,5 +1,5 @@
 import { Signer, BigNumber } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, upgrades } from "hardhat";
 import {
   AmmFake__factory,
   AmmFake,
@@ -21,6 +21,8 @@ import {
   L2PriceFeedMock__factory,
   TollPool__factory,
   TollPool,
+  Amm__factory,
+  Amm
 } from "../../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -117,6 +119,46 @@ export async function deployAmm(params: {
     tollRatio.toString(),
     spreadRatio.toString()
   );
+}
+
+export async function deployProxyAmm(params: {
+  deployer: Signer;
+  quoteAssetTokenAddr: string;
+  priceFeedAddr: string;
+  fluctuation: BigNumber;
+  priceFeedKey?: string;
+  fundingPeriod?: BigNumber;
+  baseAssetReserve?: BigNumber;
+  quoteAssetReserve?: BigNumber;
+  tollRatio?: BigNumber;
+  spreadRatio?: BigNumber;
+}): Promise<Amm> {
+  const {
+    deployer,
+    quoteAssetTokenAddr,
+    priceFeedAddr,
+    fluctuation,
+    fundingPeriod = BigNumber.from(8 * 60 * 60), // 8hr
+    baseAssetReserve = toFullDigitBN(100),
+    quoteAssetReserve = toFullDigitBN(1000),
+    priceFeedKey = "ETH",
+    tollRatio = BigNumber.from(0),
+    spreadRatio = BigNumber.from(0),
+  } = params;
+  const AmmContract = await ethers.getContractFactory("Amm");
+  const instance =  (await upgrades.deployProxy(AmmContract, [
+    quoteAssetReserve.toString(),
+    baseAssetReserve.toString(),
+    toFullDigitBN(0.9).toString(), // tradeLimitRatio
+    fundingPeriod.toString(),
+    priceFeedAddr.toString(),
+    ethers.utils.formatBytes32String(priceFeedKey),
+    quoteAssetTokenAddr,
+    fluctuation.toString(),
+    tollRatio.toString(),
+    spreadRatio.toString()
+  ])) as Amm;
+  return instance;
 }
 
 export async function deployAmmReader(signer: Signer): Promise<AmmReader> {

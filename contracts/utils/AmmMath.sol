@@ -15,7 +15,7 @@ library AmmMath {
      * calculate cost of repegging
      * @return cost if > 0, insurance fund should charge it
      */
-    function adjustAmmCost(
+    function adjustPegCost(
         uint256 _quoteAssetReserve,
         uint256 _baseAssetReserve,
         int256 _positionSize,
@@ -24,17 +24,13 @@ library AmmMath {
         if (_quoteAssetReserve == _newQuoteAssetReserve || _positionSize == 0) {
             cost = 0;
         } else {
-            uint256 terminalBaseAssetReserve = _positionSize > 0
-                ? _baseAssetReserve + uint256(_positionSize)
-                : _baseAssetReserve - uint256(0 - _positionSize);
-            uint256 newTerminalQuoteAssetReserve = FullMath.mulDiv(_newQuoteAssetReserve, _baseAssetReserve, terminalBaseAssetReserve);
-            uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, terminalBaseAssetReserve);
-            uint256 newPositionNotionalSize = _newQuoteAssetReserve - newTerminalQuoteAssetReserve;
-            uint256 positionNotionalSize = _quoteAssetReserve - terminalQuoteAssetReserve;
-            if (newPositionNotionalSize < positionNotionalSize) {
-                cost = 1 - int256(positionNotionalSize - newPositionNotionalSize);
+            uint256 positionSizeAbs = _positionSize.abs();
+            if (_positionSize > 0) {
+                cost = FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve+positionSizeAbs).toInt() - 
+                FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve+positionSizeAbs).toInt();
             } else {
-                cost = int256(newPositionNotionalSize - positionNotionalSize) + 1;
+                cost = FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve-positionSizeAbs).toInt() -
+                FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve-positionSizeAbs).toInt();
             }
         }
     }
@@ -45,14 +41,9 @@ library AmmMath {
         int256 _positionSize,
         uint256 _budget
     ) internal pure returns (uint256 newQuoteAssetReserve) {
-        uint256 terminalBaseAssetReserve = _positionSize > 0
-            ? _baseAssetReserve + uint256(_positionSize)
-            : _baseAssetReserve - uint256(0 - _positionSize);
         newQuoteAssetReserve = _positionSize > 0
-            ? FullMath.mulDiv(_budget + _quoteAssetReserve, terminalBaseAssetReserve, _positionSize.abs()) -
-                FullMath.mulDiv(_baseAssetReserve, _quoteAssetReserve, _positionSize.abs())
-            : FullMath.mulDiv(_baseAssetReserve, _quoteAssetReserve, _positionSize.abs()) -
-                FullMath.mulDiv(_budget + _quoteAssetReserve, terminalBaseAssetReserve, _positionSize.abs());
+            ? _budget + _quoteAssetReserve + FullMath.mulDiv(_budget, _baseAssetReserve, _positionSize.abs())
+            : _budget + _quoteAssetReserve - FullMath.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
     }
 
     function adjustKCost(
@@ -85,11 +76,7 @@ library AmmMath {
             uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, baseAsset);
             uint256 newPositionNotionalSize = newQuoteAssetReserve - newTerminalQuoteAssetReserve;
             uint256 positionNotionalSize = _quoteAssetReserve - terminalQuoteAssetReserve;
-            if (newPositionNotionalSize < positionNotionalSize) {
-                cost = 1 - int256(positionNotionalSize - newPositionNotionalSize);
-            } else {
-                cost = int256(newPositionNotionalSize - positionNotionalSize) + 1;
-            }
+            cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt() + 1;
         }
     }
 

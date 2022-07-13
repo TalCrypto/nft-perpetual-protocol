@@ -1,6 +1,7 @@
 import "@typechain/hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
+import "@openzeppelin/hardhat-upgrades";
 import { task } from "hardhat/config";
 
 // https://hardhat.org/guides/create-task.html

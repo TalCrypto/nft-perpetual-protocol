@@ -294,7 +294,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      */
     function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
         require(_quoteAssetReserve != 0, "quote asset reserve cannot be 0");
-        require(_baseAssetReserve != 0, "quote asset reserve cannot be 0");
+        require(_baseAssetReserve != 0, "base asset reserve cannot be 0");
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         addReserveSnapshot();
@@ -433,21 +433,20 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
 
     function getFormulaicRepegResult(uint256 _budget) external view override returns (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
-        uint256 targetPrice = getUnderlyingPrice();
-        uint256 _quoteAssetReserve = quoteAssetReserve;
-        uint256 _baseAssetReserve = baseAssetReserve;
-        int256 _positionSize = totalPositionSize;
-        newBaseAssetReserve = _baseAssetReserve;
-        newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve) + _quoteAssetReserve / 2;
-        cost = AmmMath.adjustAmmCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
-        if(cost > 0 && uint256(cost) > _budget) {
-            newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
-            cost = _budget.toInt();
-        }
-        if(newQuoteAssetReserve == _quoteAssetReserve) {
-            isUpdatable = false;
-        } else {
-            isUpdatable = true;
+        isUpdatable = isOverSpreadLimit();
+        if (isUpdatable) {
+            uint256 targetPrice = getUnderlyingPrice();
+            uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
+            uint256 _baseAssetReserve = baseAssetReserve;   //to optimize gas cost
+            int256 _positionSize = totalPositionSize;       //to optimize gas cost
+            newBaseAssetReserve = _baseAssetReserve;
+            newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
+            cost = AmmMath.adjustPegCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
+            if(cost > 0 && uint256(cost) > _budget) {
+                newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
+                cost = _budget.toInt();
+            }
+            isUpdatable = newQuoteAssetReserve != _quoteAssetReserve;
         }
     }
 
@@ -604,7 +603,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return totalPositionSize;
     }
 
-    function isOverSpreadLimit() external view override returns (bool) {
+    function isOverSpreadLimit() public view override returns (bool) {
         uint256 oraclePrice = getUnderlyingPrice();
         require(oraclePrice > 0, "underlying price is 0");
         uint256 marketPrice = getSpotPrice();
@@ -791,7 +790,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             baseAssetReserve = baseAssetReserve - _baseAssetAmount;
             // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
             // baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod - _baseAssetAmount.toInt();
-            // totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
+            totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
             cumulativeNotional = cumulativeNotional + _quoteAssetAmount.toInt();
         } else {
             quoteAssetReserve = quoteAssetReserve - _quoteAssetAmount;

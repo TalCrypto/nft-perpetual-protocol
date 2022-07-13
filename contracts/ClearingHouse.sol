@@ -1330,7 +1330,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     function repegAmm(IAmm _amm) private {
         address quote = address(_amm.quoteAsset());
-        uint256 budget = totalFees[address(_amm)][quote] / 2 - 1;
+        uint256 budget = totalFees[address(_amm)][quote] / 2;
         (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
         if (isUpdatable) {
             if (applyCost(address(_amm), quote, cost)) {
