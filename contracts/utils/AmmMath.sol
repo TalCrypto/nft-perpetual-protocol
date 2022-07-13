@@ -26,11 +26,13 @@ library AmmMath {
         } else {
             uint256 positionSizeAbs = _positionSize.abs();
             if (_positionSize > 0) {
-                cost = FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve+positionSizeAbs).toInt() - 
-                FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve+positionSizeAbs).toInt();
+                cost =
+                    FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt() -
+                    FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt();
             } else {
-                cost = FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve-positionSizeAbs).toInt() -
-                FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve-positionSizeAbs).toInt();
+                cost =
+                    FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt() -
+                    FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt();
             }
         }
     }
@@ -61,11 +63,11 @@ library AmmMath {
             uint256 newBaseAssetReserve
         )
     {
+        newQuoteAssetReserve = _quoteAssetReserve.mulD(_numerator).divD(_denominator);
+        newBaseAssetReserve = _baseAssetReserve.mulD(_numerator).divD(_denominator);
         if (_numerator == _denominator || _positionSize == 0) {
             cost = 0;
         } else {
-            newQuoteAssetReserve = _quoteAssetReserve.mulD(_numerator).divD(_denominator);
-            newBaseAssetReserve = _baseAssetReserve.mulD(_numerator).divD(_denominator);
             uint256 baseAsset = _positionSize > 0
                 ? _baseAssetReserve + uint256(_positionSize)
                 : _baseAssetReserve - uint256(0 - _positionSize);
@@ -74,9 +76,17 @@ library AmmMath {
                 : newBaseAssetReserve - uint256(0 - _positionSize);
             uint256 newTerminalQuoteAssetReserve = FullMath.mulDiv(newQuoteAssetReserve, newBaseAssetReserve, newBaseAsset);
             uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, baseAsset);
-            uint256 newPositionNotionalSize = newQuoteAssetReserve - newTerminalQuoteAssetReserve;
-            uint256 positionNotionalSize = _quoteAssetReserve - terminalQuoteAssetReserve;
-            cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt() + 1;
+            uint256 newPositionNotionalSize = _positionSize > 0
+                ? newQuoteAssetReserve - newTerminalQuoteAssetReserve
+                : newTerminalQuoteAssetReserve - newQuoteAssetReserve;
+            uint256 positionNotionalSize = _positionSize > 0
+                ? _quoteAssetReserve - terminalQuoteAssetReserve
+                : terminalQuoteAssetReserve - _quoteAssetReserve;
+            if (_positionSize < 0) {
+                cost = positionNotionalSize.toInt() - newPositionNotionalSize.toInt();
+            } else {
+                cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt();
+            }
         }
     }
 
@@ -98,7 +108,7 @@ library AmmMath {
         uint256 numerator = (num1 - num2).abs();
         uint256 denominator = (denom1 + denom2).abs();
         if (numerator > denominator) {
-            uint256 kUpperBound = 1 ether + K_DECREASE_MAX;
+            uint256 kUpperBound = 1 ether + K_INCREASE_MAX;
             uint256 curChange = numerator.divD(denominator);
             uint256 maxChange = kUpperBound.divD(1 ether);
             if (curChange > maxChange) {

@@ -10,7 +10,7 @@ import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
-
+import "hardhat/console.sol";
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;

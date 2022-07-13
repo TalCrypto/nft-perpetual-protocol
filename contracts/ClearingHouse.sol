@@ -35,7 +35,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     );
     event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
     event RestrictionModeEntered(address amm, uint256 blockNumber);
-    event AdjustAmm(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
+    event Repeg(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
+    event UpdateK(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
 
     /// @notice This event is emitted when position change
     /// @param trader the address which execute this transaction
@@ -1338,11 +1339,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
         if (isUpdatable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }
 
-    // negative cost is period revenue, if spread is low give back half in k increase
+    // fundingImbalance is positive, clearing house receives funds
     function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
@@ -1359,7 +1360,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
         if (isUpdatable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit AdjustAmm(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }
 
