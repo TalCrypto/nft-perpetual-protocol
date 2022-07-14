@@ -6,7 +6,7 @@ import { solidity } from "ethereum-waffle";
 import { deployAmm, deployErc20Fake, deployL2MockPriceFeed, deployProxyAmm, Dir } from "../helper/contract";
 import { toFullDigitBN } from "../helper/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("Amm Unit Test", () => {
   const ETH_PRICE = 100;
@@ -455,7 +455,7 @@ describe("Amm Unit Test", () => {
         await amm.swapOutput(Dir.ADD_TO_AMM, positionSize, 0);
       });
       describe("when budget is positive and a bit small", async () => {
-        const budget = toFullDigitBN(0.001);
+        const budget = toFullDigitBN(0.005);
         it("should be updatable", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.isUpdatable).to.be.true;

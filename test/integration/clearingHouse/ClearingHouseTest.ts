@@ -16,6 +16,7 @@ import { PnlCalcOption, Side } from "../../helper/contract";
 import { fullDeploy } from "../../helper/deploy";
 import { toFullDigitBN } from "../../helper/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 use(solidity);
 
@@ -78,7 +79,7 @@ describe("ClearingHouse Test", () => {
     await mockPriceFeed.setPrice(marketPrice);
   }
 
-  beforeEach(async () => {
+  async function deployEnvFixture() {
     const account = await ethers.getSigners();
     admin = account[0];
     alice = account[1];
@@ -93,7 +94,7 @@ describe("ClearingHouse Test", () => {
     mockPriceFeed = contracts.priceFeed;
     clearingHouse = contracts.clearingHouse;
     clearingHouseViewer = contracts.clearingHouseViewer;
-    clearingHouse = contracts.clearingHouse;
+    // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
@@ -103,6 +104,10 @@ describe("ClearingHouse Test", () => {
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     await syncAmmPriceToOracle();
+  }
+
+  beforeEach(async () => {
+    await loadFixture(deployEnvFixture);
   });
 
   describe("getPersonalPositionWithFundingPayment", () => {
