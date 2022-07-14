@@ -318,7 +318,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         quoteToken.transferFrom(trader, address(this), _addedMargin);
         //_transferFrom(quoteToken, trader, address(this), _addedMargin);
         emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
-        //repegAmm(_amm);
+        repegAmm(_amm);
     }
 
     /**
@@ -358,7 +358,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // transfer token back to trader
         withdraw(quoteToken, trader, _removedMargin);
         emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
-        //repegAmm(_amm);
+        repegAmm(_amm);
     }
 
     /**
@@ -506,7 +506,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
-        //repegAmm(_amm);
+        repegAmm(_amm);
     }
 
     /**
@@ -580,7 +580,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
-        //repegAmm(_amm);
+        repegAmm(_amm);
     }
 
     function liquidateWithSlippage(
@@ -598,7 +598,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
             require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
         }
-        //repegAmm(_amm);
+        repegAmm(_amm);
 
         return (quoteAssetAmount, isPartialClose);
     }
@@ -611,7 +611,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      */
     function liquidate(IAmm _amm, address _trader) public nonReentrant {
         internalLiquidate(_amm, _trader);
-        //repegAmm(_amm);
+        repegAmm(_amm);
     }
 
     /**
@@ -645,7 +645,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
             totalFees[address(_amm)][address(quoteAsset)] = totalFee + ammFundingPaymentProfit.abs();
         }
-        // formulaicUpdateK(_amm, ammFundingPaymentProfit);
+        formulaicUpdateK(_amm, ammFundingPaymentProfit);
         netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
     }
 
@@ -1334,10 +1334,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function repegAmm(IAmm _amm) private {
+        if(!_amm.adjustable()) return;
         address quote = address(_amm.quoteAsset());
         uint256 budget = totalFees[address(_amm)][quote] / 2;
-        (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
-        if (isUpdatable && applyCost(address(_amm), quote, cost)) {
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
+        if (isAdjustable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
@@ -1345,6 +1346,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // fundingImbalance is positive, clearing house receives funds
     function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
+        if(!_amm.adjustable()) return;
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
         int256 budget;
@@ -1357,8 +1359,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 budget = (netRevenue - fundingImbalance) / 2;
             }
         }
-        (bool isUpdatable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
-        if (isUpdatable && applyCost(address(_amm), quote, cost)) {
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
+        if (isAdjustable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }

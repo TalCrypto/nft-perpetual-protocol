@@ -139,6 +139,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     IERC20 public override quoteAsset;
     IPriceFeed public priceFeed;
     bool public override open;
+    bool public override adjustable;
     uint256[50] private __gap;
 
     //**********************************************************//
@@ -388,6 +389,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     /**
+     * @notice set `adjustable` flag. Amm is open to formulaic repeg and K adjustment if `adjustable` is true. Default is false.
+     * @dev only owner can call this function
+     * @param _adjustable open to formulaic repeg and K adjustment is true, otherwise is false.
+     */
+    function setAdjustable(bool _adjustable) external onlyOwner {
+        if (adjustable == _adjustable) return;
+        adjustable = _adjustable;
+    }
+
+
+    /**
      * @notice set new toll ratio
      * @dev only owner can call
      * @param _tollRatio new toll ratio in 18 digits
@@ -437,14 +449,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         view
         override
         returns (
-            bool isUpdatable,
+            bool isAdjustable,
             int256 cost,
             uint256 newQuoteAssetReserve,
             uint256 newBaseAssetReserve
         )
     {
-        isUpdatable = isOverSpreadLimit();
-        if (isUpdatable) {
+        isAdjustable = isOverSpreadLimit();
+        if (isAdjustable) {
             uint256 targetPrice = getUnderlyingPrice();
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
@@ -456,7 +468,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
                 cost = _budget.toInt();
             }
-            isUpdatable = newQuoteAssetReserve != _quoteAssetReserve;
+            isAdjustable = newQuoteAssetReserve != _quoteAssetReserve;
         }
     }
 
@@ -465,7 +477,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         external
         view
         returns (
-            bool isUpdatable,
+            bool isAdjustable,
             int256 cost,
             uint256 newQuoteAssetReserve,
             uint256 newBaseAssetReserve
@@ -482,9 +494,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 _positionSize
             );
             if (scaleNum == scaleDenom) {
-                isUpdatable = false;
+                isAdjustable = false;
             } else {
-                isUpdatable = true;
+                isAdjustable = true;
                 (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(
                     _quoteAssetReserve,
                     _baseAssetReserve,

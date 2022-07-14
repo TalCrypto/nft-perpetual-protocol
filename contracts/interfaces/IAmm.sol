@@ -64,7 +64,7 @@ interface IAmm {
         external
         view
         returns (
-            bool isUpdatable,
+            bool isAdjustable,
             int256 cost,
             uint256 newQuoteAssetReserve,
             uint256 newBaseAssetReserve
@@ -118,6 +118,8 @@ interface IAmm {
     function getReserve() external view returns (uint256, uint256);
 
     function open() external view returns (bool);
+
+    function adjustable() external view returns (bool);
 
     // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);

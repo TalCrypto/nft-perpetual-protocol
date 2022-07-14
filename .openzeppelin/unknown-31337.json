@@ -2,19 +2,19 @@
   "manifestVersion": "3.2",
   "admin": {
     "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    "txHash": "0x95a4518c7d03c293dfb67b5b41c14a7b23c6ea02b40dde17d937630264036b14"
+    "txHash": "0xf84a3ca5c4d2294783c0bb1487cd06642798adaf39add811bee9de9b12770e92"
   },
   "proxies": [
     {
       "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-      "txHash": "0xf623591f6a4cf6299293c071e0bdb089a5f5ba3084f3b980813ee26a57b8c7b3",
+      "txHash": "0x26bdec96be65e88d93c1a76b9a62806c67427f1dacb5761208e0035c451ae00a",
       "kind": "transparent"
     }
   ],
   "impls": {
-    "82d2a62aacf6024f93b2b331a776279a80738c95cf14b1aa7b087c58d638f08a": {
+    "59718bcaff85093308957bf5732533f16f4684d67b8aadd3345c6c87a14a393f": {
       "address": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-      "txHash": "0xb3bf7445ee7747c95fa8c6701457d8f809f402f09ec083403327aa1efe85a29c",
+      "txHash": "0x5362e0251fea8ae522bffc1e7403442a7eab9149db306a92b35ef4d416630ded",
       "layout": {
         "storage": [
           {
@@ -182,7 +182,7 @@
             "label": "liquidityChangedSnapshots",
             "offset": 0,
             "slot": "165",
-            "type": "t_array(t_struct(LiquidityChangedSnapshot)12889_storage)dyn_storage",
+            "type": "t_array(t_struct(LiquidityChangedSnapshot)12951_storage)dyn_storage",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:128"
           },
@@ -262,7 +262,7 @@
             "label": "priceFeed",
             "offset": 0,
             "slot": "175",
-            "type": "t_contract(IPriceFeed)13454",
+            "type": "t_contract(IPriceFeed)13521",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:140"
           },
@@ -275,12 +275,20 @@
             "src": "contracts\\Amm.sol:141"
           },
           {
+            "label": "adjustable",
+            "offset": 21,
+            "slot": "175",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:142"
+          },
+          {
             "label": "__gap",
             "offset": 0,
             "slot": "176",
             "type": "t_array(t_uint256)50_storage",
             "contract": "Amm",
-            "src": "contracts\\Amm.sol:142"
+            "src": "contracts\\Amm.sol:143"
           }
         ],
         "types": {
@@ -288,7 +296,7 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_struct(LiquidityChangedSnapshot)12889_storage)dyn_storage": {
+          "t_array(t_struct(LiquidityChangedSnapshot)12951_storage)dyn_storage": {
             "label": "struct IAmm.LiquidityChangedSnapshot[]",
             "numberOfBytes": "32"
           },
@@ -316,7 +324,7 @@
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IPriceFeed)13454": {
+          "t_contract(IPriceFeed)13521": {
             "label": "contract IPriceFeed",
             "numberOfBytes": "20"
           },
@@ -324,7 +332,7 @@
             "label": "int256",
             "numberOfBytes": "32"
           },
-          "t_struct(LiquidityChangedSnapshot)12889_storage": {
+          "t_struct(LiquidityChangedSnapshot)12951_storage": {
             "label": "struct IAmm.LiquidityChangedSnapshot",
             "members": [
               {
