@@ -735,7 +735,7 @@ describe("ClearingHouse Test", () => {
         .withArgs(
           alice.address, // trader
           amm.address, // amm
-          "68455640744970299586", // positionNotional
+          "68455640744970299585", // positionNotional
           toFullDigitBN(5), // positionSize
           "855695509312128744", // liquidationFee
           carol.address, // liquidator
@@ -746,7 +746,7 @@ describe("ClearingHouse Test", () => {
           alice.address, // trader
           amm.address, // amm
           "19274981656679729691", // margin
-          "68455640744970299586", // positionNotional
+          "68455640744970299585", // positionNotional
           toFullDigitBN(-5), // exchangedPositionSize
           toFullDigitBN(0), // fee
           toFullDigitBN(15), // positionSizeAfter
