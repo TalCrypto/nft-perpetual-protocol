@@ -299,6 +299,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         addReserveSnapshot();
+        liquidityChangedSnapshots.push(
+            LiquidityChangedSnapshot({
+                cumulativeNotional: cumulativeNotional,
+                baseAssetReserve: _baseAssetReserve,
+                quoteAssetReserve: _quoteAssetReserve,
+                totalPositionSize: totalPositionSize
+            })
+        );
         emit Repeg(quoteAssetReserve, baseAssetReserve);
     }
 
@@ -443,7 +451,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
-    //TODO add updatable var
     function getFormulaicRepegResult(uint256 _budget)
         external
         view
@@ -455,8 +462,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        isAdjustable = isOverSpreadLimit();
-        if (isAdjustable) {
+        if (adjustable && isOverSpreadLimit()) {
             uint256 targetPrice = getUnderlyingPrice();
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
@@ -472,7 +478,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
     }
 
-    //TODO add updatable var
     function getFormulaicUpdateKResult(int256 budget)
         external
         view
@@ -483,7 +488,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        if (budget != 0) {
+        if (adjustable && budget != 0) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost

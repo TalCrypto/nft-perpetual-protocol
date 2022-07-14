@@ -1334,7 +1334,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function repegAmm(IAmm _amm) private {
-        if(!_amm.adjustable()) return;
         address quote = address(_amm.quoteAsset());
         uint256 budget = totalFees[address(_amm)][quote] / 2;
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
@@ -1346,7 +1345,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // fundingImbalance is positive, clearing house receives funds
     function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
-        if(!_amm.adjustable()) return;
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
         int256 budget;
