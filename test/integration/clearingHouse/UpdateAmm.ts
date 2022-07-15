@@ -16,6 +16,7 @@ import { PnlCalcOption, Side } from "../../helper/contract";
 import { fullDeploy } from "../../helper/deploy";
 import { toFullDigitBN } from "../../helper/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 use(solidity);
 
@@ -78,7 +79,7 @@ describe("ClearingHouse Test", () => {
     await mockPriceFeed.setPrice(marketPrice);
   }
 
-  beforeEach(async () => {
+  async function deployEnvFixture() {
     const account = await ethers.getSigners();
     admin = account[0];
     alice = account[1];
@@ -101,16 +102,102 @@ describe("ClearingHouse Test", () => {
     await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    await amm.setAdjustable(true);
+    await amm.setCanLowerK(true);
 
     await syncAmmPriceToOracle();
+  }
+
+  beforeEach(async () => {
+    await loadFixture(deployEnvFixture);
   });
 
-  describe("getPersonalPositionWithFundingPayment", () => {
-    it("return 0 margin when alice's position is underwater", async () => {
-      // given alice takes 10x short position (size: -150) with 60 margin
-      await approve(alice, clearingHouse.address, 60);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
-    });
+  describe("repeg test", () => {
+    describe("open position", () => {
+      describe("when open position not to make mark-oracle divergence exceeds", () => {
+        // B = 100, Q = 1000
+        it("repeg doesn't occur", async () => {
+          await approve(alice, clearingHouse.address, 1);
+          const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(10), toFullDigitBN(150));
+          // B = 101.0101, Q = 990
+          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(990));
+          expect(await amm.baseAssetReserve()).eql(toFullDigitBN(100000).mul(toFullDigitBN(1)).div(toFullDigitBN(990)).add(1));
+          await expect(tx).to.not.emit(clearingHouse, "Repeg");
+        })
+
+      })
+      describe("when open short position to make mark-oracle divergence exceeds down", () => {
+        describe("when clearing house has sufficient token", ()=>{
+          beforeEach(async ()=>{
+            await quoteToken.transfer(clearingHouse.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
+          })
+          it("repeg occurs with profit of insurance funding", async () => {
+            // given alice takes 10x short position (size: -150) with 60 margin
+            await approve(alice, clearingHouse.address, 60);
+            const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
+            // B = 250, Q = 2500
+            expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(2500));
+            expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
+            await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(2500), toFullDigitBN(250), toFullDigitBN(-3150));
+            expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
+            expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
+          })
+        })
+        describe("when clearing house has insufficient token", ()=>{
+          it("repeg occurs with profit of insurance funding, same as the balance of clearing house", async () => {
+            await approve(alice, clearingHouse.address, 60);
+            const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
+            // B = 250, Q = 2500
+            expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(2500));
+            expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
+            await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(2500), toFullDigitBN(250), toFullDigitBN(-3150));
+            expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
+            expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
+          })
+        })
+      })
+      describe("when open long position to make mark-oracle divergence exceeds up", ()=>{
+        it("repeg occurs with profit of insurance funding", async () => {
+          await approve(alice, clearingHouse.address, 200);
+          const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0));
+          // B = 250, Q = 2500
+          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(500));
+          expect(await amm.baseAssetReserve()).eql(toFullDigitBN(50));
+          await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(500), toFullDigitBN(50), toFullDigitBN(-750));
+          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
+          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
+        })
+      })
+      describe("when open short position to make mark-oracle divergence exceeds up", ()=>{
+        describe("when total fee is not enough for charging repegging cost", ()=>{
+          it("repeg doesn't occur", async () => {
+            mockPriceFeed.setPrice(toFullDigitBN(1));
+            await approve(alice, clearingHouse.address, 60);
+            const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
+            await expect(tx).to.not.emit(clearingHouse, "Repeg")
+            expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(400));
+            expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
+          })
+        })
+        describe("when total fee is enough for charging repegging cost", ()=>{
+          it("repeg occurs", async () => {
+            amm.setSpreadRatio(toFullDigitBN(0.5));
+            mockPriceFeed.setPrice(toFullDigitBN(1));
+            expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(0));
+            expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
+            await approve(alice, clearingHouse.address, 60);
+            const tx = await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
+            await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(380), toFullDigitBN(250), toFullDigitBN(30));
+            expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(30));
+            expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(30));
+            expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(30));
+            expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5030));
+            expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(380));
+            expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
+          })
+        })
+      })
+    })
   });
 
 });

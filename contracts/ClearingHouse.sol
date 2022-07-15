@@ -642,8 +642,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 ? totalFee - ammFundingPaymentProfitAbs
                 : 0;
         } else {
-            transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
-            totalFees[address(_amm)][address(quoteAsset)] = totalFee + ammFundingPaymentProfit.abs();
+            uint256 amount = transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
+            totalFees[address(_amm)][address(quoteAsset)] = totalFee + amount;
         }
         formulaicUpdateK(_amm, ammFundingPaymentProfit);
         netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
@@ -1126,7 +1126,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // transfer spread to market in order to use it to make market better
             if (hasSpread) {
-                transferToInsuranceFund(quoteAsset, spread);
+                spread = transferToInsuranceFund(quoteAsset, spread);
                 netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += int256(spread);
                 totalFees[address(_amm)][address(quoteAsset)] += spread;
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
@@ -1175,9 +1175,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
-    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal {
+    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal returns(uint256 amount){
         uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
-        _token.transfer(address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
+        amount = totalTokenBalance < _amount ? totalTokenBalance : _amount;
+        _token.transfer(address(insuranceFund), amount);
         //_transfer(_token, address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
     }
 
@@ -1381,12 +1382,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             } else {
                 return false;
             }
+            netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
         } else {
             // increase the totalFees
-            transferToInsuranceFund(IERC20(_quote), cost);
-            totalFees[_amm][_quote] = totalFee + cost;
+            uint256 amount = transferToInsuranceFund(IERC20(_quote), cost);
+            totalFees[_amm][_quote] = totalFee + amount;
+            netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] + amount.toInt();
         }
-        netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
         return true;
     }
 }
