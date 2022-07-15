@@ -11,6 +11,7 @@ import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 import "hardhat/console.sol";
+
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
@@ -140,6 +141,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     IPriceFeed public priceFeed;
     bool public override open;
     bool public override adjustable;
+    bool public canLowerK;
     uint256[50] private __gap;
 
     //**********************************************************//
@@ -406,6 +408,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         adjustable = _adjustable;
     }
 
+    /**
+     * @notice set `canLowerK` flag. Amm is open to decrease K adjustment if `canLowerK` is true. Default is false.
+     * @dev only owner can call this function
+     * @param _canLowerK open to decrease K adjustment is true, otherwise is false.
+     */
+    function setCanLowerK(bool _canLowerK) external onlyOwner {
+        if (canLowerK == _canLowerK) return;
+        canLowerK = _canLowerK;
+    }
 
     /**
      * @notice set new toll ratio
@@ -478,7 +489,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
     }
 
-    function getFormulaicUpdateKResult(int256 budget)
+    function getFormulaicUpdateKResult(int256 _budget)
         external
         view
         returns (
@@ -488,14 +499,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        if (adjustable && budget != 0) {
+        if (adjustable && (_budget > 0 || (_budget < 0 && canLowerK))) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost
             (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(
                 _quoteAssetReserve,
                 _baseAssetReserve,
-                budget,
+                _budget,
                 _positionSize
             );
             if (scaleNum == scaleDenom) {

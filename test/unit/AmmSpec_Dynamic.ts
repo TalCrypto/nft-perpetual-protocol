@@ -46,6 +46,7 @@ describe("Amm Unit Test", () => {
     await amm.setCounterParty(admin.address);
     await amm.setOpen(true);
     await amm.setAdjustable(true);
+    await amm.setCanLowerK(true);
   }
 
   beforeEach(async () => {
@@ -465,6 +466,14 @@ describe("Amm Unit Test", () => {
           expect(res.cost).to.be.equal(valueAfter.sub(valueBefore));
         })
       });
+      describe("when budget is negative and canLowerK is false", async () => {
+        const budget = toFullDigitBN(-0.5);
+        it("should be updatable", async () => {
+          amm.setCanLowerK(false);
+          const res = await amm.getFormulaicUpdateKResult(budget);
+          expect(res.isAdjustable).to.be.false;
+        });
+      });
     });
 
     describe("when there are more short open interests", () => {
@@ -590,6 +599,14 @@ describe("Amm Unit Test", () => {
           const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
           expect(res.cost).to.be.equal(valueBefore.sub(valueAfter).add(1));
         })
+      });
+      describe("when budget is negative and canLowerK is false", async () => {
+        const budget = toFullDigitBN(-0.5);
+        it("should be updatable", async () => {
+          amm.setCanLowerK(false);
+          const res = await amm.getFormulaicUpdateKResult(budget);
+          expect(res.isAdjustable).to.be.false;
+        });
       });
     });
 
