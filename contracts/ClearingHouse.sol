@@ -632,7 +632,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         int256 totalTraderPositionSize = _amm.getBaseAssetDelta();
         int256 ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
         IERC20 quoteAsset = _amm.quoteAsset();
-        netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += ammFundingPaymentProfit;
         uint256 totalFee = totalFees[address(_amm)][address(quoteAsset)];
         if (ammFundingPaymentProfit < 0) {
             //TODO capped funding
