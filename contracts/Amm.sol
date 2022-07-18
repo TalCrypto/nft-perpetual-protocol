@@ -473,7 +473,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        if (adjustable && isOverSpreadLimit()) {
+        if (open && adjustable && isOverSpreadLimit()) {
             uint256 targetPrice = getUnderlyingPrice();
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
@@ -499,7 +499,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        if (adjustable && (_budget > 0 || (_budget < 0 && canLowerK))) {
+        if (open && adjustable && (_budget > 0 || (_budget < 0 && canLowerK))) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost

@@ -291,4 +291,110 @@ describe("ClearingHouse Test", () => {
       });
     });
   });
+
+  describe("k-adjustment test when payFunding: when alice.size = 37.5 & bob.size = -137.5", () => {
+    beforeEach(async () => {
+      // given alice takes 2x long position (37.5B) with 300 margin
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
+      // repeg occurs so that B = 62.5, Q = 625
+
+      // given bob takes 1x short position (-137.5B) with 429.6875 margin
+      await approve(bob, clearingHouse.address, 500);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(429.6875), toFullDigitBN(1), toFullDigitBN(500));
+      // repeg occurs so that B = 200, Q = 2000
+
+      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      // 300 (alice's margin) + 1200 (bob' margin) - cost of repeg = 0
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(0));
+    });
+
+    describe("when oracle twap is higher than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(10.1));
+      });
+      it("should increase k because funding payment is positive", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(729.6875));
+        // funding imbalance cost = 10
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+        const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
+        const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
+        expect(Number(baseAssetReserve) / 200).above(1);
+        expect(Number(quoteAssetReserve) / 200).above(1);
+        expect(Number(quoteAssetReserve) / Number(baseAssetReserve)).eq(10);
+      });
+    });
+
+    describe("when oracle twap is lower than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(9.9));
+      });
+      it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(729.6875));
+        // funding imbalance cost = -10
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+        const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
+        const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
+        expect(Number(baseAssetReserve)).eq(200);
+        expect(Number(quoteAssetReserve)).eq(2000);
+      });
+    });
+  });
+
+  describe("k-adjustment test when payFunding: when alice.size = 37.5 & bob.size = -17.5", () => {
+    beforeEach(async () => {
+      // given alice takes 2x long position (37.5B) with 300 margin
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
+      // repeg occurs so that B = 62.5, Q = 625
+
+      // given bob takes 1x short position (-17.5B) with 136.71875 margin
+      await approve(bob, clearingHouse.address, 500);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(136.71875), toFullDigitBN(1), toFullDigitBN(500));
+      // repeg occurs so that B = 80, Q = 800
+
+      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      // 300 (alice's margin) + 136.71875 (bob' margin) + cost of repeg = 199.0625
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(199.0625));
+    });
+
+    describe("when oracle twap is higher than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(10.1));
+      });
+      it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than revenue since last funding", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(237.65625));
+        // funding imbalance cost = -2
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+        const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
+        const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
+        expect(Number(baseAssetReserve)).eq(80);
+        expect(Number(quoteAssetReserve)).eq(800);
+      });
+    });
+
+    describe("when oracle twap is lower than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(9.9));
+      });
+      it("should increase k because funding payment is positive", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(237.65625));
+        // funding imbalance cost = 2
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+        const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
+        const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
+        expect(Number(baseAssetReserve) / 80).above(1);
+        expect(Number(quoteAssetReserve) / 800).above(1);
+        expect(Number(quoteAssetReserve) / Number(baseAssetReserve)).eq(10);
+      });
+    });
+  });
 });

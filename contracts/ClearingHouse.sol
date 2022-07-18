@@ -1349,13 +1349,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
         int256 budget;
-        if (fundingImbalance < 0) {
+        if (fundingImbalance > 0) {
+            // positive cost is period revenue, give back half in k increase
             budget = fundingImbalance / 2;
-        } else if (netRevenue < fundingImbalance) {
+        } else if (netRevenue < -fundingImbalance) {
+            // cost exceeded period revenue, take back half in k decrease
             if (netRevenue < 0) {
-                budget = -fundingImbalance / 2;
+                budget = fundingImbalance / 2;
             } else {
-                budget = (netRevenue - fundingImbalance) / 2;
+                budget = (netRevenue + fundingImbalance) / 2;
             }
         }
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
