@@ -18,8 +18,6 @@ import { toFullDigitBN } from "../../helper/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
-use(solidity);
-
 describe("ClearingHouse Test", () => {
   let admin: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -159,14 +157,14 @@ describe("ClearingHouse Test", () => {
         it("should be able to liquidate by backstop and repeg occurs with cost 0", async () => {
           await approve(alice, clearingHouse.address, 60);
           await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(1910));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(8150));
+          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(5060));
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
           expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
           await clearingHouse.connect(bob).liquidate(amm.address, alice.address);
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(5000));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(4966.25));
+          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(8150.0));
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(1816.25));
           expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           expect(await quoteToken.balanceOf(bob.address)).eql(toFullDigitBN(5093.75));
@@ -184,8 +182,8 @@ describe("ClearingHouse Test", () => {
           await expect(tx)
             .to.emit(clearingHouse, "Repeg")
             .withArgs(amm.address, toFullDigitBN(2500), toFullDigitBN(250), toFullDigitBN(-3150));
-          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
+          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
+          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
         });
         it("should not be able to close position because of bad debt", async () => {
           await approve(alice, clearingHouse.address, 60);
@@ -200,16 +198,16 @@ describe("ClearingHouse Test", () => {
         it("should be able to liquidate by backstop and repeg occurs with cost 0", async () => {
           await approve(alice, clearingHouse.address, 60);
           await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(0));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5060));
-          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
+          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(60));
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
+          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
+          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
           await clearingHouse.connect(bob).liquidate(amm.address, alice.address);
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(3090));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(1876.25));
-          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(60));
+          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(3150.0));
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(1816.25));
+          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
+          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(3150));
           expect(await quoteToken.balanceOf(bob.address)).eql(toFullDigitBN(5093.75));
         });
       });
@@ -223,8 +221,8 @@ describe("ClearingHouse Test", () => {
         expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(500));
         expect(await amm.baseAssetReserve()).eql(toFullDigitBN(50));
         await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(500), toFullDigitBN(50), toFullDigitBN(-750));
-        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
+        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
       });
       it("should not be able to close position because of bad debt", async () => {
         await approve(alice, clearingHouse.address, 200);
@@ -241,17 +239,16 @@ describe("ClearingHouse Test", () => {
         await approve(alice, clearingHouse.address, 200);
         await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0));
         // B = 50, Q = 500
-        expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(0));
-        expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5100));
-        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(100));
+        expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(100));
+        expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
+        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
         await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
         await clearingHouse.connect(bob).liquidate(amm.address, alice.address);
-
-        expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(650.0));
-        expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(4448.75));
-        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(100.0));
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(100.0));
+        expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(750.0));
+        expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(4348.75));
+        expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(750));
         expect(await quoteToken.balanceOf(bob.address)).eql(toFullDigitBN(5001.25));
         expect(await amm.baseAssetReserve()).eql(toFullDigitBN(100));
         expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(1000));
@@ -280,12 +277,14 @@ describe("ClearingHouse Test", () => {
           const tx = await clearingHouse
             .connect(alice)
             .openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
-          await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(380), toFullDigitBN(250), toFullDigitBN(30));
-          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(30));
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(30));
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(30));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5030));
-          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(380));
+          await expect(tx)
+            .to.emit(clearingHouse, "Repeg")
+            .withArgs(amm.address, toFullDigitBN(300), toFullDigitBN(250), toFullDigitBN(150));
+          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(150));
+          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(150));
+          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(60));
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
+          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(300));
           expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
         });
       });
@@ -305,8 +304,8 @@ describe("ClearingHouse Test", () => {
       // repeg occurs so that B = 200, Q = 2000
 
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
-      // 300 (alice's margin) + 1200 (bob' margin) - cost of repeg = 0
-      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(0));
+      // 300 (alice's margin) + 429.6875 (bob' margin)  = 729.6875
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(729.6875));
     });
 
     describe("when oracle twap is higher than mark twap", () => {
@@ -315,7 +314,7 @@ describe("ClearingHouse Test", () => {
       });
       it("should increase k because funding payment is positive", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(729.6875));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(2170.3125));
         // funding imbalance cost = 10
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
@@ -333,7 +332,7 @@ describe("ClearingHouse Test", () => {
       });
       it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(729.6875));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(2170.3125));
         // funding imbalance cost = -10
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
@@ -358,8 +357,8 @@ describe("ClearingHouse Test", () => {
       // repeg occurs so that B = 80, Q = 800
 
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
-      // 300 (alice's margin) + 136.71875 (bob' margin) + cost of repeg = 199.0625
-      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(199.0625));
+      // 300 (alice's margin) + 136.71875 (bob' margin) = 436.71875
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(436.71875));
     });
 
     describe("when oracle twap is higher than mark twap", () => {
@@ -368,7 +367,7 @@ describe("ClearingHouse Test", () => {
       });
       it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than revenue since last funding", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(237.65625));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(303.28125));
         // funding imbalance cost = -2
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
@@ -385,7 +384,7 @@ describe("ClearingHouse Test", () => {
       });
       it("should increase k because funding payment is positive", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(237.65625));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(303.28125));
         // funding imbalance cost = 2
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
@@ -394,6 +393,66 @@ describe("ClearingHouse Test", () => {
         expect(Number(baseAssetReserve) / 80).above(1);
         expect(Number(quoteAssetReserve) / 800).above(1);
         expect(Number(quoteAssetReserve) / Number(baseAssetReserve)).eq(10);
+      });
+    });
+  });
+
+  describe("k-adjustment test when payFunding: when alice.size = 0.019996 & bob.size = -0.009997", () => {
+    let quoteAssetReserveBefore: BigNumber;
+    let baseAssetReserveBefore: BigNumber;
+    beforeEach(async () => {
+      // given alice takes 2x long position (0.019996B) with 0.1 margin
+      await approve(alice, clearingHouse.address, 1);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.1), toFullDigitBN(2), toFullDigitBN(0));
+      // B = 99.98000399920016, Q = 1000.2.
+
+      // given bob takes 1x short position (-0.009997B) with 0.1 margin
+      await approve(bob, clearingHouse.address, 500);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(0.1), toFullDigitBN(1), toFullDigitBN(0));
+      // B = 99.99000099990001, Q = 1000.1
+      baseAssetReserveBefore = await amm.baseAssetReserve();
+      quoteAssetReserveBefore = await amm.quoteAssetReserve();
+      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      // 0.1 (alice's margin) + 0.1 (bob' margin) = 0.2
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(0.2));
+    });
+
+    describe("when oracle twap is higher than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(10.1));
+      });
+      it("decrease K because funding cost is negative and it's absolute value is greater than revenue since last funding", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
+        await clearingHouse.payFunding(amm.address);
+        const fraction = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
+        const positionSize = await amm.getBaseAssetDelta();
+        expect(fraction.mul(positionSize)).below(toFullDigitBN(0));
+        const baseAssetReserve = await amm.baseAssetReserve();
+        const quoteAssetReserve = await amm.quoteAssetReserve();
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(
+          quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)
+        );
+      });
+    });
+
+    describe("when oracle twap is lower than mark twap", () => {
+      beforeEach(async () => {
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(9.9));
+      });
+      it("decrease K because total position size is positive and oracle > mark", async () => {
+        await gotoNextFundingTime();
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
+        await clearingHouse.payFunding(amm.address);
+        const baseAssetReserve = await amm.baseAssetReserve();
+        const quoteAssetReserve = await amm.quoteAssetReserve();
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(
+          quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)
+        );
       });
     });
   });
