@@ -1175,7 +1175,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
-    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal returns(uint256 amount){
+    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal returns (uint256 amount) {
         uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
         amount = totalTokenBalance < _amount ? totalTokenBalance : _amount;
         _token.transfer(address(insuranceFund), amount);
@@ -1358,7 +1358,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 budget = (netRevenue - fundingImbalance) / 2;
             }
         }
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budget);
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
+            budget
+        );
         if (isAdjustable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
