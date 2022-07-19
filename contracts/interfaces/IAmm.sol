@@ -50,7 +50,7 @@ interface IAmm {
     // VIEW
     //
 
-    function getFormulaicRepegResult(uint256 budget)
+    function getFormulaicRepegResult(uint256 budget, bool adjustK)
         external
         view
         returns (

@@ -462,7 +462,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
-    function getFormulaicRepegResult(uint256 _budget)
+    function getFormulaicRepegResult(uint256 _budget, bool _adjustK)
         external
         view
         override
@@ -482,10 +482,24 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
             cost = AmmMath.adjustPegCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
             if (cost > 0 && uint256(cost) > _budget) {
-                newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
-                cost = _budget.toInt();
+                if (_adjustK && canLowerK) {
+                    // scale down K by 0.1% that returns a profit of clearing house
+                    (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        999,
+                        1000
+                    );
+                    isAdjustable = true;
+                } else {
+                    isAdjustable = false;
+                    // newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
+                    // cost = _budget.toInt();
+                }
+            } else {
+                isAdjustable = newQuoteAssetReserve != _quoteAssetReserve;
             }
-            isAdjustable = newQuoteAssetReserve != _quoteAssetReserve;
         }
     }
 

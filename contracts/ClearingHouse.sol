@@ -1330,7 +1330,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address quote = address(_amm.quoteAsset());
         // Only a portion of the protocol fees are allocated to repegging
         uint256 budget = totalFees[address(_amm)][quote] / 2;
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(budget);
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
+            budget,
+            true
+        );
         if (isAdjustable && applyCost(address(_amm), quote, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);

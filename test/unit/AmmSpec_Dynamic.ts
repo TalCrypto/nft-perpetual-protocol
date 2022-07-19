@@ -74,7 +74,7 @@ describe("Amm Unit Test", () => {
       await amm.setAdjustable(false);
     });
     it("getFormulaicRepegResult returns not adjustable", async () => {
-      const res = await amm.getFormulaicRepegResult(toFullDigitBN(10));
+      const res = await amm.getFormulaicRepegResult(toFullDigitBN(10), false);
       expect(res.isAdjustable).to.be.false;
     });
     it("getFormulaicUpdateKResult returns not adjustable", async () => {
@@ -100,7 +100,7 @@ describe("Amm Unit Test", () => {
         describe("when budget is enough", () => {
           const budget = toFullDigitBN(1000);
           it("should be updatable with positive cost smaller than budget", async () => {
-            const res = await amm.getFormulaicRepegResult(budget);
+            const res = await amm.getFormulaicRepegResult(budget, false);
             expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
             expect(res.isAdjustable).to.be.true;
             expect(res.cost).to.be.below(budget);
@@ -108,7 +108,7 @@ describe("Amm Unit Test", () => {
           });
           it("cost should be the same as the difference of position notional values between after and before", async () => {
             const valueBefore = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
-            const res = await amm.getFormulaicRepegResult(budget);
+            const res = await amm.getFormulaicRepegResult(budget, false);
             await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
             const valueAfter = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
             expect(res.cost).to.be.equal(valueAfter.sub(valueBefore));
@@ -116,14 +116,21 @@ describe("Amm Unit Test", () => {
         });
         describe("when budget is not enough", () => {
           const budget = toFullDigitBN(10);
-          it("should be updatable with cost same as budget", async () => {
-            const res = await amm.getFormulaicRepegResult(budget);
+          it("should not be updatable when adjustK = false", async () => {
+            const res = await amm.getFormulaicRepegResult(budget, false);
+            expect(res.isAdjustable).to.be.false;
+          });
+          it("should be updatable and decrease K by 0.1% when adjustK = true", async () => {
+            const res = await amm.getFormulaicRepegResult(budget, true);
             expect(res.isAdjustable).to.be.true;
-            expect(res.cost).to.be.equal(budget);
+            const baseAssetReserve = await amm.baseAssetReserve();
+            const quoteAssetReserve = await amm.quoteAssetReserve();
+            expect(res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(0.999));
+            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserve)).eq("998999999999999999");
           });
           it("cost should be the same as the difference of position notional values between after and before", async () => {
             const valueBefore = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
-            const res = await amm.getFormulaicRepegResult(budget);
+            const res = await amm.getFormulaicRepegResult(budget, true);
             await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
             const valueAfter = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
             expect(res.cost).to.be.equal(valueAfter.sub(valueBefore));
@@ -138,7 +145,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
@@ -151,14 +158,14 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should be updatable with negative cost", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.below(toFullDigitBN(0));
         });
         it("cost should be the same as the difference of position notional values between after and before", async () => {
           const valueBefore = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
           const valueAfter = await amm.getOutputPrice(Dir.ADD_TO_AMM, positionSize);
           expect(res.cost).to.be.equal(valueAfter.sub(valueBefore));
@@ -172,7 +179,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
@@ -195,7 +202,7 @@ describe("Amm Unit Test", () => {
         describe("when budget is enough", () => {
           const budget = toFullDigitBN(1000);
           it("should be updatable with positive cost smaller than budget", async () => {
-            const res = await amm.getFormulaicRepegResult(budget);
+            const res = await amm.getFormulaicRepegResult(budget, false);
             expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
             expect(res.isAdjustable).to.be.true;
             expect(res.cost).to.be.below(budget);
@@ -203,7 +210,7 @@ describe("Amm Unit Test", () => {
           });
           it("cost should be the same as the difference of position notional values between after and before", async () => {
             const valueBefore = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-            const res = await amm.getFormulaicRepegResult(budget);
+            const res = await amm.getFormulaicRepegResult(budget, false);
             await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
             const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
             expect(res.cost).to.be.equal(valueBefore.sub(valueAfter));
@@ -211,17 +218,17 @@ describe("Amm Unit Test", () => {
         });
         describe("when budget is not enough", () => {
           const budget = toFullDigitBN(10);
-          it("should be updatable with cost same as budget", async () => {
-            const res = await amm.getFormulaicRepegResult(budget);
-            expect(res.isAdjustable).to.be.true;
-            expect(res.cost).to.be.equal(budget);
+          it("should not be updatable when adjustK = false", async () => {
+            const res = await amm.getFormulaicRepegResult(budget, false);
+            expect(res.isAdjustable).to.be.false;
           });
-          it("cost should be the same as the difference of position notional values between after and before", async () => {
-            const valueBefore = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-            const res = await amm.getFormulaicRepegResult(budget);
-            await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
-            const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-            expect(res.cost).to.be.equal(valueBefore.sub(valueAfter));
+          it("should be updatable and decrease K by 0.1% when adjustK = true", async () => {
+            const res = await amm.getFormulaicRepegResult(budget, true);
+            expect(res.isAdjustable).to.be.true;
+            const baseAssetReserve = await amm.baseAssetReserve();
+            const quoteAssetReserve = await amm.quoteAssetReserve();
+            expect(res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(0.999));
+            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserve)).eq("998999099999999999");
           });
         });
       });
@@ -233,7 +240,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
@@ -246,14 +253,14 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should be updatable with negative cost", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.below(toFullDigitBN(0));
         });
         it("cost should be the same as the difference of position notional values between after and before", async () => {
           const valueBefore = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
           const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
           expect(res.cost).to.be.equal(valueBefore.sub(valueAfter));
@@ -267,7 +274,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
@@ -287,7 +294,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should be updatable to oracle price with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.equal(budget);
@@ -300,7 +307,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
@@ -312,7 +319,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
@@ -325,7 +332,7 @@ describe("Amm Unit Test", () => {
           await priceFeed.setPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
-          const res = await amm.getFormulaicRepegResult(budget);
+          const res = await amm.getFormulaicRepegResult(budget, false);
           expect(res.isAdjustable).to.be.false;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });

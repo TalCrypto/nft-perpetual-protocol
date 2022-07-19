@@ -256,36 +256,16 @@ describe("ClearingHouse Test", () => {
     });
     describe("when open short position to make mark-oracle divergence exceeds up", () => {
       describe("when total fee is not enough for charging repegging cost", () => {
-        it("repeg doesn't occur", async () => {
-          mockPriceFeed.setPrice(toFullDigitBN(1));
-          await approve(alice, clearingHouse.address, 60);
-          const tx = await clearingHouse
-            .connect(alice)
-            .openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
-          await expect(tx).to.not.emit(clearingHouse, "Repeg");
-          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(400));
-          expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
-        });
-      });
-      describe("when total fee is enough for charging repegging cost", () => {
-        it("repeg occurs", async () => {
+        it("scale down reserves by 0.1%", async () => {
           amm.setSpreadRatio(toFullDigitBN(0.5));
           mockPriceFeed.setPrice(toFullDigitBN(1));
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(0));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
           await approve(alice, clearingHouse.address, 60);
           const tx = await clearingHouse
             .connect(alice)
             .openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
           await expect(tx)
-            .to.emit(clearingHouse, "Repeg")
-            .withArgs(amm.address, toFullDigitBN(300), toFullDigitBN(250), toFullDigitBN(150));
-          expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eql(toFullDigitBN(150));
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eql(toFullDigitBN(150));
-          expect(await quoteToken.balanceOf(clearingHouse.address)).eql(toFullDigitBN(60));
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eql(toFullDigitBN(5000));
-          expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(300));
-          expect(await amm.baseAssetReserve()).eql(toFullDigitBN(250));
+            .emit(clearingHouse, "Repeg")
+            .withArgs(amm.address, toFullDigitBN(400 * 0.999), toFullDigitBN(250 * 0.999), "-902255639097744360");
         });
       });
     });
