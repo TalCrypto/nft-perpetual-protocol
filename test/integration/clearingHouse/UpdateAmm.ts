@@ -259,10 +259,11 @@ describe("ClearingHouse Test", () => {
         it("scale down reserves by 0.1%", async () => {
           amm.setSpreadRatio(toFullDigitBN(0.5));
           mockPriceFeed.setPrice(toFullDigitBN(1));
-          await approve(alice, clearingHouse.address, 60);
+          await approve(alice, clearingHouse.address, 360);
           const tx = await clearingHouse
             .connect(alice)
             .openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(0));
+          expect(await quoteToken.balanceOf(alice.address)).eq(toFullDigitBN(4640));
           await expect(tx)
             .emit(clearingHouse, "Repeg")
             .withArgs(amm.address, toFullDigitBN(400 * 0.999), toFullDigitBN(250 * 0.999), "-902255639097744360");
