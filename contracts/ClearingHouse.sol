@@ -1119,7 +1119,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // transfer spread to market in order to use it to make market better
             if (hasSpread) {
-                // transferToInsuranceFund(quoteAsset, spread);
+                quoteAsset.transferFrom(_from, address(insuranceFund), spread);
                 totalFees[address(_amm)][address(quoteAsset)] += spread;
                 netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += spread.toInt();
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
