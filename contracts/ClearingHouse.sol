@@ -1149,7 +1149,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
         if (totalTokenBalance < _amount) {
             uint256 balanceShortage = _amount - totalTokenBalance;
-            prepaidBadDebt[address(_token)] = prepaidBadDebt[address(_token)] + balanceShortage;
+            uint256 _prepaidBadDebt = prepaidBadDebt[address(_token)] + balanceShortage;
+            require(_prepaidBadDebt < _token.balanceOf(address(insuranceFund)), "wait until realize bad debt");
+            prepaidBadDebt[address(_token)] = _prepaidBadDebt;
             insuranceFund.withdraw(_token, balanceShortage);
         }
         _token.transfer(_receiver, _amount);
