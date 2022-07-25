@@ -195,7 +195,7 @@ describe("Bad Debt Test", () => {
   });
 });
 
-describe("Withdrawal Constraint Test, pause withdrawals whenever their bad debts are more than balance of IF / 10", () => {
+describe("Withdrawal Constraint Test, pause withdrawals whenever their bad debts are more than balance of IF", () => {
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
 
