@@ -22,7 +22,9 @@ import {
   TollPool__factory,
   TollPool,
   Amm__factory,
-  Amm
+  Amm,
+  Liquidator,
+  Liquidator__factory,
 } from "../../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -146,7 +148,7 @@ export async function deployProxyAmm(params: {
     spreadRatio = BigNumber.from(0),
   } = params;
   const AmmContract = await ethers.getContractFactory("Amm");
-  const instance =  (await upgrades.deployProxy(AmmContract, [
+  const instance = (await upgrades.deployProxy(AmmContract, [
     quoteAssetReserve.toString(),
     baseAssetReserve.toString(),
     toFullDigitBN(0.9).toString(), // tradeLimitRatio
@@ -156,7 +158,7 @@ export async function deployProxyAmm(params: {
     quoteAssetTokenAddr,
     fluctuation.toString(),
     tollRatio.toString(),
-    spreadRatio.toString()
+    spreadRatio.toString(),
   ])) as Amm;
   return instance;
 }
@@ -180,6 +182,11 @@ export async function deployClearingHouse(
     insuranceFund,
     trustedForwarder
   );
+  return instance;
+}
+
+export async function deployLiquidator(signer: Signer, clearingHouse: string, maintenanceMarginRatio: BigNumber): Promise<Liquidator> {
+  const instance = await new Liquidator__factory(signer).deploy(clearingHouse);
   return instance;
 }
 

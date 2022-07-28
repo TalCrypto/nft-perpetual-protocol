@@ -92,7 +92,6 @@ describe("ClearingHouse Test", () => {
     mockPriceFeed = contracts.priceFeed;
     clearingHouse = contracts.clearingHouse;
     clearingHouseViewer = contracts.clearingHouseViewer;
-    clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));

@@ -9,6 +9,7 @@ import {
   L2PriceFeedMock,
   TollPool,
   ClearingHouse,
+  Liquidator,
 } from "../../typechain-types";
 import {
   deployAmm,
@@ -19,6 +20,7 @@ import {
   deployInsuranceFund,
   deployTollPool,
   deployL2MockPriceFeed,
+  deployLiquidator,
 } from "./contract";
 import { toFullDigitBN } from "./number";
 
@@ -31,6 +33,7 @@ export interface PerpContracts {
   ammReader: AmmReader;
   clearingHouseViewer: ClearingHouseViewer;
   tollPool: TollPool;
+  liquidator: Liquidator;
 }
 
 export interface ContractDeployArgs {
@@ -118,6 +121,8 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
 
   await amm.setOpen(true);
 
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+
   return {
     quoteToken,
     priceFeed,
@@ -127,5 +132,6 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
     ammReader,
     clearingHouseViewer,
     tollPool,
+    liquidator,
   };
 }
