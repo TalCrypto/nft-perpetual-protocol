@@ -11,6 +11,7 @@ import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipi
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
+import { TransferHelper } from "./utils/TransferHelper.sol";
 import "hardhat/console.sol";
 
 // note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
@@ -18,6 +19,7 @@ import "hardhat/console.sol";
 contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
+    using TransferHelper for address;
 
     //
     // EVENTS
@@ -315,7 +317,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         setPosition(_amm, trader, position);
         // transfer token from trader
-        quoteToken.transferFrom(trader, address(this), _addedMargin);
+        address(quoteToken).safeTransferFrom(trader, address(this), _addedMargin);
         //_transferFrom(quoteToken, trader, address(this), _addedMargin);
         emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
         formulaicRepegAmm(_amm);
@@ -392,7 +394,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
         // transfer token based on settledValue. no insurance fund support
         if (settledValue > 0) {
-            _amm.quoteAsset().transfer(trader, settledValue);
+            address(_amm.quoteAsset()).safeTransfer(trader, settledValue);
             //_transfer(_amm.quoteAsset(), trader, settledValue);
         }
         // emit event
@@ -477,7 +479,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // transfer the actual token between trader and vault
             if (positionResp.marginToVault > 0) {
-                quoteToken.transferFrom(trader, address(this), positionResp.marginToVault.abs());
+                address(quoteToken).safeTransferFrom(trader, address(this), positionResp.marginToVault.abs());
                 //_transferFrom(quoteToken, trader, address(this), positionResp.marginToVault.abs());
             } else if (positionResp.marginToVault < 0) {
                 withdraw(quoteToken, trader, positionResp.marginToVault.abs());
@@ -1119,7 +1121,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // transfer spread to market in order to use it to make market better
             if (hasSpread) {
-                quoteAsset.transferFrom(_from, address(insuranceFund), spread);
+                address(quoteAsset).safeTransferFrom(_from, address(insuranceFund), spread);
                 totalFees[address(_amm)][address(quoteAsset)] += spread;
                 netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += spread.toInt();
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
@@ -1128,7 +1130,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // transfer toll to feePool
             if (hasToll) {
                 require(address(feePool) != address(0), "Invalid"); //Invalid feePool
-                quoteAsset.transferFrom(_from, address(feePool), toll);
+                address(quoteAsset).safeTransferFrom(_from, address(feePool), toll);
                 //_transferFrom(quoteAsset, _from, address(feePool), toll);
             }
 
@@ -1154,7 +1156,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             prepaidBadDebt[address(_token)] = _prepaidBadDebt;
             insuranceFund.withdraw(_token, balanceShortage);
         }
-        _token.transfer(_receiver, _amount);
+        address(_token).safeTransfer(_receiver, _amount);
         //_transfer(_token, _receiver, _amount);
     }
 
@@ -1172,7 +1174,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal {
         uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
-        _token.transfer(address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
+        address(_token).safeTransfer(address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
         //_transfer(_token, address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
     }
 
