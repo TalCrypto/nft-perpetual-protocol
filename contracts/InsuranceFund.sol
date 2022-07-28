@@ -11,11 +11,11 @@ import { IMinter } from "./interfaces/IMinter.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IInflationMonitor } from "./interfaces/IInflationMonitor.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
-import { TransferHelper } from "./utils/TransferHelper.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
-    using TransferHelper for address;
+    using SafeERC20 for IERC20;
     //
     // EVENTS
     //
@@ -156,7 +156,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
         }
         require(quoteBalance >= _amount, "Fund not enough");
 
-        address(_quoteToken).safeTransfer(_msgSender(), _amount);
+        _quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
     }
 
@@ -299,14 +299,14 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
         }
 
         orderedTokens = new IERC20[](tokens.length - 1);
-        uint256 j;
+        uint256 k;
         for (uint256 i = 0; i < tokens.length; i++) {
             // jump to the next token
             if (tokens[i] == _exceptionQuoteToken) {
                 continue;
             }
-            orderedTokens[j] = tokens[i];
-            j++;
+            orderedTokens[k] = tokens[i];
+            k++;
         }
     }
 
