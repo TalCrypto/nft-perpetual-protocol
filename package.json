@@ -45,6 +45,7 @@
     "@apollo/client": "^3.6.9",
     "@openzeppelin/contracts": "^4.6.0",
     "@openzeppelin/contracts-upgradeable": "^4.6.0",
-    "graphql": "^16.5.0"
+    "graphql": "^16.5.0",
+    "react": "^18.2.0"
   }
 }

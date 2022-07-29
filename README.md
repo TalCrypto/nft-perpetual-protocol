@@ -29,7 +29,7 @@ npx hardhat help
 2. In one of the windows/tabs run `yarn hardhat-local` or `npm run hardhat-local`
 3. In another window/tab run `yarn graph-local` or `npm run graph-local`
 4. Deploy the contracts:
-  - `npx hardhat run .\scripts\full-deploy-hardhat.ts`
+  - `npx hardhat run ./scripts/full-deploy-hardhat.ts`
   
 *NOTE: You can check the `deploy` task in the [hardhat.config.ts](https://github.com/dimitrovmaksim/hardhat-graph-demo/blob/main/hardhat.config.ts#L11) file. After compiling and deploying the contract to the local hardhat node, it will execute the built-in `graph` task from the hardhat-graph plugin. In this case it will update the abi's in the subgraph folder(nft-auction-sungraph), it will update the networks.json file with the addresses of the deployed contracts. You'll get a warning informing you that there are differences between the events in your contract's ABI and the subgraph.yaml (In this case we don't want to index all the events so we can ignore the warning) If you make any changes to the sungraph.yaml or schema.graph files, you will have to run the `codegen` command in order to update the generated files. You can check more info about what each  `hardhat-graph` command does here: https://github.com/graphprotocol/hardhat-graph#tasks. This is only an example usage, you can create your own workflow that better suites your needs.*
  
