@@ -25,7 +25,7 @@ import {
   Amm,
   Liquidator,
   Liquidator__factory,
-} from "../../typechain-types";
+} from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
 // const ERC20Fake = artifacts.require("ERC20Fake") as ERC20Fake__factory

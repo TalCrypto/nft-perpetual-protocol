@@ -10,7 +10,7 @@ import {
   TollPool,
   ClearingHouse,
   Liquidator,
-} from "../../typechain-types";
+} from "../typechain-types";
 import {
   deployAmm,
   deployAmmReader,
@@ -122,6 +122,8 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
   await amm.setOpen(true);
 
   const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+
+  await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 
   return {
     quoteToken,

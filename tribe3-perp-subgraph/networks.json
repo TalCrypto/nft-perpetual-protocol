@@ -1,0 +1,10 @@
+{
+  "localhost": {
+    "ClearingHouse": {
+      "address": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f"
+    },
+    "Amm": {
+      "address": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933"
+    }
+  }
+}

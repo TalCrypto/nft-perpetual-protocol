@@ -9,3 +9,8 @@ typechain-types
 #Hardhat files
 cache
 artifacts
+# Subgraph
+tribe3-perp-subgraph/generated
+tribe3-perp-subgraph/build
+# Matchstick
+tribe3-perp-subgraph/tests/.*

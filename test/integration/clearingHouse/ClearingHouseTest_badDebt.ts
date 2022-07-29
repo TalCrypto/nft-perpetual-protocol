@@ -3,9 +3,9 @@ import { Signer, BigNumber, ContractTransaction, BigNumberish } from "ethers";
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import { AmmFake, ClearingHouseFake, ERC20Fake, InsuranceFundFake, L2PriceFeedMock } from "../../../typechain-types";
-import { Side } from "../../helper/contract";
-import { fullDeploy } from "../../helper/deploy";
-import { toFullDigitBN } from "../../helper/number";
+import { Side } from "../../../utils/contract";
+import { fullDeploy } from "../../../utils/deploy";
+import { toFullDigitBN } from "../../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 

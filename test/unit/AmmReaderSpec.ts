@@ -3,8 +3,8 @@ import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { AmmFake, ERC20Fake, L2PriceFeedMock, AmmReader } from "../../typechain-types";
 import { solidity } from "ethereum-waffle";
-import { deployAmm, deployAmmReader, deployErc20Fake, deployL2MockPriceFeed } from "../helper/contract";
-import { toFullDigitBN } from "../helper/number";
+import { deployAmm, deployAmmReader, deployErc20Fake, deployL2MockPriceFeed } from "../../utils/contract";
+import { toFullDigitBN } from "../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 use(solidity);

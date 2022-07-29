@@ -9,6 +9,8 @@ import "@nomiclabs/hardhat-waffle";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
+import "@graphprotocol/hardhat-graph";
+
 
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -19,11 +21,32 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   }
 });
 
+task("deploy", "Deploys the passed contract")
+  .addParam("contractName", "The name of the contract")
+  .setAction(async (taskArgs, hre) => {
+    const { contractName } = taskArgs;
+
+    await hre.run("compile");
+
+    const address = await deploy(hre, contractName);
+
+    await hre.run("graph", { contractName, address });
+  });
+
+  const deploy = async (hre: any, contractName: string): Promise<string> => {
+  const contractArtifacts = await hre.ethers.getContractFactory(contractName);
+  const contract = await contractArtifacts.deploy();
+
+  await contract.deployed();
+
+  return contract.address;
+};
+
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const PRIVATE_KEY = process.env.PRIVATE_KEY! || "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 
-const config: HardhatUserConfig = {
+const config = {
   solidity: {
     compilers: [
       {
@@ -34,7 +57,11 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  defaultNetwork: "localhost",
   networks: {
+    localhost: {
+      url: "http://localhost:8545",
+    },
     hardhat: {
       allowUnlimitedContractSize: true,
     },
@@ -46,6 +73,12 @@ const config: HardhatUserConfig = {
       url: `https://ropsten.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIVATE_KEY],
     },
+  },
+  subgraph: {
+    name: "tribe3-perp",
+  },
+  paths: {
+    subgraph: "tribe3-perp-subgraph",
   },
   etherscan: {
     apiKey: ETHERSCAN_API_KEY,

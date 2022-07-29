@@ -13,9 +13,9 @@ import {
   L2PriceFeedMock,
   Liquidator,
 } from "../../typechain-types";
-import { PnlCalcOption, Side } from "../helper/contract";
-import { fullDeploy } from "../helper/deploy";
-import { toFullDigitBN } from "../helper/number";
+import { PnlCalcOption, Side } from "../../utils/contract";
+import { fullDeploy } from "../../utils/deploy";
+import { toFullDigitBN } from "../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 

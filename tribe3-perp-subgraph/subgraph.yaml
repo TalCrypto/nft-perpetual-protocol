@@ -1,0 +1,65 @@
+specVersion: 0.0.4
+description: Tribe3 DAMM Subgraph
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: ClearingHouse
+    network: localhost
+    source:
+      address: "0x3355C1a190Dec974a6Effd55a150449b7b9887b3"
+      abi: ClearingHouse
+      startBlock: 10622201
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: ./src/clearing-house.ts
+      entities:
+        - Position
+        - AmmPosition
+        - PositionChangedEvent
+        - PositionLiquidatedEvent
+        - MarginChangedEvent
+        - Amm
+        - Trader
+        - TraderDayData
+        - CandleStick
+      abis:
+        - name: ClearingHouse
+          file: ./abis/ClearingHouse.json
+      eventHandlers:
+        - event: PositionChanged(indexed address,indexed address,uint256,uint256,int256,uint256,int256,int256,int256,uint256,uint256,uint256,int256)
+          handler: handlePositionChanged
+        - event: PositionLiquidated(indexed address,indexed address,uint256,uint256,uint256,address,uint256)
+          handler: handlePositionLiquidated
+        - event: MarginChanged(indexed address,indexed address,int256,int256)
+          handler: handleMarginChanged
+        - event: Repeg(address,uint256,uint256,int256)
+          handler: handleRepeg
+        - event: UpdateK(address,uint256,uint256,int256)
+          handler: handleUpdateK
+
+  - kind: ethereum/contract
+    name: Amm
+    network: localhost
+    source:
+      address: "0x04557bdBBa19ECD484c9B8219ba1dFC81be6c51f"
+      abi: Amm
+      startBlock: 10622645
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: ./src/amm.ts
+      entities:
+        - FundingRateUpdatedEvent
+        - Amm
+      abis:
+        - name: Amm
+          file: ./abis/Amm.json
+      eventHandlers:
+        - event: FundingRateUpdated(int256,uint256)
+          handler: handleFundingRateUpdated
+        - event: ReserveSnapshotted(uint256,uint256,uint256)
+          handler: handleReserveSnapshotted

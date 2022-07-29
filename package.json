@@ -1,10 +1,21 @@
 {
-  "name": "hardhat-project",
+  "name": "@tribe3-xyz/protocol",
+  "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
-    "lint": "prettier --write contracts/**/*.sol test/**/*.{js,ts,tsx}",
-    "test": "hardhat typechain && hardhat test"
+    "graph-codegen": "cd tribe3-perp-subgraph && graph build",
+    "graph-build": "cd tribe3-perp-subgraph && graph codegen",
+    "graph-test": "graph test",
+    "graph-local": "docker-compose up",
+    "graph-local-clean": "docker-compose down -v && docker-compose rm -v && rm -rf data/ipfs data/postgres",
+    "create-local": "graph create --node http://127.0.0.1:8020 tribe3-perp",
+    "deploy-local": "cd tribe3-perp-subgraph && graph deploy --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020 tribe3-perp",
+    "hardhat-local": "hardhat node --hostname 0.0.0.0"
   },
   "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.33.0",
+    "@graphprotocol/graph-ts": "^0.27.0",
+    "@graphprotocol/hardhat-graph": "^0.1.0-alpha.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.2",
     "@nomiclabs/hardhat-ethers": "^2.0.6",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
@@ -22,6 +33,7 @@
     "ethers": "^5.6.9",
     "hardhat": "^2.9.9",
     "hardhat-gas-reporter": "^1.0.8",
+    "matchstick-as": "^0.5.0",
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "ts-node": "^10.8.1",

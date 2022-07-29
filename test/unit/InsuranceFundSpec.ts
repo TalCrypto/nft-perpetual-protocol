@@ -2,9 +2,9 @@ import { expect, use } from "chai";
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import { AmmMock, ERC20Fake, InsuranceFundFake, InsuranceFundFake__factory } from "../../typechain-types";
-import { deployErc20Fake } from "../helper/contract";
-import { deployAmmMock } from "../helper/mockContract";
-import { toFullDigitBN } from "../helper/number";
+import { deployErc20Fake } from "../../utils/contract";
+import { deployAmmMock } from "../../utils/mockContract";
+import { toFullDigitBN } from "../../utils/number";
 
 use(solidity);
 
