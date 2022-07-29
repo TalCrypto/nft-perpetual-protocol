@@ -1,13 +1,6 @@
-import {
-  AmmPosition,
-  Position,
-  Amm,
-  TraderDayData,
-  Trader,
-  DayTradeData
-} from "../../generated/schema";
+import { AmmPosition, Position, Amm, TraderDayData, Trader, DayTradeData } from "../generated/schema";
 import { BigInt, Address, ethereum, Bytes } from "@graphprotocol/graph-ts";
-import { PositionChanged } from "../../generated/ClearingHouse/ClearingHouse";
+import { PositionChanged } from "../generated/ClearingHouse/ClearingHouse";
 
 export let BI_ZERO = BigInt.fromI32(0);
 
@@ -80,21 +73,12 @@ export function parseAmmPositionId(amm: Address, trader: Address): string {
   return amm.toHexString() + "-" + trader.toHexString();
 }
 
-export function calcNewAmmOpenNotional(
-  ammPosition: AmmPosition,
-  event: PositionChanged
-): BigInt {
-  let signedOpenNotional = ammPosition.positionSize.ge(BI_ZERO)
-    ? ammPosition.openNotional
-    : ammPosition.openNotional.neg();
+export function calcNewAmmOpenNotional(ammPosition: AmmPosition, event: PositionChanged): BigInt {
+  let signedOpenNotional = ammPosition.positionSize.ge(BI_ZERO) ? ammPosition.openNotional : ammPosition.openNotional.neg();
 
   return signedOpenNotional
     .plus(event.params.realizedPnl)
-    .plus(
-      event.params.exchangedPositionSize.ge(BI_ZERO)
-        ? event.params.positionNotional
-        : event.params.positionNotional.neg()
-    )
+    .plus(event.params.exchangedPositionSize.ge(BI_ZERO) ? event.params.positionNotional : event.params.positionNotional.neg())
     .abs();
 }
 
@@ -147,10 +131,7 @@ export function getTrader(traderAddress: Address): Trader {
   return trader!;
 }
 
-export function getTraderDayData(
-  event: ethereum.Event,
-  trader: Address
-): TraderDayData {
+export function getTraderDayData(event: ethereum.Event, trader: Address): TraderDayData {
   let _trader = getTrader(trader);
   let timestamp = event.block.timestamp.toI32();
   let dayID = timestamp / 86400;
@@ -172,10 +153,7 @@ export function getTraderDayData(
   return dayData!;
 }
 
-export function getDayTradeData(
-  event: ethereum.Event,
-  amm: Address,
-): DayTradeData {
+export function getDayTradeData(event: ethereum.Event, amm: Address): DayTradeData {
   const oneDay = 86400;
   let timestamp = event.block.timestamp.toI32();
   let timeID = timestamp / oneDay;
@@ -242,10 +220,7 @@ export function getDayTradeData(
 //   return dayData!;
 // }
 
-export function removeAddressFromList(
-  addresses: string[],
-  addressToRemove: string
-): string[] {
+export function removeAddressFromList(addresses: string[], addressToRemove: string): string[] {
   let spliceIndex = -1;
   for (let i = 0; i < addresses.length; ++i) {
     if (addressToRemove == addresses[i]) {

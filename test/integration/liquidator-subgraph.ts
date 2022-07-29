@@ -1,6 +1,6 @@
 import { expect, use } from "chai";
 import { Signer, BigNumber } from "ethers";
-import { ethers } from "hardhat";
+import { ethers, run } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import {
   AmmFake,
@@ -18,8 +18,9 @@ import { fullDeploy } from "../../utils/deploy";
 import { toFullDigitBN } from "../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { queryTraders } from "../../utils/graphql";
 
-describe("Liquidator Test", () => {
+describe("Liquidator Test with Subgraph", () => {
   let admin: SignerWithAddress;
   let accounts: SignerWithAddress[];
 
@@ -84,6 +85,9 @@ describe("Liquidator Test", () => {
     clearingHouse = contracts.clearingHouse;
     liquidator = contracts.liquidator;
 
+    await run("graph", { contractName: "ClearingHouse", address: clearingHouse.address });
+    await run("graph", { contractName: "Amm", address: amm.address });
+
     // Each of Alice & Bob have 5000 DAI
     for (let i = 1; i < 6; i++) {
       await quoteToken.transfer(accounts[i].address, toFullDigitBN(15, +(await quoteToken.decimals())));
@@ -99,12 +103,12 @@ describe("Liquidator Test", () => {
     }
   }
 
-  beforeEach(async () => {
+  before(async () => {
     await loadFixture(deployEnvFixture);
   });
 
   describe("Liquidation", () => {
-    beforeEach(async () => {
+    before(async () => {
       await clearingHouse.connect(accounts[1]).closePosition(amm.address, toFullDigitBN(0));
       //margin ratio of account 2: 0.249999999999999999
       //margin ratio of account 3: 0.126033057851239669
@@ -112,67 +116,7 @@ describe("Liquidator Test", () => {
       //margin ratio of account 5: -0.152892561983471074
     });
     it("single liquidation of underwater position", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address])).eq(ethers.BigNumber.from("390032"));
-      const tx = await liquidator.liquidate(amm.address, [accounts[4].address]);
-      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
-      await expect(tx).to.emit(liquidator, "PositionLiquidated").withArgs(amm.address, [accounts[4].address], [true], [""]);
-    });
-    it("multi liquidations of underwater positions", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address, accounts[5].address])).eq(
-        ethers.BigNumber.from("561988")
-      );
-      const tx = await liquidator.liquidate(amm.address, [accounts[4].address, accounts[5].address]);
-      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
-      await expect(tx)
-        .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(amm.address, [accounts[4].address, accounts[5].address], [true, true], ["", ""]);
-    });
-    it("single liquidation of position that is over maintenance margin ratio", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address])).eq(ethers.BigNumber.from("185877"));
-      const tx = await liquidator.liquidate(amm.address, [accounts[2].address]);
-      await expect(tx)
-        .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(amm.address, [accounts[2].address], [false], ["Margin ratio not meet criteria"]);
-    });
-    it("multi liquidations of underwater position and not", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[5].address])).eq(
-        ethers.BigNumber.from("543788")
-      );
-      const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[5].address]);
-      await expect(tx)
-        .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(amm.address, [accounts[2].address, accounts[5].address], [false, true], ["Margin ratio not meet criteria", ""]);
-    });
-    it("multi liquidations that are over maintenance margin ratio", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[3].address])).eq(
-        ethers.BigNumber.from("341455")
-      );
-      const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[3].address]);
-      await expect(tx)
-        .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(
-          amm.address,
-          [accounts[2].address, accounts[3].address],
-          [false, false],
-          ["Margin ratio not meet criteria", "Margin ratio not meet criteria"]
-        );
-    });
-  });
-  describe("Withdrawal Test", () => {
-    it("erc20 withdrawal", async () => {
-      await quoteToken.transfer(liquidator.address, toFullDigitBN("100"));
-      expect(await quoteToken.balanceOf(liquidator.address)).eql(toFullDigitBN(100));
-      await liquidator.withdrawERC20(quoteToken.address);
-      expect(await quoteToken.balanceOf(liquidator.address)).eql(toFullDigitBN(0));
-    });
-    it("eth withdrawal", async () => {
-      await admin.sendTransaction({
-        to: liquidator.address,
-        value: toFullDigitBN("1.0"), // Sends exactly 1.0 ether
-      });
-      expect(await ethers.provider.getBalance(liquidator.address)).eql(toFullDigitBN(1));
-      await liquidator.withdrawETH();
-      expect(await ethers.provider.getBalance(liquidator.address)).eql(toFullDigitBN(0));
+      console.log(await queryTraders(amm.address));
     });
   });
 });

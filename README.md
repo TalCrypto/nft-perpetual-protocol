@@ -16,7 +16,7 @@ npx hardhat help
 
 # Prequisites:
 1. Run `yarn` or `npm install` to install the dependencies
-2. Run `yarn codegen` or `npm run codegen`
+2. Run `yarn graph-codegen` or `npm run graph-codegen`
 
 # Run matchstick test:
 1. Just run `yarn graph-test` or `npm run graph-test`
@@ -33,7 +33,7 @@ npx hardhat help
   
 *NOTE: You can check the `deploy` task in the [hardhat.config.ts](https://github.com/dimitrovmaksim/hardhat-graph-demo/blob/main/hardhat.config.ts#L11) file. After compiling and deploying the contract to the local hardhat node, it will execute the built-in `graph` task from the hardhat-graph plugin. In this case it will update the abi's in the subgraph folder(nft-auction-sungraph), it will update the networks.json file with the addresses of the deployed contracts. You'll get a warning informing you that there are differences between the events in your contract's ABI and the subgraph.yaml (In this case we don't want to index all the events so we can ignore the warning) If you make any changes to the sungraph.yaml or schema.graph files, you will have to run the `codegen` command in order to update the generated files. You can check more info about what each  `hardhat-graph` command does here: https://github.com/graphprotocol/hardhat-graph#tasks. This is only an example usage, you can create your own workflow that better suites your needs.*
  
-1. Build the subgraph by executing `yarn build --network localhost` or `npm run build --network localhost`. 
+5. Build the subgraph by executing `yarn graph-build --network localhost` or `npm run graph-build --network localhost`. 
 
 *NOTE: The `--network` option will tell the `build` command to get the latest configurations (address and startBlock) for the `localhost` network from the `networks.json` config file and update the `subgraph.yaml` file. (Soon this step will be redundant, because the network option will be directly added to the deploy command)*
 

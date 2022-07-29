@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "license": "MIT",
   "scripts": {
-    "graph-codegen": "cd tribe3-perp-subgraph && graph build",
-    "graph-build": "cd tribe3-perp-subgraph && graph codegen",
+    "graph-codegen": "cd tribe3-perp-subgraph && graph codegen",
+    "graph-build": "cd tribe3-perp-subgraph && graph build",
     "graph-test": "graph test",
     "graph-local": "docker-compose up",
     "graph-local-clean": "docker-compose down -v && docker-compose rm -v && rm -rf data/ipfs data/postgres",
@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.6.0",
-    "@openzeppelin/contracts-upgradeable": "^4.6.0"
+    "@openzeppelin/contracts-upgradeable": "^4.6.0",
+    "graphql": "^16.5.0",
+    "urql": "^2.2.3"
   }
 }
