@@ -1,22 +1,22 @@
 {
   "localhost": {
-    "Amm": {
-      "address": "0x1D13fF25b10C9a6741DFdce229073bed652197c7"
+    "amm": {
+      "address": "0xF66CfDf074D2FFD6A4037be3A669Ed04380Aef2B"
     },
-    "InsuranceFund": {
-      "address": "0xb007167714e2940013EC3bb551584130B7497E22"
+    "insuranceFund": {
+      "address": "0xBbc18b580256A82dC0F9A86152b8B22E7C1C8005"
     },
-    "QuoteToken": {
-      "address": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59"
+    "quoteToken": {
+      "address": "0x90c84237fDdf091b1E63f369AF122EB46000bc70"
     },
-    "PriceFeed": {
-      "address": "0x2e8880cAdC08E9B438c6052F5ce3869FBd6cE513"
+    "priceFeed": {
+      "address": "0x103A3b128991781EE2c8db0454cA99d67b257923"
     },
-    "ClearingHouse": {
-      "address": "0xeC827421505972a2AE9C320302d3573B42363C26"
+    "clearingHouse": {
+      "address": "0x707531c9999AaeF9232C8FEfBA31FBa4cB78d84a"
     },
-    "Liquidator": {
-      "address": "0xc0Bb1650A8eA5dDF81998f17B5319afD656f4c11"
+    "liquidator": {
+      "address": "0xc6B407503dE64956Ad3cF5Ab112cA4f56AA13517"
     }
   }
 }

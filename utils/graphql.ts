@@ -1,9 +1,10 @@
 import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig();
 
-import { createClient } from "urql";
+import { ApolloClient, InMemoryCache, gql } from "@apollo/client";
+import { network } from "hardhat";
 
-const queryTradersOfAmm = `
+const tradersOfAmmQuery = `
   query($ammAddress: Address) {
     ammPositions(where: {amm: $ammAddress, positionSize_not: 0}) {
       trader
@@ -11,13 +12,22 @@ const queryTradersOfAmm = `
   }
 `;
 
-const APIURL = process.env.SUBGRAPH_API_URL || "https://api.thegraph.com/subgraphs/name/username/subgraphname";
+const APIURL =
+  network.name == "localhost"
+    ? "http://127.0.0.1:8000/subgraphs/name/tribe3-perp/graphql"
+    : "https://api.thegraph.com/subgraphs/name/username/subgraphname";
 
-const client = createClient({
-  url: APIURL,
+const client = new ApolloClient({
+  uri: APIURL,
+  cache: new InMemoryCache(),
 });
 
 export const queryTraders = async (amm: string) => {
-  const { data } = await client.query(queryTradersOfAmm).toPromise();
+  const { data } = await client.query({
+    query: gql(tradersOfAmmQuery),
+    variables: {
+      ammAddress: amm,
+    },
+  });
   return data;
 };
