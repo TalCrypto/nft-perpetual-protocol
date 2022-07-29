@@ -11,14 +11,14 @@ import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipi
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "./utils/TransferHelper.sol";
 
 // note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
 // (yes, the ordering is reversed comparing to Python)
 contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
-    using SafeERC20 for IERC20;
+    using TransferHelper for IERC20;
 
     //
     // EVENTS

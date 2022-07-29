@@ -11,11 +11,11 @@ import { IMinter } from "./interfaces/IMinter.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IInflationMonitor } from "./interfaces/IInflationMonitor.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { TransferHelper } from "./utils/TransferHelper.sol";
 
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
-    using SafeERC20 for IERC20;
+    using TransferHelper for IERC20;
     //
     // EVENTS
     //

@@ -9,7 +9,7 @@ export function getPosition(trader: Address): Position {
   if (!position) {
     position = createPosition(trader);
   }
-  return position!;
+  return position;
 }
 
 export function createPosition(trader: Address): Position {
@@ -41,7 +41,7 @@ export function getAmmPosition(amm: Address, trader: Address): AmmPosition {
   if (!ammPosition) {
     ammPosition = createAmmPosition(amm, trader);
   }
-  return ammPosition!;
+  return ammPosition;
 }
 
 export function createAmmPosition(amm: Address, trader: Address): AmmPosition {
@@ -93,7 +93,7 @@ export function getAmm(ammAddress: Address): Amm {
   if (!amm) {
     amm = createAmm(ammAddress);
   }
-  return amm!;
+  return amm;
 }
 
 export function createAmm(ammAddress: Address): Amm {
@@ -128,7 +128,7 @@ export function getTrader(traderAddress: Address): Trader {
   if (!trader) {
     trader = createTrader(traderAddress);
   }
-  return trader!;
+  return trader;
 }
 
 export function getTraderDayData(event: ethereum.Event, trader: Address): TraderDayData {
@@ -150,7 +150,7 @@ export function getTraderDayData(event: ethereum.Event, trader: Address): Trader
     dayData.trader = _trader.id;
     dayData.save();
   }
-  return dayData!;
+  return dayData;
 }
 
 export function getDayTradeData(event: ethereum.Event, amm: Address): DayTradeData {
@@ -175,7 +175,7 @@ export function getDayTradeData(event: ethereum.Event, amm: Address): DayTradeDa
     dayTradeData.txCount = BI_ZERO;
     dayTradeData.save();
   }
-  return dayTradeData!;
+  return dayTradeData;
 }
 
 // export function createReferralCode(

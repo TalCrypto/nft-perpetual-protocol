@@ -1,0 +1,22 @@
+{
+  "localhost": {
+    "Amm": {
+      "address": "0x1D13fF25b10C9a6741DFdce229073bed652197c7"
+    },
+    "InsuranceFund": {
+      "address": "0xb007167714e2940013EC3bb551584130B7497E22"
+    },
+    "QuoteToken": {
+      "address": "0x00CAC06Dd0BB4103f8b62D280fE9BCEE8f26fD59"
+    },
+    "PriceFeed": {
+      "address": "0x2e8880cAdC08E9B438c6052F5ce3869FBd6cE513"
+    },
+    "ClearingHouse": {
+      "address": "0xeC827421505972a2AE9C320302d3573B42363C26"
+    },
+    "Liquidator": {
+      "address": "0xc0Bb1650A8eA5dDF81998f17B5319afD656f4c11"
+    }
+  }
+}

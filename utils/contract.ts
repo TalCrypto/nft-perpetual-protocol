@@ -25,6 +25,7 @@ import {
   Amm,
   Liquidator,
   Liquidator__factory,
+  ClearingHouse,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -182,6 +183,23 @@ export async function deployClearingHouse(
     insuranceFund,
     trustedForwarder
   );
+  return instance;
+}
+
+export async function deployProxyClearingHouse(
+  signer: Signer,
+  initMarginRatio: BigNumber,
+  maintenanceMarginRatio: BigNumber,
+  liquidationFeeRatio: BigNumber,
+  insuranceFund: string
+): Promise<ClearingHouse> {
+  const ClearingHouseContract = await ethers.getContractFactory("ClearingHouse");
+  const instance = (await upgrades.deployProxy(ClearingHouseContract, [
+    initMarginRatio.toString(),
+    maintenanceMarginRatio.toString(),
+    liquidationFeeRatio.toString(),
+    insuranceFund,
+  ])) as ClearingHouse;
   return instance;
 }
 

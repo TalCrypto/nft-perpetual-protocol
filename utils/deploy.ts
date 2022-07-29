@@ -10,6 +10,7 @@ import {
   TollPool,
   ClearingHouse,
   Liquidator,
+  Amm,
 } from "../typechain-types";
 import {
   deployAmm,
@@ -21,15 +22,29 @@ import {
   deployTollPool,
   deployL2MockPriceFeed,
   deployLiquidator,
+  deployProxyAmm,
+  deployProxyClearingHouse,
 } from "./contract";
 import { toFullDigitBN } from "./number";
 
-export interface PerpContracts {
+export interface PerpContractsFake {
   quoteToken: ERC20Fake;
   priceFeed: L2PriceFeedMock;
   insuranceFund: InsuranceFundFake;
   clearingHouse: ClearingHouseFake;
   amm: AmmFake;
+  ammReader: AmmReader;
+  clearingHouseViewer: ClearingHouseViewer;
+  tollPool: TollPool;
+  liquidator: Liquidator;
+}
+
+export interface PerpContracts {
+  quoteToken: ERC20Fake;
+  priceFeed: L2PriceFeedMock;
+  insuranceFund: InsuranceFundFake;
+  clearingHouse: ClearingHouse;
+  amm: Amm;
   ammReader: AmmReader;
   clearingHouseViewer: ClearingHouseViewer;
   tollPool: TollPool;
@@ -67,7 +82,7 @@ const DEFAULT_CONTRACT_DEPLOY_ARGS: ContractDeployArgs = {
   startSchedule: true,
 };
 
-export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContracts> {
+export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContractsFake> {
   const {
     sender,
     quoteTokenAmount = DEFAULT_CONTRACT_DEPLOY_ARGS.quoteTokenAmount,
@@ -98,6 +113,76 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
 
   // deploy an amm with Q100/B1000 liquidity
   const amm = await deployAmm({
+    deployer: sender!,
+    quoteAssetTokenAddr: quoteToken.address,
+    priceFeedAddr: priceFeed.address,
+    fundingPeriod: BigNumber.from(86400), // to make calculation easier we set fundingPeriod = 1 day
+    fluctuation: toFullDigitBN(0),
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    quoteAssetReserve: quoteAssetReserve!,
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    baseAssetReserve: baseAssetReserve!,
+    tollRatio,
+    spreadRatio,
+  });
+
+  const ammReader = await deployAmmReader(sender!);
+
+  await amm.setGlobalShutdown(insuranceFund.address);
+  await amm.setCounterParty(clearingHouse.address);
+  await insuranceFund.addAmm(amm.address);
+  await insuranceFund.setBeneficiary(clearingHouse.address);
+  await tollPool.addFeeToken(quoteToken.address);
+
+  await amm.setOpen(true);
+
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+
+  await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
+
+  return {
+    quoteToken,
+    priceFeed,
+    insuranceFund,
+    clearingHouse,
+    amm,
+    ammReader,
+    clearingHouseViewer,
+    tollPool,
+    liquidator,
+  };
+}
+
+export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpContracts> {
+  const {
+    sender,
+    quoteTokenAmount = DEFAULT_CONTRACT_DEPLOY_ARGS.quoteTokenAmount,
+    tollRatio = DEFAULT_CONTRACT_DEPLOY_ARGS.tollRatio,
+    spreadRatio = DEFAULT_CONTRACT_DEPLOY_ARGS.spreadRatio,
+    quoteAssetReserve = DEFAULT_CONTRACT_DEPLOY_ARGS.quoteAssetReserve,
+    baseAssetReserve = DEFAULT_CONTRACT_DEPLOY_ARGS.baseAssetReserve,
+  } = args;
+
+  const quoteToken = await deployErc20Fake(sender!, quoteTokenAmount, "Tether", "USDT", BigNumber.from(quoteTokenDecimals));
+  const priceFeed = await deployL2MockPriceFeed(sender!, toFullDigitBN(100));
+
+  const insuranceFund = await deployInsuranceFund(sender!, priceFeed.address, priceFeed.address);
+
+  const clearingHouse = await deployProxyClearingHouse(
+    sender!,
+    toFullDigitBN(0.05),
+    toFullDigitBN(0.05),
+    toFullDigitBN(0.05),
+    insuranceFund.address
+  );
+
+  const clearingHouseViewer = await deployClearingHouseViewer(sender!, clearingHouse.address);
+  const tollPool = await deployTollPool(sender!, clearingHouse.address);
+
+  await clearingHouse.setTollPool(tollPool.address);
+
+  // deploy an amm with Q100/B1000 liquidity
+  const amm = await deployProxyAmm({
     deployer: sender!,
     quoteAssetTokenAddr: quoteToken.address,
     priceFeedAddr: priceFeed.address,
