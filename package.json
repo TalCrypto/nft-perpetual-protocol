@@ -46,6 +46,6 @@
     "@openzeppelin/contracts": "^4.6.0",
     "@openzeppelin/contracts-upgradeable": "^4.6.0",
     "graphql": "^16.5.0",
-    "react": "^18.2.0"
+    "graphql-request": "^4.3.0"
   }
 }

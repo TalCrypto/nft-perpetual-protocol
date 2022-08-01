@@ -1,13 +1,12 @@
 import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig();
 
-import { ApolloClient, InMemoryCache, gql, HttpLink } from "@apollo/client";
-import fetch from "cross-fetch";
+import { request, gql, RequestDocument } from "graphql-request";
 import { network } from "hardhat";
 
-const tradersOfAmmQuery = `
-  query($ammAddress: Bytes) {
-    ammPositions(where: {amm: $ammAddress, positionSize_not: 0}) {
+const tradersOfAmmQuery = gql`
+  query ($ammAddress: Bytes) {
+    ammPositions(where: { amm: $ammAddress, positionSize_not: 0 }) {
       trader
     }
   }
@@ -18,17 +17,16 @@ const APIURL =
     ? "http://127.0.0.1:8000/subgraphs/name/tribe3-perp"
     : "https://api.thegraph.com/subgraphs/name/username/subgraphname";
 
-const client = new ApolloClient({
-  link: new HttpLink({ uri: APIURL, fetch }),
-  cache: new InMemoryCache(),
-});
-
 export const queryTraders = async (amm: string) => {
-  const { data } = await client.query({
-    query: gql(tradersOfAmmQuery),
-    variables: {
-      ammAddress: amm,
-    },
+  const data = await doGraphRequest(tradersOfAmmQuery, {
+    ammAddress: amm,
   });
   return data;
 };
+
+export const doGraphRequest = (query: RequestDocument, variables = {}) =>
+  new Promise((resolve, reject) => {
+    request(APIURL, query, variables)
+      .then((data) => resolve(data))
+      .catch((err) => reject(err));
+  });
