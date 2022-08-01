@@ -29,6 +29,7 @@ async function main() {
     }
   }
   console.log("liquidatableTraders", addressesOfLiquidatableTraders);
+  //TODO split traders when there are so many
   await liquidator.liquidate(contracts.amm.address, addressesOfLiquidatableTraders);
   console.log("Successfully liquidated");
 }
