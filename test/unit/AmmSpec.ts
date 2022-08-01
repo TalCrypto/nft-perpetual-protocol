@@ -1136,6 +1136,7 @@ describe("Amm Unit Test", () => {
       it("settleFunding delay before fundingBufferPeriod ends", async () => {
         const originalNextFundingTime = await amm.nextFundingTime();
         const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).sub(1);
+        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
         await amm.mock_setBlockTimestamp(settleFundingTimestamp);
         await amm.settleFunding();
         expect(await amm.nextFundingTime()).eq(originalNextFundingTime.add(fundingPeriod));
@@ -1144,6 +1145,7 @@ describe("Amm Unit Test", () => {
       it("settleFunding delay after fundingBufferPeriod ends & before nextFundingTime", async () => {
         const originalNextFundingTime = await amm.nextFundingTime();
         const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).add(1);
+        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
         await amm.mock_setBlockTimestamp(settleFundingTimestamp);
         await amm.settleFunding();
         expect(await amm.nextFundingTime()).eq(BigNumber.from(settleFundingTimestamp).add(fundingBufferPeriod));
@@ -1158,9 +1160,17 @@ describe("Amm Unit Test", () => {
         const startAt = await amm.mock_getCurrentTimestamp();
         const delayDuration = fundingPeriod.mul(10);
         const settleFundingTimestamp = BigNumber.from(startAt).add(delayDuration);
+        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
         await amm.mock_setBlockTimestamp(settleFundingTimestamp);
         await amm.settleFunding();
         await expect(amm.settleFunding()).to.be.revertedWith("settle funding too early");
+      });
+
+      it("can't settleFunding when the timestamp of latest price is more than 30 minutes old", async () => {
+        const originalNextFundingTime = await amm.nextFundingTime();
+        await priceFeed.setLatestTimestamp(originalNextFundingTime.sub(BigNumber.from(30 * 60)));
+        await amm.mock_setBlockTimestamp(originalNextFundingTime);
+        await expect(amm.settleFunding()).to.be.revertedWith("oracle price is expired");
       });
     });
   });

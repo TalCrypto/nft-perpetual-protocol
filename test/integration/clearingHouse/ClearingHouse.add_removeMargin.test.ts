@@ -41,6 +41,7 @@ describe("ClearingHouse add/remove margin Test", () => {
   async function gotoNextFundingTime(): Promise<void> {
     const nextFundingTime = await amm.nextFundingTime();
     await amm.mock_setBlockTimestamp(nextFundingTime);
+    await mockPriceFeed.setLatestTimestamp(nextFundingTime);
   }
 
   async function forwardBlockTimestamp(time: number): Promise<void> {

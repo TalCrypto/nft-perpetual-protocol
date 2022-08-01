@@ -265,6 +265,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      */
     function settleFunding() external override onlyOpen onlyCounterParty returns (int256) {
         require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
+        uint256 latestPricetimestamp = priceFeed.getLatestTimestamp(priceFeedKey);
+        require(_blockTimestamp() < latestPricetimestamp + 30 * 60,  "oracle price is expired");
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(1 hour) / 1 day

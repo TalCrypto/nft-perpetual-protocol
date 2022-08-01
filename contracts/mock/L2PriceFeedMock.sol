@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 contract L2PriceFeedMock {
     uint256 price;
     uint256 twapPrice;
+    uint256 latestTimestamp;
 
     constructor(uint256 _price) public {
         price = _price;
@@ -16,6 +17,14 @@ contract L2PriceFeedMock {
 
     function setTwapPrice(uint256 _price) public {
         twapPrice = _price;
+    }
+
+    function getLatestTimestamp(bytes32) public view returns (uint256) {
+        return latestTimestamp;
+    }
+
+    function setLatestTimestamp(uint256 _timestamp) public {
+        latestTimestamp = _timestamp;
     }
 
     function getPrice(bytes32) public view returns (uint256) {
