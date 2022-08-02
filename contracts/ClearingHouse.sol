@@ -319,7 +319,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         quoteToken.safeTransferFrom(trader, address(this), _addedMargin);
         //_transferFrom(quoteToken, trader, address(this), _addedMargin);
         emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
-        formulaicRepegAmm(_amm);
     }
 
     /**
@@ -359,7 +358,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // transfer token back to trader
         withdraw(quoteToken, trader, _removedMargin);
         emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
-        formulaicRepegAmm(_amm);
     }
 
     /**
@@ -507,7 +505,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
-        formulaicRepegAmm(_amm);
     }
 
     /**
@@ -581,7 +578,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             spotPrice,
             fundingPayment
         );
-        formulaicRepegAmm(_amm);
     }
 
     function liquidateWithSlippage(
@@ -599,7 +595,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
             require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
         }
-        formulaicRepegAmm(_amm);
 
         return (quoteAssetAmount, isPartialClose);
     }
@@ -612,7 +607,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      */
     function liquidate(IAmm _amm, address _trader) public nonReentrant {
         internalLiquidate(_amm, _trader);
-        formulaicRepegAmm(_amm);
     }
 
     /**
@@ -621,6 +615,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      */
     function payFunding(IAmm _amm) external {
         requireAmm(_amm, true);
+        formulaicRepegAmm(_amm);
 
         int256 premiumFraction = _amm.settleFunding();
         ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
@@ -782,14 +777,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function internalLiquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
         requireAmm(_amm, true);
         int256 marginRatio = getMarginRatio(_amm, _trader);
-
-        // including oracle-based margin ratio as reference price when amm is over spread limit
-        if (_amm.isOverSpreadLimit()) {
-            int256 marginRatioBasedOnOracle = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
-            if (marginRatioBasedOnOracle - marginRatio > 0) {
-                marginRatio = marginRatioBasedOnOracle;
-            }
-        }
+        // // once oracle price is updated ervery funding payment, this part has no longer effect
+        // // including oracle-based margin ratio as reference price when amm is over spread limit
+        // if (_amm.isOverSpreadLimit()) {
+        //     int256 marginRatioBasedOnOracle = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
+        //     if (marginRatioBasedOnOracle - marginRatio > 0) {
+        //         marginRatio = marginRatioBasedOnOracle;
+        //     }
+        // }
         requireMoreMarginRatio(marginRatio, maintenanceMarginRatio, false);
 
         PositionResp memory positionResp;
