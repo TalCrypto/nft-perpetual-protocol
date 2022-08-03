@@ -91,7 +91,7 @@ describe("Amm Unit Test", () => {
 
     it("can't do almost everything when it's beginning", async () => {
       const error = "amm was closed";
-      await expect(amm.connect(admin).settleFunding()).to.be.revertedWith(error);
+      await expect(amm.connect(admin).settleFunding(toFullDigitBN(0))).to.be.revertedWith(error);
       await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(600), toFullDigitBN(0), false)).to.be.revertedWith(error);
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(600), toFullDigitBN(0))).to.be.revertedWith(error);
     });
@@ -100,7 +100,7 @@ describe("Amm Unit Test", () => {
       await amm.setOpen(true);
       await amm.setOpen(false);
       const error = "amm was closed";
-      await expect(amm.settleFunding({ from: admin.address })).to.be.revertedWith(error);
+      await expect(amm.settleFunding(toFullDigitBN(0), { from: admin.address })).to.be.revertedWith(error);
       await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(600), toFullDigitBN(0), false)).to.be.revertedWith(error);
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(600), toFullDigitBN(0))).to.be.revertedWith(error);
     });
@@ -1131,46 +1131,95 @@ describe("Amm Unit Test", () => {
         ).eq("111111111111111111112");
       });
     });
+  });
 
-    describe("settleFunding", () => {
-      it("settleFunding delay before fundingBufferPeriod ends", async () => {
-        const originalNextFundingTime = await amm.nextFundingTime();
-        const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).sub(1);
-        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
-        await amm.mock_setBlockTimestamp(settleFundingTimestamp);
-        await amm.settleFunding();
-        expect(await amm.nextFundingTime()).eq(originalNextFundingTime.add(fundingPeriod));
+  describe("settleFunding", () => {
+    beforeEach(async () => {
+      await amm.setOpen(true);
+    });
+    it("settleFunding delay before fundingBufferPeriod ends", async () => {
+      const originalNextFundingTime = await amm.nextFundingTime();
+      const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).sub(1);
+      await priceFeed.setLatestTimestamp(settleFundingTimestamp);
+      await amm.mock_setBlockTimestamp(settleFundingTimestamp);
+      await amm.settleFunding(toFullDigitBN(0));
+      expect(await amm.nextFundingTime()).eq(originalNextFundingTime.add(fundingPeriod));
+    });
+
+    it("settleFunding delay after fundingBufferPeriod ends & before nextFundingTime", async () => {
+      const originalNextFundingTime = await amm.nextFundingTime();
+      const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).add(1);
+      await priceFeed.setLatestTimestamp(settleFundingTimestamp);
+      await amm.mock_setBlockTimestamp(settleFundingTimestamp);
+      await amm.settleFunding(toFullDigitBN(0));
+      expect(await amm.nextFundingTime()).eq(BigNumber.from(settleFundingTimestamp).add(fundingBufferPeriod));
+    });
+
+    it("force error, caller is not counterParty/clearingHouse", async () => {
+      const addresses = await ethers.getSigners();
+      await expect(amm.settleFunding(toFullDigitBN(0), { from: addresses[1].address })).to.be.reverted;
+    });
+
+    it("can't settleFunding multiple times at once even settleFunding delay", async () => {
+      const startAt = await amm.mock_getCurrentTimestamp();
+      const delayDuration = fundingPeriod.mul(10);
+      const settleFundingTimestamp = BigNumber.from(startAt).add(delayDuration);
+      await priceFeed.setLatestTimestamp(settleFundingTimestamp);
+      await amm.mock_setBlockTimestamp(settleFundingTimestamp);
+      await amm.settleFunding(toFullDigitBN(0));
+      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("settle funding too early");
+    });
+
+    it("can't settleFunding when the timestamp of latest price is more than 30 minutes old", async () => {
+      const originalNextFundingTime = await amm.nextFundingTime();
+      await priceFeed.setLatestTimestamp(originalNextFundingTime.sub(BigNumber.from(30 * 60)));
+      await amm.mock_setBlockTimestamp(originalNextFundingTime);
+      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("oracle price is expired");
+    });
+
+    describe("capped funding test", () => {
+      async function gotoNextFundingTimestamp() {
+        const nextFundingTime = await amm.nextFundingTime();
+        await priceFeed.setLatestTimestamp(nextFundingTime);
+        await amm.mock_setBlockTimestamp(nextFundingTime);
+      }
+      beforeEach(async () => {
+        // base asset amount = (1000 * 100 / (1000 + 250 ))) - 100 = - 20
+        await amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(250), toFullDigitBN(0), false);
       });
-
-      it("settleFunding delay after fundingBufferPeriod ends & before nextFundingTime", async () => {
-        const originalNextFundingTime = await amm.nextFundingTime();
-        const settleFundingTimestamp = originalNextFundingTime.add(fundingBufferPeriod).add(1);
-        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
-        await amm.mock_setBlockTimestamp(settleFundingTimestamp);
-        await amm.settleFunding();
-        expect(await amm.nextFundingTime()).eq(BigNumber.from(settleFundingTimestamp).add(fundingBufferPeriod));
+      it("position size is 20", async () => {
+        expect(await amm.getBaseAssetDelta()).eq(toFullDigitBN(20));
       });
-
-      it("force error, caller is not counterParty/clearingHouse", async () => {
-        const addresses = await ethers.getSigners();
-        await expect(amm.settleFunding({ from: addresses[1].address })).to.be.reverted;
+      it("funding payment is uncapped when the cost is positive", async () => {
+        await gotoNextFundingTimestamp();
+        await priceFeed.setTwapPrice(toFullDigitBN(10));
+        // mark_twap = 15.625
+        // oracle_twap = 10
+        const tx = await amm.settleFunding(toFullDigitBN(0));
+        await expect(tx)
+          .to.emit(amm, "FundingRateUpdated")
+          .withArgs(toFullDigitBN((15.625 - 10) / 24 / 10), toFullDigitBN(10));
       });
-
-      it("can't settleFunding multiple times at once even settleFunding delay", async () => {
-        const startAt = await amm.mock_getCurrentTimestamp();
-        const delayDuration = fundingPeriod.mul(10);
-        const settleFundingTimestamp = BigNumber.from(startAt).add(delayDuration);
-        await priceFeed.setLatestTimestamp(settleFundingTimestamp);
-        await amm.mock_setBlockTimestamp(settleFundingTimestamp);
-        await amm.settleFunding();
-        await expect(amm.settleFunding()).to.be.revertedWith("settle funding too early");
+      it("funding payment is uncapped when the cost is negative and its absolute value is smaller than cap", async () => {
+        await gotoNextFundingTimestamp();
+        await priceFeed.setTwapPrice(toFullDigitBN(20));
+        // mark_twap = 15.625
+        // oracle_twap = 20
+        // funding payment = (15.625 - 20) / 24 * 20 = -3.645833333333333
+        // funding rate = -0.009114583333333333
+        const tx = await amm.settleFunding(toFullDigitBN(4));
+        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs("-9114583333333333", toFullDigitBN(20));
       });
-
-      it("can't settleFunding when the timestamp of latest price is more than 30 minutes old", async () => {
-        const originalNextFundingTime = await amm.nextFundingTime();
-        await priceFeed.setLatestTimestamp(originalNextFundingTime.sub(BigNumber.from(30 * 60)));
-        await amm.mock_setBlockTimestamp(originalNextFundingTime);
-        await expect(amm.settleFunding()).to.be.revertedWith("oracle price is expired");
+      it("funding payment is capped when the cost is negative and its absolute value is greater than cap", async () => {
+        await gotoNextFundingTimestamp();
+        await priceFeed.setTwapPrice(toFullDigitBN(20));
+        // mark_twap = 15.625
+        // oracle_twap = 20
+        // funding payment = (15.625 - 20) / 24 * 20 = -3.645833333333333
+        const tx = await amm.settleFunding(toFullDigitBN(2));
+        // capped fraction = -(2 / 20) = -0.1
+        // funding rate = -(0.1 / 20) = -0.005
+        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs(toFullDigitBN(-0.005), toFullDigitBN(20));
       });
     });
   });

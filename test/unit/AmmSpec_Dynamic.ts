@@ -476,7 +476,7 @@ describe("Amm Unit Test", () => {
       describe("when budget is negative and canLowerK is false", async () => {
         const budget = toFullDigitBN(-0.5);
         it("should not be updatable", async () => {
-          amm.setCanLowerK(false);
+          await amm.setCanLowerK(false);
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.isAdjustable).to.be.false;
         });
@@ -610,7 +610,7 @@ describe("Amm Unit Test", () => {
       describe("when budget is negative and canLowerK is false", async () => {
         const budget = toFullDigitBN(-0.5);
         it("should not be updatable", async () => {
-          amm.setCanLowerK(false);
+          await amm.setCanLowerK(false);
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.isAdjustable).to.be.false;
         });
