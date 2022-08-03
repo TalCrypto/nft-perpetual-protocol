@@ -236,17 +236,19 @@ describe("ClearingHouse Test", () => {
 
   describe("payFunding: when alice.size = 37.5 & bob.size = -187.5", () => {
     beforeEach(async () => {
+      await amm.setSpreadRatio(toFullDigitBN(0.5));
       // given alice takes 2x long position (37.5B) with 300 margin
       await approve(alice, clearingHouse.address, 600);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
 
       // given bob takes 1x short position (-187.5B) with 1200 margin
-      await approve(bob, clearingHouse.address, 1200);
+      await approve(bob, clearingHouse.address, 1800);
       await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5));
 
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
+      expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eq(toFullDigitBN(900));
     });
 
     it("will generate loss for amm when funding rate is positive and amm hold more long position", async () => {
@@ -276,7 +278,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1501.5, +(await quoteToken.decimals())));
       const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(4998.5, +(await quoteToken.decimals())));
+      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5898.5, +(await quoteToken.decimals())));
     });
 
     it("will keep generating the same loss for amm when funding rate is positive and amm hold more long position", async () => {
@@ -301,7 +303,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1503, +(await quoteToken.decimals())));
       const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(4997, +(await quoteToken.decimals())));
+      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5897, +(await quoteToken.decimals())));
     });
 
     it("funding rate is 1%, 1% then -1%", async () => {
@@ -493,7 +495,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseToken = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseBaseToken).to.eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
       const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
+      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5900, +(await quoteToken.decimals())));
     });
   });
 
@@ -616,6 +618,7 @@ describe("ClearingHouse Test", () => {
       });
 
       it("when funding rate is negative", async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
         await approve(alice, clearingHouse.address, 2000);
 
         // price: 1250 / 80 = 15.625
@@ -637,6 +640,7 @@ describe("ClearingHouse Test", () => {
       });
 
       it("with pnl and funding rate is positive", async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
         await approve(alice, clearingHouse.address, 2000);
         await approve(bob, clearingHouse.address, 2000);
 
