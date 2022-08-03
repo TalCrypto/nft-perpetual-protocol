@@ -42,7 +42,13 @@ interface IAmm {
 
     function shutdown() external;
 
-    function settleFunding() external returns (int256);
+    function settleFunding(uint256 _cap)
+        external
+        returns (
+            int256 premiumFraction,
+            int256 fundingPayment,
+            int256 uncappedFundingPayment
+        );
 
     function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
 

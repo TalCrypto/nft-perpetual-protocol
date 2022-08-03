@@ -197,6 +197,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
+    // amm => token => total fees allocated to market
     mapping(address => mapping(address => uint256)) public totalFees;
 
     // amm => token => revenue since last funding
@@ -616,25 +617,20 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function payFunding(IAmm _amm) external {
         requireAmm(_amm, true);
         formulaicRepegAmm(_amm);
-
-        int256 premiumFraction = _amm.settleFunding();
-        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
-
-        // funding payment = premium fraction * position
-        // eg. if alice takes 10 long position, totalPositionSize = 10
-        // if premiumFraction is positive: long pay short, amm get positive funding payment
-        // if premiumFraction is negative: short pay long, amm get negative funding payment
-        // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
-        int256 totalTraderPositionSize = _amm.getBaseAssetDelta();
-        int256 ammFundingPaymentProfit = premiumFraction.mulD(totalTraderPositionSize);
         IERC20 quoteAsset = _amm.quoteAsset();
-        if (ammFundingPaymentProfit < 0) {
-            //TODO capped funding
-            insuranceFund.withdraw(quoteAsset, ammFundingPaymentProfit.abs());
+        uint256 totalFee = totalFees[address(_amm)][address(quoteAsset)];
+        uint256 cap = totalFee / 2;
+        (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
+        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
+        // funding payment is positive means profit
+        if (fundingPayment < 0) {
+            totalFees[address(_amm)][address(quoteAsset)] = totalFee - fundingPayment.abs();
+            insuranceFund.withdraw(quoteAsset, fundingPayment.abs());
         } else {
-            transferToInsuranceFund(quoteAsset, ammFundingPaymentProfit.abs());
+            totalFees[address(_amm)][address(quoteAsset)] = totalFee + fundingPayment.abs();
+            transferToInsuranceFund(quoteAsset, fundingPayment.abs());
         }
-        formulaicUpdateK(_amm, ammFundingPaymentProfit);
+        formulaicUpdateK(_amm, fundingImbalanceCost);
         netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
     }
 
@@ -1338,7 +1334,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
-    // fundingImbalance is positive, clearing house receives funds
+    // if fundingImbalance is positive, clearing house receives funds
     function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
         address quote = address(_amm.quoteAsset());
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
@@ -1363,27 +1359,26 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
+    // negative cost is revenue, otherwise is expense of insurance fund
     function applyCost(
         address _amm,
         address _quote,
         int256 _cost
     ) private returns (bool) {
         uint256 totalFee = totalFees[_amm][_quote];
-        uint256 cost = _cost.abs();
-        // positive cost is expense, negative cost is revenue
+        uint256 costAbs = _cost.abs();
         if (_cost > 0) {
-            if (cost <= totalFee) {
-                totalFees[_amm][_quote] = totalFee - cost;
+            if (costAbs <= totalFee) {
+                totalFees[_amm][_quote] = totalFee - costAbs;
+                insuranceFund.withdraw(IERC20(_quote), costAbs);
             } else {
-                totalFees[_amm][_quote] = 0;
-                insuranceFund.withdraw(IERC20(_quote), cost - totalFee);
+                return false;
             }
-            netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
         } else {
-            // increase the totalFees
-            totalFees[_amm][_quote] = totalFee + cost;
-            netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] + cost.toInt();
+            totalFees[_amm][_quote] = totalFee + costAbs;
+            transferToInsuranceFund(IERC20(_quote), costAbs);
         }
+        netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
         return true;
     }
 }

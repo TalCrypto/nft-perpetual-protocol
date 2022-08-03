@@ -261,19 +261,46 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * @notice update funding rate
      * @dev only allow to update while reaching `nextFundingTime`
-     * @return premium fraction of this period in 18 digits
+     * @param _cap the limit of expense of funding payment
+     * @return premiumFraction premium fraction of this period in 18 digits
+     * @return fundingPayment profit of insurance fund in funding payment
+     * @return uncappedFundingPayment imbalance cost of funding payment without cap
      */
-    function settleFunding() external override onlyOpen onlyCounterParty returns (int256) {
+    function settleFunding(uint256 _cap)
+        external
+        override
+        onlyOpen
+        onlyCounterParty
+        returns (
+            int256 premiumFraction,
+            int256 fundingPayment,
+            int256 uncappedFundingPayment
+        )
+    {
         require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
         uint256 latestPricetimestamp = priceFeed.getLatestTimestamp(priceFeedKey);
-        require(_blockTimestamp() < latestPricetimestamp + 30 * 60,  "oracle price is expired");
+        require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "oracle price is expired");
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(1 hour) / 1 day
         // premiumFraction = premium * timeFraction
         uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
         int256 premium = getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt();
-        int256 premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
+        premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
+        int256 positionSize = totalPositionSize; // to optimize gas
+        // funding payment = premium fraction * position
+        // eg. if alice takes 10 long position, totalPositionSize = 10
+        // if premiumFraction is positive: long pay short, amm get positive funding payment
+        // if premiumFraction is negative: short pay long, amm get negative funding payment
+        // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
+        uncappedFundingPayment = premiumFraction.mulD(positionSize);
+        // if expense of funding payment is greater than cap amount, then cap it
+        if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
+            premiumFraction = int256(_cap).divD(positionSize) * (-1);
+            fundingPayment = int256(_cap) * (-1);
+        } else {
+            fundingPayment = uncappedFundingPayment;
+        }
 
         // update funding rate = premiumFraction / twapIndexPrice
         updateFundingRate(premiumFraction, underlyingPrice);
@@ -291,7 +318,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         // // reset funding related states
         // baseAssetDeltaThisFundingPeriod = 0;
 
-        return premiumFraction;
+        // return premiumFraction;
     }
 
     /**
