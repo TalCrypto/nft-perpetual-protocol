@@ -1752,6 +1752,7 @@ describe("ClearingHouse Test", () => {
 
   describe("clearingHouse", () => {
     beforeEach(async () => {
+      await amm.setSpreadRatio(toFullDigitBN(0.5));
       await approve(alice, clearingHouse.address, 100);
       const clearingHouseBaseTokenBalance = await quoteToken.allowance(alice.address, clearingHouse.address);
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(100, +(await quoteToken.decimals())));
@@ -1774,7 +1775,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 45 - 41.951 = 3.048...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5139024390243902439027");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq("3048780487804878055");
     });
 
@@ -1795,7 +1796,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 40 - 41.951 = -1.95...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4998048780487804878055");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5137073170731707317082");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(0));
     });
   });
@@ -1862,13 +1863,14 @@ describe("ClearingHouse Test", () => {
 
     describe("slippage limit", () => {
       beforeEach(async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
         await forwardBlockTimestamp(900);
       });
 
       // Case 1
       it("closePosition, originally long, (amount should pay = 118.03279) at the limit of min quote amount = 118", async () => {
-        await approve(alice, clearingHouse.address, 100);
-        await approve(bob, clearingHouse.address, 100);
+        await approve(alice, clearingHouse.address, 200);
+        await approve(bob, clearingHouse.address, 200);
 
         // when bob create a 20 margin * 5x short position when 9.0909091 quoteAsset = 100 DAI
         // AMM after: 1100 : 90.9090909
@@ -1892,8 +1894,8 @@ describe("ClearingHouse Test", () => {
 
       // Case 2
       it("closePosition, originally short, (amount should pay = 78.048) at the limit of max quote amount = 79", async () => {
-        await approve(alice, clearingHouse.address, 100);
-        await approve(bob, clearingHouse.address, 100);
+        await approve(alice, clearingHouse.address, 200);
+        await approve(bob, clearingHouse.address, 200);
 
         // when bob create a 20 margin * 5x short position when 11.1111111111 quoteAsset = 100 DAI
         // AMM after: 900 : 111.1111111111

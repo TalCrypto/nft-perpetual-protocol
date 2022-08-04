@@ -199,6 +199,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // amm => token => total fees allocated to market
     mapping(address => mapping(address => uint256)) public totalFees;
+    mapping(address => mapping(address => uint256)) public totalMinusFees;
 
     // amm => token => revenue since last funding
     mapping(address => mapping(address => int256)) public netRevenuesSinceLastFunding;
@@ -357,7 +358,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         setPosition(_amm, trader, position);
 
         // transfer token back to trader
-        withdraw(quoteToken, trader, _removedMargin);
+        withdraw(_amm, quoteToken, trader, _removedMargin);
         emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
     }
 
@@ -480,7 +481,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 quoteToken.safeTransferFrom(trader, address(this), positionResp.marginToVault.abs());
                 //_transferFrom(quoteToken, trader, address(this), positionResp.marginToVault.abs());
             } else if (positionResp.marginToVault < 0) {
-                withdraw(quoteToken, trader, positionResp.marginToVault.abs());
+                withdraw(_amm, quoteToken, trader, positionResp.marginToVault.abs());
             }
         }
 
@@ -555,7 +556,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // add scope for stack too deep error
             // transfer the actual token from trader and vault
             IERC20 quoteToken = _amm.quoteAsset();
-            withdraw(quoteToken, trader, positionResp.marginToVault.abs());
+            withdraw(_amm, quoteToken, trader, positionResp.marginToVault.abs());
         }
 
         // calculate fee and transfer token for fees
@@ -619,15 +620,16 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         formulaicRepegAmm(_amm);
         IERC20 quoteAsset = _amm.quoteAsset();
         uint256 totalFee = totalFees[address(_amm)][address(quoteAsset)];
-        uint256 cap = totalFee / 2;
+        uint256 totalMinusFee = totalMinusFees[address(_amm)][address(quoteAsset)];
+        uint256 cap = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
         // funding payment is positive means profit
         if (fundingPayment < 0) {
-            totalFees[address(_amm)][address(quoteAsset)] = totalFee - fundingPayment.abs();
+            totalMinusFees[address(_amm)][address(quoteAsset)] = totalMinusFee - fundingPayment.abs();
             insuranceFund.withdraw(quoteAsset, fundingPayment.abs());
         } else {
-            totalFees[address(_amm)][address(quoteAsset)] = totalFee + fundingPayment.abs();
+            totalMinusFees[address(_amm)][address(quoteAsset)] = totalMinusFee + fundingPayment.abs();
             transferToInsuranceFund(quoteAsset, fundingPayment.abs());
         }
         formulaicUpdateK(_amm, fundingImbalanceCost);
@@ -853,7 +855,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             if (feeToInsuranceFund > 0) {
                 transferToInsuranceFund(quoteAsset, feeToInsuranceFund);
             }
-            withdraw(quoteAsset, _msgSender(), feeToLiquidator);
+            withdraw(_amm, quoteAsset, _msgSender(), feeToLiquidator);
             enterRestrictionMode(_amm);
 
             emit PositionLiquidated(
@@ -1113,6 +1115,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             if (hasSpread) {
                 quoteAsset.safeTransferFrom(_from, address(insuranceFund), spread);
                 totalFees[address(_amm)][address(quoteAsset)] += spread;
+                totalMinusFees[address(_amm)][address(quoteAsset)] += spread;
                 netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += spread.toInt();
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
             }
@@ -1129,6 +1132,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function withdraw(
+        IAmm _amm,
         IERC20 _token,
         address _receiver,
         uint256 _amount
@@ -1142,7 +1146,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         if (totalTokenBalance < _amount) {
             uint256 balanceShortage = _amount - totalTokenBalance;
             uint256 _prepaidBadDebt = prepaidBadDebt[address(_token)] + balanceShortage;
-            require(_prepaidBadDebt < _token.balanceOf(address(insuranceFund)), "wait until realize bad debt");
+            require(_prepaidBadDebt < totalFees[address(_amm)][address(_token)] / 2, "wait until realize bad debt");
             prepaidBadDebt[address(_token)] = _prepaidBadDebt;
             insuranceFund.withdraw(_token, balanceShortage);
         }
@@ -1323,7 +1327,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function formulaicRepegAmm(IAmm _amm) private {
         address quote = address(_amm.quoteAsset());
         // Only a portion of the protocol fees are allocated to repegging
-        uint256 budget = totalFees[address(_amm)][quote] / 2;
+        uint256 totalFee = totalFees[address(_amm)][quote];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)][quote];
+        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
             budget,
             true
@@ -1365,17 +1371,17 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address _quote,
         int256 _cost
     ) private returns (bool) {
-        uint256 totalFee = totalFees[_amm][_quote];
+        uint256 totalMinusFee = totalMinusFees[_amm][_quote];
         uint256 costAbs = _cost.abs();
         if (_cost > 0) {
-            if (costAbs <= totalFee) {
-                totalFees[_amm][_quote] = totalFee - costAbs;
+            if (costAbs <= totalMinusFee) {
+                totalMinusFees[_amm][_quote] = totalMinusFee - costAbs;
                 insuranceFund.withdraw(IERC20(_quote), costAbs);
             } else {
                 return false;
             }
         } else {
-            totalFees[_amm][_quote] = totalFee + costAbs;
+            totalMinusFees[_amm][_quote] = totalMinusFee + costAbs;
             transferToInsuranceFund(IERC20(_quote), costAbs);
         }
         netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;

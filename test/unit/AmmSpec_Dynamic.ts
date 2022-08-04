@@ -599,7 +599,7 @@ describe("Amm Unit Test", () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.cost).above(budget);
         });
-        it("cost should be one bigger than the difference of position notional values", async () => {
+        it("cost should be the same as the difference of position notional values", async () => {
           const valueBefore = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
           const res = await amm.getFormulaicUpdateKResult(budget);
           await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
