@@ -1154,7 +1154,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             prepaidBadDebt[address(_amm)] = _prepaidBadDebt;
             withdrawFromInsuranceFund(_amm, balanceShortage);
         }
-        vaults[address(_amm)] = vault - _amount;
+        vaults[address(_amm)] -= _amount;
         quoteToken.safeTransfer(_receiver, _amount);
     }
 
