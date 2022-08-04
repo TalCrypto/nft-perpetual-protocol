@@ -185,7 +185,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     // key by amm address
     mapping(address => AmmMap) internal ammMap;
 
-    // prepaid bad debt balance, key by ERC20 token address
+    // prepaid bad debt balance, key by Amm address
     mapping(address => uint256) internal prepaidBadDebt;
 
     // contract dependencies
@@ -196,6 +196,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     address internal whitelist;
 
     mapping(address => bool) public backstopLiquidityProviderMap;
+
+    // amm => balance of vault
+    mapping(address => uint256) public vaults;
 
     // amm => total fees allocated to market
     mapping(address => uint256) public totalFees;
@@ -308,7 +311,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function addMargin(IAmm _amm, uint256 _addedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
-        IERC20 quoteToken = _amm.quoteAsset();
         requireValidTokenAmount(_addedMargin);
 
         address trader = _msgSender();
@@ -318,8 +320,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         setPosition(_amm, trader, position);
         // transfer token from trader
-        quoteToken.safeTransferFrom(trader, address(this), _addedMargin);
-        //_transferFrom(quoteToken, trader, address(this), _addedMargin);
+        deposit(_amm, trader, _addedMargin);
         emit MarginChanged(trader, address(_amm), int256(_addedMargin), 0);
     }
 
@@ -331,7 +332,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function removeMargin(IAmm _amm, uint256 _removedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
-        IERC20 quoteToken = _amm.quoteAsset();
         requireValidTokenAmount(_removedMargin);
 
         address trader = _msgSender();
@@ -358,7 +358,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         setPosition(_amm, trader, position);
 
         // transfer token back to trader
-        withdraw(_amm, quoteToken, trader, _removedMargin);
+        withdraw(_amm, trader, _removedMargin);
         emit MarginChanged(trader, address(_amm), marginDelta, fundingPayment);
     }
 
@@ -393,7 +393,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
         // transfer token based on settledValue. no insurance fund support
         if (settledValue > 0) {
-            _amm.quoteAsset().safeTransfer(trader, settledValue);
+            withdraw(_amm, trader, settledValue);
+            // _amm.quoteAsset().safeTransfer(trader, settledValue);
             //_transfer(_amm.quoteAsset(), trader, settledValue);
         }
         // emit event
@@ -446,7 +447,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 _baseAssetAmountLimit
     ) public whenNotPaused nonReentrant {
         requireAmm(_amm, true);
-        IERC20 quoteToken = _amm.quoteAsset();
         requireValidTokenAmount(_quoteAssetAmount);
         requireNonZeroInput(_leverage);
         requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
@@ -478,10 +478,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // transfer the actual token between trader and vault
             if (positionResp.marginToVault > 0) {
-                quoteToken.safeTransferFrom(trader, address(this), positionResp.marginToVault.abs());
-                //_transferFrom(quoteToken, trader, address(this), positionResp.marginToVault.abs());
+                deposit(_amm, trader, positionResp.marginToVault.abs());
             } else if (positionResp.marginToVault < 0) {
-                withdraw(_amm, quoteToken, trader, positionResp.marginToVault.abs());
+                withdraw(_amm, trader, positionResp.marginToVault.abs());
             }
         }
 
@@ -555,8 +554,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // add scope for stack too deep error
             // transfer the actual token from trader and vault
-            IERC20 quoteToken = _amm.quoteAsset();
-            withdraw(_amm, quoteToken, trader, positionResp.marginToVault.abs());
+            withdraw(_amm, trader, positionResp.marginToVault.abs());
         }
 
         // calculate fee and transfer token for fees
@@ -618,7 +616,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function payFunding(IAmm _amm) external {
         requireAmm(_amm, true);
         formulaicRepegAmm(_amm);
-        IERC20 quoteAsset = _amm.quoteAsset();
         uint256 totalFee = totalFees[address(_amm)];
         uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 cap = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
@@ -627,10 +624,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // funding payment is positive means profit
         if (fundingPayment < 0) {
             totalMinusFees[address(_amm)] = totalMinusFee - fundingPayment.abs();
-            insuranceFund.withdraw(quoteAsset, fundingPayment.abs());
+            withdrawFromInsuranceFund(_amm, fundingPayment.abs());
         } else {
             totalMinusFees[address(_amm)] = totalMinusFee + fundingPayment.abs();
-            transferToInsuranceFund(quoteAsset, fundingPayment.abs());
+            transferToInsuranceFund(_amm, fundingPayment.abs());
         }
         formulaicUpdateK(_amm, fundingImbalanceCost);
         netRevenuesSinceLastFunding[address(_amm)] = 0;
@@ -791,7 +788,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             uint256 liquidationBadDebt;
             uint256 feeToLiquidator;
             uint256 feeToInsuranceFund;
-            IERC20 quoteAsset = _amm.quoteAsset();
 
             int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
             if (
@@ -845,7 +841,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 // transfer the actual token between trader and vault
                 if (totalBadDebt > 0) {
                     require(backstopLiquidityProviderMap[_msgSender()], "not backstop LP");
-                    realizeBadDebt(quoteAsset, totalBadDebt);
+                    realizeBadDebt(_amm, totalBadDebt);
                 }
                 if (remainMargin > 0) {
                     feeToInsuranceFund = remainMargin;
@@ -853,9 +849,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             }
 
             if (feeToInsuranceFund > 0) {
-                transferToInsuranceFund(quoteAsset, feeToInsuranceFund);
+                transferToInsuranceFund(_amm, feeToInsuranceFund);
             }
-            withdraw(_amm, quoteAsset, _msgSender(), feeToLiquidator);
+            withdraw(_amm, _msgSender(), feeToLiquidator);
             enterRestrictionMode(_amm);
 
             emit PositionLiquidated(
@@ -1117,59 +1113,79 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 totalFees[address(_amm)] += spread;
                 totalMinusFees[address(_amm)] += spread;
                 netRevenuesSinceLastFunding[address(_amm)] += spread.toInt();
-                //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
             }
 
             // transfer toll to feePool
             if (hasToll) {
                 require(address(feePool) != address(0), "Invalid"); //Invalid feePool
                 quoteAsset.safeTransferFrom(_from, address(feePool), toll);
-                //_transferFrom(quoteAsset, _from, address(feePool), toll);
             }
 
             fee = toll + spread;
         }
     }
 
+    function deposit(
+        IAmm _amm,
+        address _sender,
+        uint256 _amount
+    ) private {
+        vaults[address(_amm)] += _amount;
+        IERC20 quoteToken = _amm.quoteAsset();
+        quoteToken.safeTransferFrom(_sender, address(this), _amount);
+    }
+
     function withdraw(
         IAmm _amm,
-        IERC20 _token,
         address _receiver,
         uint256 _amount
     ) internal {
-        // if withdraw amount is larger than entire balance of vault
+        // if withdraw amount is larger than the balance of given Amm's vault
         // means this trader's profit comes from other under collateral position's future loss
-        // and the balance of entire vault is not enough
+        // and the balance of given Amm's vault is not enough
         // need money from IInsuranceFund to pay first, and record this prepaidBadDebt
         // in this case, insurance fund loss must be zero
-        uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
-        if (totalTokenBalance < _amount) {
-            uint256 balanceShortage = _amount - totalTokenBalance;
-            uint256 _prepaidBadDebt = prepaidBadDebt[address(_token)] + balanceShortage;
+        uint256 vault = vaults[address(_amm)];
+        IERC20 quoteToken = _amm.quoteAsset();
+        if (vault < _amount) {
+            uint256 balanceShortage = _amount - vault;
+            uint256 _prepaidBadDebt = prepaidBadDebt[address(_amm)] + balanceShortage;
             require(_prepaidBadDebt < totalFees[address(_amm)] / 2, "wait until realize bad debt");
-            prepaidBadDebt[address(_token)] = _prepaidBadDebt;
-            insuranceFund.withdraw(_token, balanceShortage);
+            prepaidBadDebt[address(_amm)] = _prepaidBadDebt;
+            withdrawFromInsuranceFund(_amm, balanceShortage);
         }
-        _token.safeTransfer(_receiver, _amount);
-        //_transfer(_token, _receiver, _amount);
+        vaults[address(_amm)] = vault - _amount;
+        quoteToken.safeTransfer(_receiver, _amount);
     }
 
-    function realizeBadDebt(IERC20 _token, uint256 _badDebt) internal {
-        uint256 badDebtBalance = prepaidBadDebt[address(_token)];
-        if (badDebtBalance > _badDebt) {
+    function realizeBadDebt(IAmm _amm, uint256 _badDebt) internal {
+        uint256 badDebtBalance = prepaidBadDebt[address(_amm)];
+        if (badDebtBalance >= _badDebt) {
             // no need to move extra tokens because vault already prepay bad debt, only need to update the numbers
-            prepaidBadDebt[address(_token)] = badDebtBalance - _badDebt;
+            prepaidBadDebt[address(_amm)] = badDebtBalance - _badDebt;
         } else {
             // in order to realize all the bad debt vault need extra tokens from insuranceFund
-            insuranceFund.withdraw(_token, _badDebt - badDebtBalance);
-            prepaidBadDebt[address(_token)] = 0;
+            withdrawFromInsuranceFund(_amm, _badDebt - badDebtBalance);
+            prepaidBadDebt[address(_amm)] = 0;
         }
     }
 
-    function transferToInsuranceFund(IERC20 _token, uint256 _amount) internal {
-        uint256 totalTokenBalance = _token.balanceOf(address(this)); // _balanceOf(_token, address(this));
-        _token.safeTransfer(address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
-        //_transfer(_token, address(insuranceFund), totalTokenBalance < _amount ? totalTokenBalance : _amount);
+    function withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) private {
+        IERC20 quoteToken = _amm.quoteAsset();
+        vaults[address(_amm)] += _amount;
+        insuranceFund.withdraw(quoteToken, _amount);
+    }
+
+    function transferToInsuranceFund(IAmm _amm, uint256 _amount) internal {
+        IERC20 quoteToken = _amm.quoteAsset();
+        uint256 vault = vaults[address(_amm)];
+        if (vault > _amount) {
+            vaults[address(_amm)] = vault - _amount;
+            quoteToken.safeTransfer(address(insuranceFund), _amount);
+        } else {
+            vaults[address(_amm)] = 0;
+            quoteToken.safeTransfer(address(insuranceFund), vault);
+        }
     }
 
     /**
@@ -1280,14 +1296,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         position = ammMap[address(_amm)].positionMap[_trader];
     }
 
-    // function _msgSender() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (address payable) {
-    //     return super._msgSender();
-    // }
-
-    // function _msgData() internal view override(BaseRelayRecipient, ContextUpgradeSafe) returns (bytes memory ret) {
-    //     return super._msgData();
-    // }
-
     //
     // REQUIRE FUNCTIONS
     //
@@ -1365,19 +1373,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // negative cost is revenue, otherwise is expense of insurance fund
     function applyCost(IAmm _amm, int256 _cost) private returns (bool) {
-        IERC20 quote = _amm.quoteAsset();
         uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 costAbs = _cost.abs();
         if (_cost > 0) {
             if (costAbs <= totalMinusFee) {
                 totalMinusFees[address(_amm)] = totalMinusFee - costAbs;
-                insuranceFund.withdraw(quote, costAbs);
+                withdrawFromInsuranceFund(_amm, costAbs);
             } else {
                 return false;
             }
         } else {
             totalMinusFees[address(_amm)] = totalMinusFee + costAbs;
-            transferToInsuranceFund(quote, costAbs);
+            transferToInsuranceFund(_amm, costAbs);
         }
         netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - _cost;
         return true;
