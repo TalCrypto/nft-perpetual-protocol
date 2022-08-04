@@ -197,12 +197,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
-    // amm => token => total fees allocated to market
-    mapping(address => mapping(address => uint256)) public totalFees;
-    mapping(address => mapping(address => uint256)) public totalMinusFees;
+    // amm => total fees allocated to market
+    mapping(address => uint256) public totalFees;
+    mapping(address => uint256) public totalMinusFees;
 
-    // amm => token => revenue since last funding
-    mapping(address => mapping(address => int256)) public netRevenuesSinceLastFunding;
+    // amm => revenue since last funding
+    mapping(address => int256) public netRevenuesSinceLastFunding;
 
     uint256[50] private __gap;
 
@@ -619,21 +619,21 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         requireAmm(_amm, true);
         formulaicRepegAmm(_amm);
         IERC20 quoteAsset = _amm.quoteAsset();
-        uint256 totalFee = totalFees[address(_amm)][address(quoteAsset)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)][address(quoteAsset)];
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 cap = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
         // funding payment is positive means profit
         if (fundingPayment < 0) {
-            totalMinusFees[address(_amm)][address(quoteAsset)] = totalMinusFee - fundingPayment.abs();
+            totalMinusFees[address(_amm)] = totalMinusFee - fundingPayment.abs();
             insuranceFund.withdraw(quoteAsset, fundingPayment.abs());
         } else {
-            totalMinusFees[address(_amm)][address(quoteAsset)] = totalMinusFee + fundingPayment.abs();
+            totalMinusFees[address(_amm)] = totalMinusFee + fundingPayment.abs();
             transferToInsuranceFund(quoteAsset, fundingPayment.abs());
         }
         formulaicUpdateK(_amm, fundingImbalanceCost);
-        netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] = 0;
+        netRevenuesSinceLastFunding[address(_amm)] = 0;
     }
 
     //
@@ -1114,9 +1114,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // transfer spread to market in order to use it to make market better
             if (hasSpread) {
                 quoteAsset.safeTransferFrom(_from, address(insuranceFund), spread);
-                totalFees[address(_amm)][address(quoteAsset)] += spread;
-                totalMinusFees[address(_amm)][address(quoteAsset)] += spread;
-                netRevenuesSinceLastFunding[address(_amm)][address(quoteAsset)] += spread.toInt();
+                totalFees[address(_amm)] += spread;
+                totalMinusFees[address(_amm)] += spread;
+                netRevenuesSinceLastFunding[address(_amm)] += spread.toInt();
                 //_transferFrom(quoteAsset, _from, address(insuranceFund), spread);
             }
 
@@ -1146,7 +1146,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         if (totalTokenBalance < _amount) {
             uint256 balanceShortage = _amount - totalTokenBalance;
             uint256 _prepaidBadDebt = prepaidBadDebt[address(_token)] + balanceShortage;
-            require(_prepaidBadDebt < totalFees[address(_amm)][address(_token)] / 2, "wait until realize bad debt");
+            require(_prepaidBadDebt < totalFees[address(_amm)] / 2, "wait until realize bad debt");
             prepaidBadDebt[address(_token)] = _prepaidBadDebt;
             insuranceFund.withdraw(_token, balanceShortage);
         }
@@ -1325,16 +1325,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function formulaicRepegAmm(IAmm _amm) private {
-        address quote = address(_amm.quoteAsset());
         // Only a portion of the protocol fees are allocated to repegging
-        uint256 totalFee = totalFees[address(_amm)][quote];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)][quote];
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
             budget,
             true
         );
-        if (isAdjustable && applyCost(address(_amm), quote, cost)) {
+        if (isAdjustable && applyCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
@@ -1342,8 +1341,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // if fundingImbalance is positive, clearing house receives funds
     function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
-        address quote = address(_amm.quoteAsset());
-        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)][quote];
+        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
         int256 budget;
         if (fundingImbalance > 0) {
             // positive cost is period revenue, give back half in k increase
@@ -1359,32 +1357,29 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
             budget
         );
-        if (isAdjustable && applyCost(address(_amm), quote, cost)) {
+        if (isAdjustable && applyCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }
 
     // negative cost is revenue, otherwise is expense of insurance fund
-    function applyCost(
-        address _amm,
-        address _quote,
-        int256 _cost
-    ) private returns (bool) {
-        uint256 totalMinusFee = totalMinusFees[_amm][_quote];
+    function applyCost(IAmm _amm, int256 _cost) private returns (bool) {
+        IERC20 quote = _amm.quoteAsset();
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 costAbs = _cost.abs();
         if (_cost > 0) {
             if (costAbs <= totalMinusFee) {
-                totalMinusFees[_amm][_quote] = totalMinusFee - costAbs;
-                insuranceFund.withdraw(IERC20(_quote), costAbs);
+                totalMinusFees[address(_amm)] = totalMinusFee - costAbs;
+                insuranceFund.withdraw(quote, costAbs);
             } else {
                 return false;
             }
         } else {
-            totalMinusFees[_amm][_quote] = totalMinusFee + costAbs;
-            transferToInsuranceFund(IERC20(_quote), costAbs);
+            totalMinusFees[address(_amm)] = totalMinusFee + costAbs;
+            transferToInsuranceFund(quote, costAbs);
         }
-        netRevenuesSinceLastFunding[_amm][_quote] = netRevenuesSinceLastFunding[_amm][_quote] - _cost;
+        netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - _cost;
         return true;
     }
 }
