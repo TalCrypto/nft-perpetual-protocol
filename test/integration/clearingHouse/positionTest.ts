@@ -766,7 +766,7 @@ describe("ClearingHouse - open/close position Test", () => {
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(141), toFullDigitBN(10), toFullDigitBN(0))
-      ).to.be.revertedWith("ERC20: insufficient allowance");
+      ).to.be.revertedWith("STF");
     });
 
     it("Force error, open position - exceed margin ratio", async () => {
@@ -797,7 +797,7 @@ describe("ClearingHouse - open/close position Test", () => {
         .withArgs(insuranceFund.address, clearingHouse.address, "74117647058823529412");
 
       expect(await quoteToken.balanceOf(clearingHouse.address)).eq(0);
-      expect(await clearingHouse.getPrepaidBadDebt(quoteToken.address)).eq("74117647058823529412");
+      expect(await clearingHouse.getPrepaidBadDebt(amm.address)).eq("74117647058823529412");
 
       // bob close her under collateral position, positionValue is -294.11
       // bob's pnl = 200 - 294.11 ~= -94.12
@@ -836,7 +836,7 @@ describe("ClearingHouse - open/close position Test", () => {
         .withArgs(insuranceFund.address, clearingHouse.address, "74117647058823529412");
 
       expect(await quoteToken.balanceOf(clearingHouse.address)).eq(0);
-      expect(await clearingHouse.getPrepaidBadDebt(quoteToken.address)).eq("74117647058823529412");
+      expect(await clearingHouse.getPrepaidBadDebt(amm.address)).eq("74117647058823529412");
 
       // keeper liquidate bob's under collateral position, bob's positionValue is -294.11
       // bob's pnl = 200 - 294.11 ~= -94.12
@@ -1579,7 +1579,7 @@ describe("ClearingHouse - open/close position Test", () => {
       // user needs to pay 300 + 60 = 360, but only has 359
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5))
-      ).to.be.revertedWith("ERC20: insufficient allowance");
+      ).to.be.revertedWith("STF");
     });
 
     it("has spread but no toll", async () => {

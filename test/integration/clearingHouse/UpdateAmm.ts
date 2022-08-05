@@ -110,15 +110,16 @@ describe("ClearingHouse Test", () => {
     await loadFixture(deployEnvFixture);
   });
 
-  describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short)", () => {
+  describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short) and fee pool > 0", () => {
     beforeEach(async () => {
+      await amm.setSpreadRatio(toFullDigitBN(0.5));
       // given alice takes 2x long position (20B) with 125 margin
-      await approve(alice, clearingHouse.address, 125);
+      await approve(alice, clearingHouse.address, 250);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(125), toFullDigitBN(2), toFullDigitBN(0));
       // B = 80, Q = 1250
 
       // given bob takes 1x short position (-45B) with 450 margin
-      await approve(bob, clearingHouse.address, 450);
+      await approve(bob, clearingHouse.address, 900);
       await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
       // B = 125, Q = 800
 
@@ -127,6 +128,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 125 (alice's margin) + 450 (bob' margin)  = 575
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
+      expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(350));
     });
 
     describe("when oracle-mark divergence doesn't exceed limit", () => {
@@ -139,7 +141,6 @@ describe("ClearingHouse Test", () => {
         });
         it("should increase k because funding payment is positive", async () => {
           await gotoNextFundingTime();
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
           // funding imbalance cost = 2
           await clearingHouse.payFunding(amm.address);
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
@@ -154,17 +155,15 @@ describe("ClearingHouse Test", () => {
         beforeEach(async () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
         });
-        it("should decrease k because funding cost is negative and it's absolute value is bigger than net revenue", async () => {
+        it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
           await gotoNextFundingTime();
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
           // funding imbalance cost = -2
           await clearingHouse.payFunding(amm.address);
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / 125).below(1);
-          expect(Number(quoteAssetReserve) / 800).below(1);
-          expect(Number(baseAssetReserve) / 125).eq(Number(quoteAssetReserve) / 800);
+          expect(Number(baseAssetReserve) / 125).eq(1);
+          expect(Number(quoteAssetReserve) / 800).eq(1);
         });
       });
     });
@@ -187,7 +186,6 @@ describe("ClearingHouse Test", () => {
         });
         it("should increase k because funding payment is positive", async () => {
           await gotoNextFundingTime();
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
           // funding imbalance cost = 2
           await clearingHouse.payFunding(amm.address);
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
@@ -211,7 +209,6 @@ describe("ClearingHouse Test", () => {
         });
         it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
           await gotoNextFundingTime();
-          expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
           // funding imbalance cost = -2
           await clearingHouse.payFunding(amm.address);
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
@@ -224,7 +221,7 @@ describe("ClearingHouse Test", () => {
     });
   });
 
-  describe("payFunding: when alice.size = 37.5 & bob.size = -17.5 (long > short)", () => {
+  describe("payFunding: when alice.size = 37.5 & bob.size = -17.5 (long > short) and fee pool = 0", () => {
     beforeEach(async () => {
       // given alice takes 2x long position (37.5B) with 300 margin
       await approve(alice, clearingHouse.address, 600);
@@ -248,12 +245,12 @@ describe("ClearingHouse Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(15.725));
       });
-      it("should decrease k because funding cost is negative and it's absolute value is bigger than revenue since last funding", async () => {
+      it("should decrease K and funding payment 0", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
-        // funding imbalance cost = -2
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
+        // uncapped funding imbalance cost = -2
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0));
         const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
         const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
         expect(Number(baseAssetReserve) / 80).below(1);
@@ -267,7 +264,7 @@ describe("ClearingHouse Test", () => {
       });
       it("should increase k because funding payment is positive", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         // funding imbalance cost = 2
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
@@ -305,13 +302,13 @@ describe("ClearingHouse Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(10.1));
       });
-      it("decrease K because funding cost is negative and it's absolute value is greater than revenue since last funding", async () => {
+      it("decrease K and funding payment 0", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
         const fraction = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
         const positionSize = await amm.getBaseAssetDelta();
-        expect(fraction.mul(positionSize)).below(toFullDigitBN(0));
+        expect(fraction.mul(positionSize)).eq(toFullDigitBN(0));
         const baseAssetReserve = await amm.baseAssetReserve();
         const quoteAssetReserve = await amm.quoteAssetReserve();
         expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).below(toFullDigitBN(1));
@@ -328,7 +325,7 @@ describe("ClearingHouse Test", () => {
       });
       it("decrease K because total position size is positive and oracle > mark", async () => {
         await gotoNextFundingTime();
-        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address, quoteToken.address)).eq(toFullDigitBN(0));
+        expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
         const baseAssetReserve = await amm.baseAssetReserve();
         const quoteAssetReserve = await amm.quoteAssetReserve();
