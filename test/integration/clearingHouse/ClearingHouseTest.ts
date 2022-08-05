@@ -248,7 +248,8 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.totalFees(amm.address, quoteToken.address)).eq(toFullDigitBN(900));
+      expect(await clearingHouse.totalFees(amm.address)).eq(toFullDigitBN(900));
+      expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
     });
 
     it("will generate loss for amm when funding rate is positive and amm hold more long position", async () => {

@@ -52,7 +52,7 @@ contract ClearingHouseFake is ClearingHouse {
         return ammMap[_amm].lastRestrictionBlock == _block;
     }
 
-    function getPrepaidBadDebt(address _token) public view returns (uint256) {
-        return prepaidBadDebt[_token];
+    function getPrepaidBadDebt(address _amm) public view returns (uint256) {
+        return prepaidBadDebts[_amm];
     }
 }

@@ -186,7 +186,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     mapping(address => AmmMap) internal ammMap;
 
     // prepaid bad debt balance, key by Amm address
-    mapping(address => uint256) internal prepaidBadDebt;
+    mapping(address => uint256) internal prepaidBadDebts;
 
     // contract dependencies
     IInsuranceFund public insuranceFund;
@@ -1149,9 +1149,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         IERC20 quoteToken = _amm.quoteAsset();
         if (vault < _amount) {
             uint256 balanceShortage = _amount - vault;
-            uint256 _prepaidBadDebt = prepaidBadDebt[address(_amm)] + balanceShortage;
-            require(_prepaidBadDebt < totalFees[address(_amm)] / 2, "wait until realize bad debt");
-            prepaidBadDebt[address(_amm)] = _prepaidBadDebt;
+            prepaidBadDebts[address(_amm)] += balanceShortage;
             withdrawFromInsuranceFund(_amm, balanceShortage);
         }
         vaults[address(_amm)] -= _amount;
@@ -1159,14 +1157,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function realizeBadDebt(IAmm _amm, uint256 _badDebt) internal {
-        uint256 badDebtBalance = prepaidBadDebt[address(_amm)];
+        uint256 badDebtBalance = prepaidBadDebts[address(_amm)];
         if (badDebtBalance >= _badDebt) {
             // no need to move extra tokens because vault already prepay bad debt, only need to update the numbers
-            prepaidBadDebt[address(_amm)] = badDebtBalance - _badDebt;
+            prepaidBadDebts[address(_amm)] = badDebtBalance - _badDebt;
         } else {
             // in order to realize all the bad debt vault need extra tokens from insuranceFund
             withdrawFromInsuranceFund(_amm, _badDebt - badDebtBalance);
-            prepaidBadDebt[address(_amm)] = 0;
+            prepaidBadDebts[address(_amm)] = 0;
         }
     }
 
