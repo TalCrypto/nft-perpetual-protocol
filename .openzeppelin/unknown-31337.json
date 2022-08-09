@@ -1,8 +1,8 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-    "txHash": "0xd69a8077668e2609e3f7106e09be870a550dac0fa62e4068d1b7e5269634cfa3"
+    "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+    "txHash": "0xa967f0d0e7e2b3bbab63fad08c2d837e3a8ca8b7cac1ead720b7b2373d84ac0f"
   },
   "proxies": [
     {
@@ -18,11 +18,6 @@
     {
       "address": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
       "txHash": "0x2fe1b09627ba3f68fb81436a31c7e1b9f2620d7c07b9de2aedf047afca6bbfe9",
-      "kind": "transparent"
-    },
-    {
-      "address": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
-      "txHash": "0xa6fd070e396d2b6d3f97773ebd4a28a3c0a9923bd5c262e6dba1d3399f36a708",
       "kind": "transparent"
     },
     {
@@ -198,6 +193,26 @@
     {
       "address": "0x938b0ddB2850c3D9743211000609fbf664a5Ea0C",
       "txHash": "0x835a6e2441c0fa3271059b36f3e6059d077edb83bd97f47bcc07ac9de01771fa",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+      "txHash": "0x238db4bb60358629c645d746643dfc095351c9f4cdf41c6d402763eac35ef57a",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
+      "txHash": "0xdf9f7d41b7978f385ae42f86602cc0606d322534d71ab17aa3b60a30ebf0320b",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xc5a5C42992dECbae36851359345FE25997F5C42d",
+      "txHash": "0x0ce31444a188d5e498475d64aed9bece3e8cd2cc8884f32e63bdab0409faeb69",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+      "txHash": "0x6f2426eccc0b797d4fd6ee2e0ebc0976d6dbb936058a493dcb304c464eb4a773",
       "kind": "transparent"
     }
   ],
@@ -955,8 +970,8 @@
       }
     },
     "5280e8400d3c988d7fa985e1b61f8865dccc78229e5c04b73c63efb17e8e8b9b": {
-      "address": "0x89BdBCE0d4De28446c3179b94596Ea5203321aCb",
-      "txHash": "0x202283487329f797abed15bc823e209c6269215665c9360ca78d5d05147649e1",
+      "address": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+      "txHash": "0xdd11221c1081b423c03438e6fc7a3f134a9023777526ed437bad4fdb2ffc9f39",
       "layout": {
         "storage": [
           {
@@ -1124,7 +1139,7 @@
             "label": "liquidityChangedSnapshots",
             "offset": 0,
             "slot": "165",
-            "type": "t_array(t_struct(LiquidityChangedSnapshot)13785_storage)dyn_storage",
+            "type": "t_array(t_struct(LiquidityChangedSnapshot)13813_storage)dyn_storage",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:129"
           },
@@ -1204,7 +1219,7 @@
             "label": "priceFeed",
             "offset": 0,
             "slot": "175",
-            "type": "t_contract(IPriceFeed)14363",
+            "type": "t_contract(IPriceFeed)14391",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:141"
           },
@@ -1246,7 +1261,7 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_struct(LiquidityChangedSnapshot)13785_storage)dyn_storage": {
+          "t_array(t_struct(LiquidityChangedSnapshot)13813_storage)dyn_storage": {
             "label": "struct IAmm.LiquidityChangedSnapshot[]",
             "numberOfBytes": "32"
           },
@@ -1274,7 +1289,7 @@
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IPriceFeed)14363": {
+          "t_contract(IPriceFeed)14391": {
             "label": "contract IPriceFeed",
             "numberOfBytes": "20"
           },
@@ -1282,7 +1297,7 @@
             "label": "int256",
             "numberOfBytes": "32"
           },
-          "t_struct(LiquidityChangedSnapshot)13785_storage": {
+          "t_struct(LiquidityChangedSnapshot)13813_storage": {
             "label": "struct IAmm.LiquidityChangedSnapshot",
             "members": [
               {
@@ -1341,6 +1356,367 @@
               }
             ],
             "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "40530cd7263b98604506562c0bd8ffd57814c8867dc4298726b2cf4d18795bcc": {
+      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "txHash": "0x305daa360bc4e17e93e08bdc527fe10d01fb8a3e72018ab1ed3bcb486b3b5be3",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "OwnerPausableUpgradeSafe",
+            "src": "contracts\\OwnerPausable.sol:21"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "decimalMap",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:167"
+          },
+          {
+            "label": "initMarginRatio",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:170"
+          },
+          {
+            "label": "maintenanceMarginRatio",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:173"
+          },
+          {
+            "label": "liquidationFeeRatio",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:176"
+          },
+          {
+            "label": "partialLiquidationRatio",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:179"
+          },
+          {
+            "label": "openInterestNotionalMap",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:183"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_mapping(t_address,t_struct(AmmMap)7476_storage)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:186"
+          },
+          {
+            "label": "prepaidBadDebts",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:189"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "309",
+            "type": "t_contract(IInsuranceFund)14304",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:192"
+          },
+          {
+            "label": "feePool",
+            "offset": 0,
+            "slot": "310",
+            "type": "t_contract(IMultiTokenRewardRecipient)14336",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:193"
+          },
+          {
+            "label": "whitelist",
+            "offset": 0,
+            "slot": "311",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:196"
+          },
+          {
+            "label": "backstopLiquidityProviderMap",
+            "offset": 0,
+            "slot": "312",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:198"
+          },
+          {
+            "label": "vaults",
+            "offset": 0,
+            "slot": "313",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:201"
+          },
+          {
+            "label": "totalFees",
+            "offset": 0,
+            "slot": "314",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:204"
+          },
+          {
+            "label": "totalMinusFees",
+            "offset": 0,
+            "slot": "315",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:205"
+          },
+          {
+            "label": "netRevenuesSinceLastFunding",
+            "offset": 0,
+            "slot": "316",
+            "type": "t_mapping(t_address,t_int256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:208"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "317",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:210"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_int256)dyn_storage": {
+            "label": "int256[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IInsuranceFund)14304": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMultiTokenRewardRecipient)14336": {
+            "label": "contract IMultiTokenRewardRecipient",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_int256)": {
+            "label": "mapping(address => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AmmMap)7476_storage)": {
+            "label": "mapping(address => struct ClearingHouse.AmmMap)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Position)7447_storage)": {
+            "label": "mapping(address => struct ClearingHouse.Position)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AmmMap)7476_storage": {
+            "label": "struct ClearingHouse.AmmMap",
+            "members": [
+              {
+                "label": "lastRestrictionBlock",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "cumulativePremiumFractions",
+                "type": "t_array(t_int256)dyn_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "positionMap",
+                "type": "t_mapping(t_address,t_struct(Position)7447_storage)",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Position)7447_storage": {
+            "label": "struct ClearingHouse.Position",
+            "members": [
+              {
+                "label": "size",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margin",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "openNotional",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdatedCumulativePremiumFraction",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "liquidityHistoryIndex",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
           },
           "t_uint256": {
             "label": "uint256",

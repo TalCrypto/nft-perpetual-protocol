@@ -183,7 +183,7 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
 
   // deploy an amm with Q100/B1000 liquidity
   const amm = await deployProxyAmm({
-    deployer: sender!,
+    signer: sender!,
     quoteAssetTokenAddr: quoteToken.address,
     priceFeedAddr: priceFeed.address,
     fundingPeriod: BigNumber.from(86400), // to make calculation easier we set fundingPeriod = 1 day

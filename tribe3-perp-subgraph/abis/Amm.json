@@ -1264,12 +1264,28 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_cap",
+        "type": "uint256"
+      }
+    ],
     "name": "settleFunding",
     "outputs": [
       {
         "internalType": "int256",
-        "name": "",
+        "name": "premiumFraction",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "fundingPayment",
+        "type": "int256"
+      },
+      {
+        "internalType": "int256",
+        "name": "uncappedFundingPayment",
         "type": "int256"
       }
     ],

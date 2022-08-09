@@ -26,6 +26,7 @@ import {
   Liquidator,
   Liquidator__factory,
   ClearingHouse,
+  ClearingHouse__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -125,7 +126,7 @@ export async function deployAmm(params: {
 }
 
 export async function deployProxyAmm(params: {
-  deployer: Signer;
+  signer: Signer;
   quoteAssetTokenAddr: string;
   priceFeedAddr: string;
   fluctuation: BigNumber;
@@ -137,7 +138,7 @@ export async function deployProxyAmm(params: {
   spreadRatio?: BigNumber;
 }): Promise<Amm> {
   const {
-    deployer,
+    signer,
     quoteAssetTokenAddr,
     priceFeedAddr,
     fluctuation,
@@ -148,8 +149,7 @@ export async function deployProxyAmm(params: {
     tollRatio = BigNumber.from(0),
     spreadRatio = BigNumber.from(0),
   } = params;
-  const AmmContract = await ethers.getContractFactory("Amm");
-  const instance = (await upgrades.deployProxy(AmmContract, [
+  const instance = (await upgrades.deployProxy(new Amm__factory(signer), [
     quoteAssetReserve.toString(),
     baseAssetReserve.toString(),
     toFullDigitBN(0.9).toString(), // tradeLimitRatio
@@ -193,8 +193,7 @@ export async function deployProxyClearingHouse(
   liquidationFeeRatio: BigNumber,
   insuranceFund: string
 ): Promise<ClearingHouse> {
-  const ClearingHouseContract = await ethers.getContractFactory("ClearingHouse");
-  const instance = (await upgrades.deployProxy(ClearingHouseContract, [
+  const instance = (await upgrades.deployProxy(new ClearingHouse__factory(signer), [
     initMarginRatio.toString(),
     maintenanceMarginRatio.toString(),
     liquidationFeeRatio.toString(),
