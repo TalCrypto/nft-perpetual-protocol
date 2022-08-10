@@ -1,12 +1,14 @@
 export enum AmmInstanceName {
   BAYCETH = "BAYCETH",
-  DOODLEETH = "DOODLEETH",
+  DOODLESETH = "DOODLESETH",
+  MOONBIRDSETH = "MOONBIRDSETH",
 }
 
 // chainlink
 export enum PriceFeedKey {
   BAYC = "BAYC",
-  DOODLE = "DOODLE",
+  DOODLES = "DOODLES",
+  MOONBIRDS = "MOONBIRDS",
 }
 
 export enum ContractFullyQualifiedName {

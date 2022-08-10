@@ -27,7 +27,7 @@ interface AmmProperties {
 export type AmmConfig = { name: AmmInstanceName; deployArgs: AmmDeployArgs; properties: AmmProperties };
 export type AmmConfigMap = Record<string, AmmConfig>;
 
-export const BAYC_AMM: AmmConfig = {
+const BAYC_AMM: AmmConfig = {
   name: AmmInstanceName.BAYCETH,
   deployArgs: {
     // base * price
@@ -46,8 +46,8 @@ export const BAYC_AMM: AmmConfig = {
   },
 };
 
-export const DOODLE_AMM: AmmConfig = {
-  name: AmmInstanceName.DOODLEETH,
+const DOODLES_AMM: AmmConfig = {
+  name: AmmInstanceName.DOODLESETH,
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("1000"),
@@ -55,13 +55,32 @@ export const DOODLE_AMM: AmmConfig = {
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 1 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.BAYC,
+    priceFeedKey: PriceFeedKey.DOODLES,
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.1%
   },
   properties: {
-    maxHoldingBaseAsset: utils.parseEther("2"), // 2 DOODLE,
+    maxHoldingBaseAsset: utils.parseEther("2"), // 2 DOODLES,
     openInterestNotionalCap: utils.parseEther("20"), // 20 ETH
+  },
+};
+
+const MOONBIRDS_AMM: AmmConfig = {
+  name: AmmInstanceName.MOONBIRDSETH,
+  deployArgs: {
+    // base * price
+    quoteAssetReserve: utils.parseEther("1000"),
+    baseAssetReserve: utils.parseEther("100"),
+    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 1 hour
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    priceFeedKey: PriceFeedKey.MOONBIRDS,
+    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
+    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.1%
+  },
+  properties: {
+    maxHoldingBaseAsset: utils.parseEther("2"),
+    openInterestNotionalCap: utils.parseEther("20"),
   },
 };
 
@@ -110,7 +129,7 @@ export class DeployConfig {
   readonly confirmations: number;
 
   // chainlink
-  readonly chainlinkMap: Record<string, string>;
+  readonly priceFeed: string;
 
   // weth address
   readonly weth: string;
@@ -123,7 +142,8 @@ export class DeployConfig {
   // amm
   readonly legacyAmmConfigMap: Record<string, AmmConfig> = {
     [AmmInstanceName.BAYCETH]: BAYC_AMM,
-    [AmmInstanceName.DOODLEETH]: DOODLE_AMM,
+    [AmmInstanceName.DOODLESETH]: DOODLES_AMM,
+    [AmmInstanceName.MOONBIRDSETH]: MOONBIRDS_AMM,
   };
 
   constructor(network: string) {
@@ -131,31 +151,22 @@ export class DeployConfig {
     switch (network) {
       case "arbitrum":
         this.confirmations = 5;
-        this.chainlinkMap = {
-          // fake address
-          [PriceFeedKey.BAYC]: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
-          [PriceFeedKey.DOODLE]: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-        };
+        // fake address
+        this.priceFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
         // fake address
         this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
         break;
       case "rinkeby":
         this.confirmations = 5;
-        this.chainlinkMap = {
-          // fake address
-          [PriceFeedKey.BAYC]: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
-          [PriceFeedKey.DOODLE]: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-        };
+        // fake address
+        this.priceFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
         // fake address
         this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
         break;
       case "test":
         this.confirmations = 1;
-        this.chainlinkMap = {
-          // fake address
-          [PriceFeedKey.BAYC]: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
-          [PriceFeedKey.DOODLE]: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-        };
+        // fake address
+        this.priceFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
         // fake address
         this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
         break;

@@ -1,4 +1,4 @@
-import { ethers, run, network } from "hardhat";
+import { ethers, network } from "hardhat";
 import { ContractAddresses, saveAddresses } from "./addresses";
 import { LedgerSigner } from "@ethersproject/hardware-wallets";
 import {
@@ -11,7 +11,7 @@ import {
   deployProxyTollPool,
 } from "../utils/contract";
 import { DeployConfig } from "./DeployConfig";
-import { AmmInstanceName, PriceFeedKey } from "./Constants";
+import { AmmInstanceName } from "./Constants";
 
 async function main() {
   const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
@@ -51,8 +51,8 @@ async function main() {
     tradeLimitRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.tradeLimitRatio,
     fundingPeriod: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.fundingPeriod,
     fluctuation: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.fluctuation,
-    priceFeedKey: PriceFeedKey.BAYC,
-    priceFeedAddress: deployConfig.chainlinkMap[PriceFeedKey.BAYC],
+    priceFeedKey: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.priceFeedKey,
+    priceFeedAddress: deployConfig.priceFeed,
     tollRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.tollRatio,
     spreadRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.spreadRatio,
     quoteTokenAddress: deployConfig.weth,
@@ -62,15 +62,15 @@ async function main() {
   console.log("deploying DOODLE_AMM");
   const doodleAmm = await deployProxyAmm({
     signer: ledger,
-    quoteAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.quoteAssetReserve,
-    baseAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.baseAssetReserve,
-    tradeLimitRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.tradeLimitRatio,
-    fundingPeriod: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.fundingPeriod,
-    fluctuation: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.fluctuation,
-    priceFeedKey: PriceFeedKey.DOODLE,
-    priceFeedAddress: deployConfig.chainlinkMap[PriceFeedKey.DOODLE],
-    tollRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.tollRatio,
-    spreadRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].deployArgs.spreadRatio,
+    quoteAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.quoteAssetReserve,
+    baseAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.baseAssetReserve,
+    tradeLimitRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.tradeLimitRatio,
+    fundingPeriod: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.fundingPeriod,
+    fluctuation: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.fluctuation,
+    priceFeedKey: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.priceFeedKey,
+    priceFeedAddress: deployConfig.priceFeed,
+    tollRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.tollRatio,
+    spreadRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.spreadRatio,
     quoteTokenAddress: deployConfig.weth,
   });
   console.log("deployed DOODLE_AMM address: ", doodleAmm.address);
@@ -94,8 +94,8 @@ async function main() {
   );
 
   await doodleAmm.setCap(
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].properties.maxHoldingBaseAsset,
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLEETH].properties.openInterestNotionalCap
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset,
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap
   );
 
   await baycAmm.setOpen(true);
@@ -111,7 +111,7 @@ async function main() {
     clearingHouseViewer: clearingHouseViewer.address,
     amm: {
       [AmmInstanceName.BAYCETH]: baycAmm.address,
-      [AmmInstanceName.DOODLEETH]: doodleAmm.address,
+      [AmmInstanceName.DOODLESETH]: doodleAmm.address,
     },
     ammReader: ammReader.address,
     tollPool: tollPool.address,
