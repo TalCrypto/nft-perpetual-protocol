@@ -22,8 +22,8 @@ import {
   deployTollPool,
   deployL2MockPriceFeed,
   deployLiquidator,
-  deployProxyAmm,
   deployProxyClearingHouse,
+  deployProxyAmm,
 } from "./contract";
 import { toFullDigitBN } from "./number";
 
@@ -136,7 +136,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
 
   await amm.setOpen(true);
 
-  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 
@@ -184,16 +184,16 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
   // deploy an amm with Q100/B1000 liquidity
   const amm = await deployProxyAmm({
     signer: sender!,
-    quoteAssetTokenAddr: quoteToken.address,
-    priceFeedAddr: priceFeed.address,
+    quoteAssetReserve: quoteAssetReserve!,
+    baseAssetReserve: baseAssetReserve!,
+    tradeLimitRatio: toFullDigitBN(0.9),
     fundingPeriod: BigNumber.from(86400), // to make calculation easier we set fundingPeriod = 1 day
     fluctuation: toFullDigitBN(0),
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    quoteAssetReserve: quoteAssetReserve!,
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    baseAssetReserve: baseAssetReserve!,
-    tollRatio,
-    spreadRatio,
+    priceFeedKey: "ETH",
+    priceFeedAddress: priceFeed.address,
+    tollRatio: BigNumber.from(0),
+    spreadRatio: BigNumber.from(0),
+    quoteTokenAddress: quoteToken.address,
   });
 
   const ammReader = await deployAmmReader(sender!);
@@ -206,7 +206,7 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
 
   await amm.setOpen(true);
 
-  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 

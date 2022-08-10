@@ -11,7 +11,6 @@ import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import "@graphprotocol/hardhat-graph";
 
-
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -33,7 +32,7 @@ task("deploy", "Deploys the passed contract")
     await hre.run("graph", { contractName, address });
   });
 
-  const deploy = async (hre: any, contractName: string): Promise<string> => {
+const deploy = async (hre: any, contractName: string): Promise<string> => {
   const contractArtifacts = await hre.ethers.getContractFactory(contractName);
   const contract = await contractArtifacts.deploy();
 
@@ -52,7 +51,7 @@ const config = {
       {
         version: "0.8.9",
         settings: {
-          optimizer: { enabled: true, runs: 999999 },
+          optimizer: { enabled: true, runs: 1000 },
         },
       },
     ],

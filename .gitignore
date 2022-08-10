@@ -9,6 +9,7 @@ typechain-types
 #Hardhat files
 cache
 artifacts
+.openzeppelin/unknown-31337.json
 # Subgraph
 tribe3-perp-subgraph/generated
 tribe3-perp-subgraph/build

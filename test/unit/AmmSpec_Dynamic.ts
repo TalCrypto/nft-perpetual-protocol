@@ -1,9 +1,8 @@
 import { expect, use } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
-import { Amm, AmmFake, ERC20Fake, L2PriceFeedMock } from "../../typechain-types";
-import { solidity } from "ethereum-waffle";
-import { deployAmm, deployErc20Fake, deployL2MockPriceFeed, deployProxyAmm, Dir } from "../../utils/contract";
+import { Amm, ERC20Fake, L2PriceFeedMock } from "../../typechain-types";
+import { deployErc20Fake, deployL2MockPriceFeed, deployProxyAmm, Dir } from "../../utils/contract";
 import { toFullDigitBN } from "../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
@@ -37,11 +36,17 @@ describe("Amm Unit Test", () => {
     priceFeed = (await deployL2MockPriceFeed(admin, toFullDigitBN(ETH_PRICE))) as L2PriceFeedMock;
     quoteToken = (await deployErc20Fake(admin, toFullDigitBN(20000000))) as ERC20Fake;
     amm = await deployProxyAmm({
-      deployer: admin,
-      quoteAssetTokenAddr: quoteToken.address,
-      priceFeedAddr: priceFeed.address,
+      signer: admin,
+      quoteAssetReserve: toFullDigitBN(1000),
+      baseAssetReserve: toFullDigitBN(100),
+      tradeLimitRatio: toFullDigitBN(0.9),
+      fundingPeriod: BigNumber.from(3600),
       fluctuation: toFullDigitBN(0),
-      fundingPeriod: BigNumber.from(3600), // 1 hour
+      priceFeedKey: "ETH",
+      priceFeedAddress: priceFeed.address,
+      tollRatio: BigNumber.from(0),
+      spreadRatio: BigNumber.from(0),
+      quoteTokenAddress: quoteToken.address,
     });
     await amm.setCounterParty(admin.address);
     await amm.setOpen(true);

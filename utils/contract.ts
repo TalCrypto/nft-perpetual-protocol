@@ -27,6 +27,8 @@ import {
   Liquidator__factory,
   ClearingHouse,
   ClearingHouse__factory,
+  InsuranceFund,
+  InsuranceFund__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -127,45 +129,37 @@ export async function deployAmm(params: {
 
 export async function deployProxyAmm(params: {
   signer: Signer;
-  quoteAssetTokenAddr: string;
-  priceFeedAddr: string;
+  quoteAssetReserve: BigNumber;
+  baseAssetReserve: BigNumber;
+  tradeLimitRatio: BigNumber;
+  fundingPeriod: BigNumber;
   fluctuation: BigNumber;
-  priceFeedKey?: string;
-  fundingPeriod?: BigNumber;
-  baseAssetReserve?: BigNumber;
-  quoteAssetReserve?: BigNumber;
-  tollRatio?: BigNumber;
-  spreadRatio?: BigNumber;
+  priceFeedKey: string;
+  priceFeedAddress: string;
+  tollRatio: BigNumber;
+  spreadRatio: BigNumber;
+  quoteTokenAddress: string;
 }): Promise<Amm> {
-  const {
-    signer,
-    quoteAssetTokenAddr,
-    priceFeedAddr,
-    fluctuation,
-    fundingPeriod = BigNumber.from(8 * 60 * 60), // 8hr
-    baseAssetReserve = toFullDigitBN(100),
-    quoteAssetReserve = toFullDigitBN(1000),
-    priceFeedKey = "ETH",
-    tollRatio = BigNumber.from(0),
-    spreadRatio = BigNumber.from(0),
-  } = params;
-  const instance = (await upgrades.deployProxy(new Amm__factory(signer), [
-    quoteAssetReserve.toString(),
-    baseAssetReserve.toString(),
-    toFullDigitBN(0.9).toString(), // tradeLimitRatio
-    fundingPeriod.toString(),
-    priceFeedAddr.toString(),
-    ethers.utils.formatBytes32String(priceFeedKey),
-    quoteAssetTokenAddr,
-    fluctuation.toString(),
-    tollRatio.toString(),
-    spreadRatio.toString(),
+  const instance = (await upgrades.deployProxy(new Amm__factory(params.signer), [
+    params.quoteAssetReserve,
+    params.baseAssetReserve,
+    params.tradeLimitRatio,
+    params.fundingPeriod,
+    params.priceFeedAddress,
+    ethers.utils.formatBytes32String(params.priceFeedKey),
+    params.quoteTokenAddress,
+    params.fluctuation,
+    params.tollRatio,
+    params.spreadRatio,
   ])) as Amm;
+  await instance.deployed();
   return instance;
 }
 
 export async function deployAmmReader(signer: Signer): Promise<AmmReader> {
-  return await new AmmReader__factory(signer).deploy();
+  const instance = await new AmmReader__factory(signer).deploy();
+  await instance.deployed();
+  return instance;
 }
 
 export async function deployClearingHouse(
@@ -199,16 +193,19 @@ export async function deployProxyClearingHouse(
     liquidationFeeRatio.toString(),
     insuranceFund,
   ])) as ClearingHouse;
+  await instance.deployed();
   return instance;
 }
 
-export async function deployLiquidator(signer: Signer, clearingHouse: string, maintenanceMarginRatio: BigNumber): Promise<Liquidator> {
+export async function deployLiquidator(signer: Signer, clearingHouse: string): Promise<Liquidator> {
   const instance = await new Liquidator__factory(signer).deploy(clearingHouse);
+  await instance.deployed();
   return instance;
 }
 
 export async function deployClearingHouseViewer(signer: Signer, clearingHouse: string): Promise<ClearingHouseViewer> {
   const instance = await new ClearingHouseViewer__factory(signer).deploy(clearingHouse);
+  await instance.deployed();
   return instance;
 }
 
@@ -232,6 +229,12 @@ export async function deployInsuranceFund(signer: Signer, exchange: string, mint
   return instance;
 }
 
+export async function deployProxyIF(signer: Signer): Promise<InsuranceFund> {
+  const instance = (await upgrades.deployProxy(new InsuranceFund__factory(signer), [])) as InsuranceFund;
+  await instance.deployed();
+  return instance;
+}
+
 export async function deployL2PriceFeed(signer: Signer, clientBridge: string, keeper: string): Promise<L2PriceFeedFake> {
   const instance = await new L2PriceFeedFake__factory(signer).deploy();
   await instance.initialize(clientBridge, keeper);
@@ -245,5 +248,11 @@ export async function deployL2MockPriceFeed(signer: Signer, defaultPrice: BigNum
 export async function deployTollPool(signer: Signer, clearingHouse: string): Promise<TollPool> {
   const instance = await new TollPool__factory(signer).deploy();
   await instance.initialize(clearingHouse);
+  return instance;
+}
+
+export async function deployProxyTollPool(signer: Signer, clearingHouse: string): Promise<TollPool> {
+  const instance = (await upgrades.deployProxy(new TollPool__factory(signer), [clearingHouse])) as TollPool;
+  await instance.deployed();
   return instance;
 }

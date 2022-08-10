@@ -7,7 +7,7 @@
     "outDir": "dist",
     "moduleResolution": "node"
   },
-  "include": ["./test", "./scripts", "./utils", "./typechain-types/**/*.ts", "utils/helper"],
+  "include": ["./test", "./scripts", "./utils", "./typechain-types/**/*.ts", "utils/helper", "./publish"],
   "exclude": ["./src"],
   "files": ["./hardhat.config.ts"]
 }
