@@ -64,6 +64,12 @@ const config = {
     hardhat: {
       allowUnlimitedContractSize: true,
     },
+    arbitrum_rinkeby: {
+      url: "https://rinkeby.arbitrum.io/rpc",
+    },
+    arbitrum: {
+      url: "https://rpc.ankr.com/arbitrum",
+    },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIVATE_KEY],
