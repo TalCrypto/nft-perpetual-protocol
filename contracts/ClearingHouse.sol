@@ -529,7 +529,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // check if this position exceed fluctuation limit
             // if over fluctuation limit, then close partial position. Otherwise close all.
             // if partialLiquidationRatio is 1, then close whole position
-            if (_amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) && partialLiquidationRatio < 1 ether) {
+            if (
+                _amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) &&
+                partialLiquidationRatio < 1 ether &&
+                partialLiquidationRatio != 0
+            ) {
                 uint256 partiallyClosedPositionNotional = _amm.getOutputPrice(
                     dirOfBase,
                     position.size.mulD(partialLiquidationRatio.toInt()).abs()

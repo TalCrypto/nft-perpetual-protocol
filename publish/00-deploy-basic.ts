@@ -33,6 +33,10 @@ async function main() {
   );
   console.log("deployed ClearingHouse address: ", clearingHouse.address);
 
+  if (deployConfig.partialLiquidationRatio.gt(ethers.utils.parseEther("0"))) {
+    await clearingHouse.setPartialLiquidationRatio(deployConfig.partialLiquidationRatio);
+  }
+
   console.log("deploying ClearingHouseViewer");
   const clearingHouseViewer = await deployClearingHouseViewer(ledger, clearingHouse.address);
   console.log("deployed ClearingHouseViewer address: ", clearingHouseViewer.address);
@@ -88,15 +92,25 @@ async function main() {
   await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
 
-  await baycAmm.setCap(
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.maxHoldingBaseAsset,
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.openInterestNotionalCap
-  );
+  if (
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
+  ) {
+    await baycAmm.setCap(
+      deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.maxHoldingBaseAsset,
+      deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.openInterestNotionalCap
+    );
+  }
 
-  await doodleAmm.setCap(
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset,
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap
-  );
+  if (
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
+    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
+  ) {
+    await doodleAmm.setCap(
+      deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset,
+      deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap
+    );
+  }
 
   await baycAmm.setOpen(true);
   await doodleAmm.setOpen(true);

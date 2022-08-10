@@ -136,7 +136,8 @@ export class DeployConfig {
 
   // clearing house
   readonly initMarginRequirement = utils.parseEther("0.2"); // 20% - 5x
-  readonly maintenanceMarginRequirement = utils.parseEther("0.0625"); // 6.25% - 16x
+  readonly maintenanceMarginRequirement = utils.parseEther("0.125"); // 12.5% - 8x
+  readonly partialLiquidationRatio = utils.parseEther("0.125");
   readonly liquidationFeeRatio = utils.parseEther("0.0125"); // 1.25%
 
   // amm
