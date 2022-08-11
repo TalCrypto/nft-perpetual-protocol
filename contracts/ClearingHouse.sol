@@ -12,6 +12,7 @@ import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
+import { AmmMath } from "./utils/AmmMath.sol";
 
 // note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
 // (yes, the ordering is reversed comparing to Python)
@@ -159,12 +160,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         mapping(address => Position) positionMap;
     }
 
+    modifier onlyOperator() {
+        require(operator == _msgSender(), "caller is not operator");
+        _;
+    }
+
     //**********************************************************//
     //    Can not change the order of below state variables     //
     //**********************************************************//
     //string public override versionRecipient;
-
-    mapping(address => uint256) private decimalMap;
 
     // only admin
     uint256 public initMarginRatio;
@@ -206,6 +210,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // amm => revenue since last funding
     mapping(address => int256) public netRevenuesSinceLastFunding;
+
+    // the address of bot that controls market
+    address public operator;
 
     uint256[50] private __gap;
 
@@ -301,6 +308,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         //require(_ratio.cmp(Decimal.one()) <= 0, "invalid partial liquidation ratio");
         require(_ratio <= 1 ether, "invalid partial liquidation ratio");
         partialLiquidationRatio = _ratio;
+    }
+
+    function setOperator(address _operator) external onlyOwner {
+        operator = _operator;
     }
 
     /**
@@ -1350,18 +1361,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     // if fundingImbalance is positive, clearing house receives funds
-    function formulaicUpdateK(IAmm _amm, int256 fundingImbalance) private {
+    function formulaicUpdateK(IAmm _amm, int256 _fundingImbalance) private {
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
         int256 budget;
-        if (fundingImbalance > 0) {
+        if (_fundingImbalance > 0) {
             // positive cost is period revenue, give back half in k increase
-            budget = fundingImbalance / 2;
-        } else if (netRevenue < -fundingImbalance) {
+            budget = _fundingImbalance / 2;
+        } else if (netRevenue < -_fundingImbalance) {
             // cost exceeded period revenue, take back half in k decrease
             if (netRevenue < 0) {
-                budget = fundingImbalance / 2;
+                budget = _fundingImbalance / 2;
             } else {
-                budget = (netRevenue + fundingImbalance) / 2;
+                budget = (netRevenue + _fundingImbalance) / 2;
             }
         }
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
@@ -1370,6 +1381,27 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         if (isAdjustable && applyCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+    }
+
+    /**
+     * @notice repeg amm according to off-chain calculation for the healthy of market
+     * @dev only the operator can call this function
+     * @param _amm IAmm address
+     * @param _newQuoteAssetReserve the quote asset amount to be repegged
+     */
+    function repegAmm(IAmm _amm, uint256 _newQuoteAssetReserve) external onlyOperator {
+        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+        int256 positionSize = _amm.getBaseAssetDelta();
+        int256 cost = AmmMath.adjustPegCost(quoteAssetReserve, baseAssetReserve, positionSize, _newQuoteAssetReserve);
+
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
+        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+
+        if ((cost <= 0 || cost.abs() <= budget) && applyCost(_amm, cost)) {
+            _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
+            emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
         }
     }
 

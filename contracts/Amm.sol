@@ -10,7 +10,6 @@ import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { FullMath } from "./utils/FullMath.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
-import "hardhat/console.sol";
 
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using UIntMath for uint256;
@@ -37,7 +36,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
-    event Repeg(uint256 quoteAssetReserve, uint256 baseAssetReserve);
+    event ReservesAdjusted(uint256 quoteAssetReserve, uint256 baseAssetReserve);
 
     //
     // MODIFIERS
@@ -338,7 +337,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 totalPositionSize: totalPositionSize
             })
         );
-        emit Repeg(quoteAssetReserve, baseAssetReserve);
+        emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve);
     }
 
     function calcBaseAssetAfterLiquidityMigration(

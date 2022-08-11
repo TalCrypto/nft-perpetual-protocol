@@ -110,6 +110,59 @@ describe("ClearingHouse Test", () => {
     await loadFixture(deployEnvFixture);
   });
 
+  describe("manual repeg test when position size = -25", () => {
+    beforeEach(async () => {
+      await amm.setSpreadRatio(toFullDigitBN(0.1));
+      // given alice takes 2x long position (20B) with 125 margin
+      await approve(alice, clearingHouse.address, 250);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(125), toFullDigitBN(2), toFullDigitBN(0));
+      // B = 80, Q = 1250
+
+      // given bob takes 1x short position (-45B) with 450 margin
+      await approve(bob, clearingHouse.address, 900);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
+      // B = 125, Q = 800
+      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
+      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+      expect(await amm.getBaseAssetDelta()).eql(toFullDigitBN(-25));
+
+      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      // 125 (alice's margin) + 450 (bob' margin)  = 575
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
+      expect(await clearingHouse.totalFees(amm.address)).eq(toFullDigitBN(70));
+      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(70));
+    });
+    it("fail to repeg because of not a operator", async () => {
+      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("caller is not operator");
+    });
+    it("success to increase mark price with revenue", async () => {
+      await clearingHouse.setOperator(admin.address);
+      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(900));
+      // cost = 800 * 25 / 100 - 900 * 25 / 100 = -25
+      await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(900), toFullDigitBN(125), toFullDigitBN(-25));
+      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(900));
+      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(95));
+    });
+    it("success to decrease mark price with expense", async () => {
+      await clearingHouse.setOperator(admin.address);
+      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(700));
+      // cost = 800 * 25 / 100 - 700 * 25 / 100 = 25
+      await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(700), toFullDigitBN(125), toFullDigitBN(25));
+      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(700));
+      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(45));
+    });
+    it("fail to decrease mark price with expense more than half of fee pool", async () => {
+      await clearingHouse.setOperator(admin.address);
+      await clearingHouse.repegAmm(amm.address, toFullDigitBN(600));
+      // cost = 800 * 25 / 100 - 600 * 25 / 100 = 50
+      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
+      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(70));
+    });
+  });
+
   describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short) and fee pool > 0", () => {
     beforeEach(async () => {
       await amm.setSpreadRatio(toFullDigitBN(0.5));
