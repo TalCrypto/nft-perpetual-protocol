@@ -1398,11 +1398,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 totalFee = totalFees[address(_amm)];
         uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
-
-        if ((cost <= 0 || cost.abs() <= budget) && applyCost(_amm, cost)) {
-            _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
-            emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
-        }
+        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
+        require(applyCost(_amm, cost), "failed to apply cost");
+        _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
+        emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
     }
 
     // negative cost is revenue, otherwise is expense of insurance fund

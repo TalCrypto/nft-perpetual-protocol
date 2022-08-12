@@ -1,10 +1,10 @@
 {
   "localhost": {
     "ClearingHouse": {
-      "address": "0xc5a5C42992dECbae36851359345FE25997F5C42d"
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
     },
     "Amm": {
-      "address": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042"
+      "address": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82"
     }
   },
   "rinkeby": {

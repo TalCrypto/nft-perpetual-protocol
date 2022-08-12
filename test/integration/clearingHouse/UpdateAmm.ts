@@ -155,11 +155,7 @@ describe("ClearingHouse Test", () => {
     });
     it("fail to decrease mark price with expense more than half of fee pool", async () => {
       await clearingHouse.setOperator(admin.address);
-      await clearingHouse.repegAmm(amm.address, toFullDigitBN(600));
-      // cost = 800 * 25 / 100 - 600 * 25 / 100 = 50
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
-      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(70));
+      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(600))).to.revertedWith("insufficient fee pool");
     });
   });
 

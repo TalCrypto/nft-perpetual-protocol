@@ -846,6 +846,19 @@
   },
   {
     "inputs": [],
+    "name": "operator",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "owner",
     "outputs": [
       {
@@ -931,6 +944,24 @@
   {
     "inputs": [
       {
+        "internalType": "contract IAmm",
+        "name": "_amm",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_newQuoteAssetReserve",
+        "type": "uint256"
+      }
+    ],
+    "name": "repegAmm",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "account",
         "type": "address"
@@ -968,6 +999,19 @@
       }
     ],
     "name": "setMaintenanceMarginRatio",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_operator",
+        "type": "address"
+      }
+    ],
+    "name": "setOperator",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

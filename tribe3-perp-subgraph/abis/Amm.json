@@ -121,9 +121,15 @@
         "internalType": "uint256",
         "name": "baseAssetReserve",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
       }
     ],
-    "name": "Repeg",
+    "name": "ReserveSnapshotted",
     "type": "event"
   },
   {
@@ -140,15 +146,9 @@
         "internalType": "uint256",
         "name": "baseAssetReserve",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
       }
     ],
-    "name": "ReserveSnapshotted",
+    "name": "ReservesAdjusted",
     "type": "event"
   },
   {
