@@ -1404,6 +1404,37 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
     }
 
+    /**
+     * @notice adjust K of amm according to off-chain calculation for the healthy of market
+     * @dev only the operator can call this function
+     * @param _amm IAmm address
+     * @param _scaleNum the numerator of the K ratio to be adjusted
+     * @param _scaleDenom the denominator of the K ratio to be adjusted
+     */
+    function adjustK(
+        IAmm _amm,
+        uint256 _scaleNum,
+        uint256 _scaleDenom
+    ) external onlyOperator {
+        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+        int256 positionSize = _amm.getBaseAssetDelta();
+        (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.adjustKCost(
+            quoteAssetReserve,
+            baseAssetReserve,
+            positionSize,
+            _scaleNum,
+            _scaleDenom
+        );
+
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
+        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
+        require(applyCost(_amm, cost), "failed to apply cost");
+        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+        emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    }
+
     // negative cost is revenue, otherwise is expense of insurance fund
     function applyCost(IAmm _amm, int256 _cost) private returns (bool) {
         uint256 totalMinusFee = totalMinusFees[address(_amm)];
