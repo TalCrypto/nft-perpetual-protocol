@@ -1408,8 +1408,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @notice adjust K of amm according to off-chain calculation for the healthy of market
      * @dev only the operator can call this function
      * @param _amm IAmm address
-     * @param _scaleNum the numerator of the K ratio to be adjusted
-     * @param _scaleDenom the denominator of the K ratio to be adjusted
+     * @param _scaleNum the numerator of K scale to be adjusted
+     * @param _scaleDenom the denominator of K scale to be adjusted
      */
     function adjustK(
         IAmm _amm,
