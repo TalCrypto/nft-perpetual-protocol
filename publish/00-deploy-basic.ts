@@ -12,6 +12,42 @@ import {
 } from "../utils/contract";
 import { DeployConfig } from "./DeployConfig";
 import { AmmInstanceName } from "./Constants";
+import { Amm, InsuranceFund, ClearingHouse } from "../typechain-types";
+
+async function deployAmm(deployConfig: DeployConfig, ammInstanceName: AmmInstanceName, ledger: LedgerSigner) {
+  console.log(`deploying ${ammInstanceName}`);
+  const amm = await deployProxyAmm({
+    signer: ledger,
+    quoteAssetReserve: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.quoteAssetReserve,
+    baseAssetReserve: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.baseAssetReserve,
+    tradeLimitRatio: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.tradeLimitRatio,
+    fundingPeriod: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.fundingPeriod,
+    fluctuation: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.fluctuation,
+    priceFeedKey: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.priceFeedKey,
+    priceFeedAddress: deployConfig.priceFeed,
+    tollRatio: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.tollRatio,
+    spreadRatio: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.spreadRatio,
+    quoteTokenAddress: deployConfig.weth,
+  });
+  console.log(`deployed ${ammInstanceName} address: `, amm.address);
+  return amm;
+}
+
+async function configAmm(deployConfig: DeployConfig, amm: Amm, ammInstanceName: AmmInstanceName, insuranceFund: InsuranceFund, clearingHouse: ClearingHouse) {
+  await amm.setGlobalShutdown(insuranceFund.address);
+  await amm.setCounterParty(clearingHouse.address);
+  await insuranceFund.addAmm(amm.address);
+  if (
+    deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
+    deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
+  ) {
+    await amm.setCap(
+      deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset,
+      deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap
+    );
+  }
+  await amm.setOpen(true);
+}
 
 async function main() {
   const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
@@ -47,73 +83,28 @@ async function main() {
 
   await clearingHouse.setTollPool(tollPool.address);
 
-  console.log("deploying BAYC_AMM");
-  const baycAmm = await deployProxyAmm({
-    signer: ledger,
-    quoteAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.quoteAssetReserve,
-    baseAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.baseAssetReserve,
-    tradeLimitRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.tradeLimitRatio,
-    fundingPeriod: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.fundingPeriod,
-    fluctuation: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.fluctuation,
-    priceFeedKey: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.priceFeedKey,
-    priceFeedAddress: deployConfig.priceFeed,
-    tollRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.tollRatio,
-    spreadRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].deployArgs.spreadRatio,
-    quoteTokenAddress: deployConfig.weth,
-  });
-  console.log("deployed BAYC_AMM address: ", baycAmm.address);
-
-  console.log("deploying DOODLE_AMM");
-  const doodleAmm = await deployProxyAmm({
-    signer: ledger,
-    quoteAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.quoteAssetReserve,
-    baseAssetReserve: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.baseAssetReserve,
-    tradeLimitRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.tradeLimitRatio,
-    fundingPeriod: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.fundingPeriod,
-    fluctuation: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.fluctuation,
-    priceFeedKey: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.priceFeedKey,
-    priceFeedAddress: deployConfig.priceFeed,
-    tollRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.tollRatio,
-    spreadRatio: deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].deployArgs.spreadRatio,
-    quoteTokenAddress: deployConfig.weth,
-  });
-  console.log("deployed DOODLE_AMM address: ", doodleAmm.address);
+  const baycAmm = await deployAmm(deployConfig, AmmInstanceName.BAYCETH, ledger);
+  const doodleAmm = await deployAmm(deployConfig, AmmInstanceName.DOODLESETH, ledger);
+  const azukiAmm = await deployAmm(deployConfig, AmmInstanceName.AZUKIETH, ledger);
+  const moonbirdsAmm = await deployAmm(deployConfig, AmmInstanceName.MOONBIRDSETH, ledger);
+  const cloneXAmm = await deployAmm(deployConfig, AmmInstanceName.CLONEXETH, ledger);
+  const cryptoPunksAmm = await deployAmm(deployConfig, AmmInstanceName.CRYPTOPUNKSETH, ledger);
+  const meebitsAmm = await deployAmm(deployConfig, AmmInstanceName.MEEBITSETH, ledger);
 
   console.log("deploying AmmReader");
   const ammReader = await deployAmmReader(ledger);
   console.log("deployed AmmReader address: ", ammReader.address);
 
-  await baycAmm.setGlobalShutdown(insuranceFund.address);
-  await baycAmm.setCounterParty(clearingHouse.address);
-  await insuranceFund.addAmm(baycAmm.address);
-  await doodleAmm.setGlobalShutdown(insuranceFund.address);
-  await doodleAmm.setCounterParty(clearingHouse.address);
-  await insuranceFund.addAmm(doodleAmm.address);
+  await configAmm(deployConfig, baycAmm, AmmInstanceName.BAYCETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, doodleAmm, AmmInstanceName.DOODLESETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, azukiAmm, AmmInstanceName.AZUKIETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, moonbirdsAmm, AmmInstanceName.MOONBIRDSETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, cloneXAmm, AmmInstanceName.CLONEXETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, cryptoPunksAmm, AmmInstanceName.CRYPTOPUNKSETH, insuranceFund, clearingHouse);
+  await configAmm(deployConfig, meebitsAmm, AmmInstanceName.MEEBITSETH, insuranceFund, clearingHouse);
+
   await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
-
-  if (
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
-  ) {
-    await baycAmm.setCap(
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.maxHoldingBaseAsset,
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.BAYCETH].properties.openInterestNotionalCap
-    );
-  }
-
-  if (
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
-  ) {
-    await doodleAmm.setCap(
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.maxHoldingBaseAsset,
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.DOODLESETH].properties.openInterestNotionalCap
-    );
-  }
-
-  await baycAmm.setOpen(true);
-  await doodleAmm.setOpen(true);
 
   const liquidator = await deployLiquidator(ledger, clearingHouse.address);
 
@@ -126,6 +117,11 @@ async function main() {
     amm: {
       [AmmInstanceName.BAYCETH]: baycAmm.address,
       [AmmInstanceName.DOODLESETH]: doodleAmm.address,
+      [AmmInstanceName.AZUKIETH]: azukiAmm.address,
+      [AmmInstanceName.MOONBIRDSETH]: moonbirdsAmm.address,
+      [AmmInstanceName.CLONEXETH]: cloneXAmm.address,
+      [AmmInstanceName.CRYPTOPUNKSETH]: cryptoPunksAmm.address,
+      [AmmInstanceName.MEEBITSETH]: meebitsAmm.address,
     },
     ammReader: ammReader.address,
     tollPool: tollPool.address,
