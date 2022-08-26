@@ -112,14 +112,14 @@ describe("Liquidator Test", () => {
       //margin ratio of account 5: -0.152892561983471074
     });
     it("single liquidation of underwater position", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address])).eq(ethers.BigNumber.from("390032"));
+      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address])).eq(ethers.BigNumber.from("303421"));
       const tx = await liquidator.liquidate(amm.address, [accounts[4].address]);
       await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
       await expect(tx).to.emit(liquidator, "PositionLiquidated").withArgs(amm.address, [accounts[4].address], [true], [""]);
     });
     it("multi liquidations of underwater positions", async () => {
       expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address, accounts[5].address])).eq(
-        ethers.BigNumber.from("561988")
+        ethers.BigNumber.from("438206")
       );
       const tx = await liquidator.liquidate(amm.address, [accounts[4].address, accounts[5].address]);
       await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
@@ -128,7 +128,7 @@ describe("Liquidator Test", () => {
         .withArgs(amm.address, [accounts[4].address, accounts[5].address], [true, true], ["", ""]);
     });
     it("single liquidation of position that is over maintenance margin ratio", async () => {
-      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address])).eq(ethers.BigNumber.from("185877"));
+      expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address])).eq(ethers.BigNumber.from("83665"));
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address]);
       await expect(tx)
         .to.emit(liquidator, "PositionLiquidated")
@@ -136,7 +136,7 @@ describe("Liquidator Test", () => {
     });
     it("multi liquidations of underwater position and not", async () => {
       expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[5].address])).eq(
-        ethers.BigNumber.from("543788")
+        ethers.BigNumber.from("355147")
       );
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[5].address]);
       await expect(tx)
@@ -145,7 +145,7 @@ describe("Liquidator Test", () => {
     });
     it("multi liquidations that are over maintenance margin ratio", async () => {
       expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[3].address])).eq(
-        ethers.BigNumber.from("341455")
+        ethers.BigNumber.from("137016")
       );
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[3].address]);
       await expect(tx)

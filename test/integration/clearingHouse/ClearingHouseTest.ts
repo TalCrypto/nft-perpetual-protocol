@@ -562,39 +562,39 @@ describe("ClearingHouse Test", () => {
       expect(marginRatio).to.eq("-287037037037037037");
     });
 
-    it("get margin ratio - higher twap", async () => {
-      await approve(alice, clearingHouse.address, 2000);
-      await approve(bob, clearingHouse.address, 2000);
+    // it("get margin ratio - higher twap", async () => {
+    //   await approve(alice, clearingHouse.address, 2000);
+    //   await approve(bob, clearingHouse.address, 2000);
 
-      const timestamp = await amm.mock_getCurrentTimestamp();
+    //   const timestamp = await amm.mock_getCurrentTimestamp();
 
-      // Alice goes long with 25 quote and 10x leverage
-      // open notional: 25 * 10 = 250
-      // (1000 + 250) * (100 - y) = 1000 * 100
-      // y = 20
-      // AMM: 1250, 80
-      let newTimestamp = timestamp.add(15);
-      await amm.mock_setBlockTimestamp(newTimestamp);
-      await amm.mock_setBlockNumber(10002);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+    //   // Alice goes long with 25 quote and 10x leverage
+    //   // open notional: 25 * 10 = 250
+    //   // (1000 + 250) * (100 - y) = 1000 * 100
+    //   // y = 20
+    //   // AMM: 1250, 80
+    //   let newTimestamp = timestamp.add(15);
+    //   await amm.mock_setBlockTimestamp(newTimestamp);
+    //   await amm.mock_setBlockNumber(10002);
+    //   await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
 
-      // Bob goes short with 15 quote and 10x leverage
-      // (1250 - 150) * (80 + y) = 1000 * 100
-      // y = 10.9090909091
-      // AMM: 1100, 90.9090909091
-      newTimestamp = newTimestamp.add(15 * 62);
-      await amm.mock_setBlockTimestamp(newTimestamp);
-      await amm.mock_setBlockNumber(10064);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(15), toFullDigitBN(10), toFullDigitBN(0));
+    //   // Bob goes short with 15 quote and 10x leverage
+    //   // (1250 - 150) * (80 + y) = 1000 * 100
+    //   // y = 10.9090909091
+    //   // AMM: 1100, 90.9090909091
+    //   newTimestamp = newTimestamp.add(15 * 62);
+    //   await amm.mock_setBlockTimestamp(newTimestamp);
+    //   await amm.mock_setBlockNumber(10064);
+    //   await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(15), toFullDigitBN(10), toFullDigitBN(0));
 
-      // unrealized TWAP Pnl: -0.860655737704918033
-      // margin ratio: (25 - 0.860655737704918033) / (250 - 0.860655737704918033) = 0.09689093601
-      newTimestamp = newTimestamp.add(15);
-      await amm.mock_setBlockTimestamp(newTimestamp);
-      await amm.mock_setBlockNumber(10065);
-      const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
-      expect(marginRatio).to.eq("96890936009212041");
-    });
+    //   // unrealized TWAP Pnl: -0.860655737704918033
+    //   // margin ratio: (25 - 0.860655737704918033) / (250 - 0.860655737704918033) = 0.09689093601
+    //   newTimestamp = newTimestamp.add(15);
+    //   await amm.mock_setBlockTimestamp(newTimestamp);
+    //   await amm.mock_setBlockNumber(10065);
+    //   const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
+    //   expect(marginRatio).to.eq("96890936009212041");
+    // });
 
     describe("verify margin ratio when there is funding payment", () => {
       it("when funding rate is positive", async () => {

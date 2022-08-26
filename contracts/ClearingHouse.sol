@@ -654,7 +654,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     /**
      * @notice get margin ratio, marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
-     * use spot and twap price to calculate unrealized Pnl, final unrealized Pnl depends on which one is higher
+     * use spot price to calculate unrealized Pnl
      * @param _amm IAmm address
      * @param _trader trader address
      * @return margin ratio in 18 digits
@@ -662,24 +662,20 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function getMarginRatio(IAmm _amm, address _trader) public view returns (int256) {
         Position memory position = getPosition(_amm, _trader);
         requirePositionSize(position.size);
-        (int256 unrealizedPnl, uint256 positionNotional) = getPreferencePositionNotionalAndUnrealizedPnl(
-            _amm,
-            _trader,
-            PnlPreferenceOption.MAX_PNL
-        );
+        (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
         return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
     }
 
-    function _getMarginRatioByCalcOption(
-        IAmm _amm,
-        address _trader,
-        PnlCalcOption _pnlCalcOption
-    ) internal view returns (int256) {
-        Position memory position = getPosition(_amm, _trader);
-        requirePositionSize(position.size);
-        (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
-        return _getMarginRatio(_amm, position, pnl, positionNotional);
-    }
+    // function _getMarginRatioByCalcOption(
+    //     IAmm _amm,
+    //     address _trader,
+    //     PnlCalcOption _pnlCalcOption
+    // ) internal view returns (int256) {
+    //     Position memory position = getPosition(_amm, _trader);
+    //     requirePositionSize(position.size);
+    //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
+    //     return _getMarginRatio(_amm, position, pnl, positionNotional);
+    // }
 
     function _getMarginRatio(
         IAmm _amm,
@@ -804,12 +800,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             uint256 feeToLiquidator;
             uint256 feeToInsuranceFund;
 
-            int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+            // int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
                 // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatioBasedOnSpot > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
+                marginRatio > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
                 uint256 partiallyLiquidatedPositionNotional = _amm.getOutputPrice(
