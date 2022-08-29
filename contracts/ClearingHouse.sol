@@ -194,7 +194,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     // contract dependencies
     IInsuranceFund public insuranceFund;
-    IMultiTokenRewardRecipient public feePool;
+    IMultiTokenRewardRecipient public tollPool;
 
     // designed for arbitragers who can hold unlimited positions. will be removed after guarded period
     address internal whitelist;
@@ -276,8 +276,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @notice set the toll pool address
      * @dev only owner can call
      */
-    function setTollPool(address _feePool) external onlyOwner {
-        feePool = IMultiTokenRewardRecipient(_feePool);
+    function setTollPool(address _tollPool) external onlyOwner {
+        tollPool = IMultiTokenRewardRecipient(_tollPool);
     }
 
     /**
@@ -1126,10 +1126,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 netRevenuesSinceLastFunding[address(_amm)] += spread.toInt();
             }
 
-            // transfer toll to feePool
+            // transfer toll to tollPool
             if (hasToll) {
-                require(address(feePool) != address(0), "Invalid"); //Invalid feePool
-                quoteAsset.safeTransferFrom(_from, address(feePool), toll);
+                require(address(tollPool) != address(0), "Invalid"); //Invalid tollPool
+                quoteAsset.safeTransferFrom(_from, address(tollPool), toll);
             }
 
             fee = toll + spread;
@@ -1448,5 +1448,20 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
         netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - _cost;
         return true;
+    }
+
+    function deposit2FeePool(IAmm _amm, uint256 _amount) external {
+        IERC20 quoteAsset = _amm.quoteAsset();
+        quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
+        totalFees[address(_amm)] += _amount;
+        totalMinusFees[address(_amm)] += _amount;
+    }
+
+    function withdrawFromFeePool(IAmm _amm, uint256 _amount) external onlyOwner {
+        totalFees[address(_amm)] -= _amount;
+        totalMinusFees[address(_amm)] -= _amount;
+        IERC20 quoteAsset = _amm.quoteAsset();
+        insuranceFund.withdraw(quoteAsset, _amount);
+        quoteAsset.safeTransfer(_msgSender(), _amount);
     }
 }

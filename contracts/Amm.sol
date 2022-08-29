@@ -117,12 +117,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // owner can update
     uint256 public tollRatio;
     uint256 public spreadRatio;
-    uint256 public tollAmount;
     uint256 private maxHoldingBaseAsset;
     uint256 private openInterestNotionalCap;
-
-    // init cumulativePositionMultiplier is 1, will be updated every time when amm reserve increase/decrease
-    uint256 private cumulativePositionMultiplier;
 
     // snapshot of amm reserve when change liquidity's invariant
     LiquidityChangedSnapshot[] private liquidityChangedSnapshots;
@@ -189,7 +185,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         priceFeedKey = _priceFeedKey;
         quoteAsset = IERC20(_quoteAsset);
         priceFeed = _priceFeed;
-        cumulativePositionMultiplier = 1 ether;
         liquidityChangedSnapshots.push(
             LiquidityChangedSnapshot({
                 cumulativeNotional: 0,
