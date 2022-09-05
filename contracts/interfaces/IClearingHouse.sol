@@ -34,9 +34,10 @@ interface IClearingHouse {
     function openPosition(
         IAmm _amm,
         Side _side,
-        uint256 _quoteAssetAmount,
+        uint256 _assetAmount,
         uint256 _leverage,
-        uint256 _baseAssetAmountLimit
+        uint256 _oppositeAssetAmountLimit,
+        bool _isQuote
     ) external;
 
     function closePosition(IAmm _amm, uint256 _quoteAssetAmountLimit) external;

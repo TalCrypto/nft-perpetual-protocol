@@ -322,7 +322,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function addMargin(IAmm _amm, uint256 _addedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
-        requireValidTokenAmount(_addedMargin);
+        requireNonZeroInput(_addedMargin);
 
         address trader = _msgSender();
         Position memory position = getPosition(_amm, trader);
@@ -343,7 +343,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function removeMargin(IAmm _amm, uint256 _removedMargin) external whenNotPaused nonReentrant {
         // check condition
         requireAmm(_amm, true);
-        requireValidTokenAmount(_removedMargin);
+        requireNonZeroInput(_removedMargin);
 
         address trader = _msgSender();
         // realize funding payment if there's no bad debt
@@ -446,19 +446,21 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @notice open a position
      * @param _amm amm address
      * @param _side enum Side; BUY for long and SELL for short
-     * @param _quoteAssetAmount quote asset amount in 18 digits. Can Not be 0
+     * @param _assetAmount leveraged asset amount to be exact amount in 18 digits. Can Not be 0
      * @param _leverage leverage  in 18 digits. Can Not be 0
-     * @param _baseAssetAmountLimit minimum base asset amount expected to get to prevent from slippage.
+     * @param _oppositeAssetAmountLimit minimum(when quote) or maxmum(when not quote) asset amount expected to get to prevent from slippage.
+     * @param _isQuote if _assetAmount is quote asset, then true, otherwise false.
      */
     function openPosition(
         IAmm _amm,
         Side _side,
-        uint256 _quoteAssetAmount,
+        uint256 _assetAmount,
         uint256 _leverage,
-        uint256 _baseAssetAmountLimit
+        uint256 _oppositeAssetAmountLimit,
+        bool _isQuote
     ) public whenNotPaused nonReentrant {
         requireAmm(_amm, true);
-        requireValidTokenAmount(_quoteAssetAmount);
+        requireNonZeroInput(_assetAmount);
         requireNonZeroInput(_leverage);
         requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
         requireNotRestrictionMode(_amm);
@@ -470,12 +472,30 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             int256 oldPositionSize = getPosition(_amm, trader).size;
             bool isNewPosition = oldPositionSize == 0 ? true : false;
 
-            // increase or decrease position depends on old position's side and size
-            if (isNewPosition || (oldPositionSize > 0 ? Side.BUY : Side.SELL) == _side) {
-                positionResp = internalIncreasePosition(_amm, _side, _quoteAssetAmount.mulD(_leverage), _baseAssetAmountLimit, _leverage);
+            uint256 openNotional;
+            uint256 baseAssetAmountLimit;
+            if(_isQuote){
+                openNotional = _assetAmount;
+                baseAssetAmountLimit = _oppositeAssetAmountLimit;
+                // increase or decrease position depends on old position's side and size
+                if (isNewPosition || (oldPositionSize > 0 ? Side.BUY : Side.SELL) == _side) {
+                    positionResp = internalIncreasePosition(_amm, _side, openNotional, baseAssetAmountLimit, _leverage);
+                } else {
+                    positionResp = openReversePosition(_amm, _side, trader, openNotional, _leverage, baseAssetAmountLimit, false);
+                }
             } else {
-                positionResp = openReversePosition(_amm, _side, trader, _quoteAssetAmount, _leverage, _baseAssetAmountLimit, false);
+                openNotional = _amm.getOutputPrice(_side==Side.BUY ? IAmm.Dir.REMOVE_FROM_AMM : IAmm.Dir.ADD_TO_AMM, _assetAmount);
+                baseAssetAmountLimit = 0;
+                // increase or decrease position depends on old position's side and size
+                if (isNewPosition || (oldPositionSize > 0 ? Side.BUY : Side.SELL) == _side) {
+                    require(openNotional <= _oppositeAssetAmountLimit, "over limit");
+                    positionResp = internalIncreasePosition(_amm, _side, openNotional, baseAssetAmountLimit, _leverage);
+                } else {
+                    require(openNotional >= _oppositeAssetAmountLimit, "under limit");
+                    positionResp = openReversePosition(_amm, _side, trader, openNotional, _leverage, baseAssetAmountLimit, false);
+                }
             }
+            
 
             // update the position state
             setPosition(_amm, trader, positionResp.position);
@@ -950,20 +970,19 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         IAmm _amm,
         Side _side,
         address _trader,
-        uint256 _quoteAssetAmount,
+        uint256 _openNotional,
         uint256 _leverage,
         uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
     ) internal returns (PositionResp memory) {
-        uint256 openNotional = _quoteAssetAmount.mulD(_leverage);
         (uint256 oldPositionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
         PositionResp memory positionResp;
 
         // reduce position if old position is larger
-        if (oldPositionNotional > openNotional) {
-            updateOpenInterestNotional(_amm, openNotional.toInt() * -1);
+        if (oldPositionNotional > _openNotional) {
+            updateOpenInterestNotional(_amm, _openNotional.toInt() * -1);
             Position memory oldPosition = getPosition(_amm, _trader);
-            positionResp.exchangedPositionSize = swapInput(_amm, _side, openNotional, _baseAssetAmountLimit, _canOverFluctuationLimit);
+            positionResp.exchangedPositionSize = swapInput(_amm, _side, _openNotional, _baseAssetAmountLimit, _canOverFluctuationLimit);
 
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
@@ -983,7 +1002,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
             // positionResp.unrealizedPnlAfter = unrealizedPnl - realizedPnl
             positionResp.unrealizedPnlAfter = unrealizedPnl - positionResp.realizedPnl;
-            positionResp.exchangedQuoteAssetAmount = openNotional;
+            positionResp.exchangedQuoteAssetAmount = _openNotional;
 
             // calculate openNotional (it's different depends on long or short side)
             // long: unrealizedPnl = positionNotional - openNotional => openNotional = positionNotional - unrealizedPnl
@@ -1005,14 +1024,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             return positionResp;
         }
 
-        return closeAndOpenReversePosition(_amm, _side, _trader, _quoteAssetAmount, _leverage, _baseAssetAmountLimit);
+        return closeAndOpenReversePosition(_amm, _side, _trader, _openNotional, _leverage, _baseAssetAmountLimit);
     }
 
     function closeAndOpenReversePosition(
         IAmm _amm,
         Side _side,
         address _trader,
-        uint256 _quoteAssetAmount,
+        uint256 _openNotional,
         uint256 _leverage,
         uint256 _baseAssetAmountLimit
     ) internal returns (PositionResp memory positionResp) {
@@ -1024,7 +1043,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         require(closePositionResp.badDebt == 0, "reduce an underwater position");
 
         // update open notional after closing position
-        uint256 openNotional = _quoteAssetAmount.mulD(_leverage) - closePositionResp.exchangedQuoteAssetAmount;
+        uint256 openNotional = _openNotional - closePositionResp.exchangedQuoteAssetAmount;
 
         // if remain exchangedQuoteAssetAmount is too small (eg. 1wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
@@ -1313,16 +1332,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         require(_open == _amm.open(), _open ? "amm was closed" : "amm is open");
     }
 
-    function requireNonZeroInput(uint256 _decimal) private pure {
-        require(_decimal != 0, "input is 0");
+    function requireNonZeroInput(uint256 _input) private pure {
+        require(_input != 0, "input is 0");
     }
 
     function requirePositionSize(int256 _size) private pure {
         require(_size != 0, "positionSize is 0");
-    }
-
-    function requireValidTokenAmount(uint256 _decimal) private pure {
-        require(_decimal != 0, "invalid token amount");
     }
 
     function requireNotRestrictionMode(IAmm _amm) private view {

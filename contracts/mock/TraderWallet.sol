@@ -26,7 +26,7 @@ contract TraderWallet {
         uint256 _leverage,
         uint256 _minBaseAssetAmount
     ) external {
-        clearingHouse.openPosition(_amm, _side, _quoteAssetAmount, _leverage, _minBaseAssetAmount);
+        clearingHouse.openPosition(_amm, _side, _quoteAssetAmount, _leverage, _minBaseAssetAmount, true);
     }
 
     function liquidate(
@@ -89,7 +89,7 @@ contract TraderWallet {
         address _trader
     ) internal {
         if (_action == ActionType.OPEN) {
-            clearingHouse.openPosition(_amm, _side, _quoteAssetAmount, _leverage, _baseAssetAmountLimit);
+            clearingHouse.openPosition(_amm, _side, _quoteAssetAmount, _leverage, _baseAssetAmountLimit, true);
         } else if (_action == ActionType.CLOSE) {
             clearingHouse.closePosition(_amm, 0);
         } else if (_action == ActionType.LIQUIDATE) {
