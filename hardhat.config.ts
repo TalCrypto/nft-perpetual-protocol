@@ -62,7 +62,9 @@ const config = {
       url: "http://localhost:8545",
     },
     hardhat: {
-      allowUnlimitedContractSize: true,
+      forking: {
+        url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
+      },
     },
     arbitrum_rinkeby: {
       url: "https://rinkeby.arbitrum.io/rpc",

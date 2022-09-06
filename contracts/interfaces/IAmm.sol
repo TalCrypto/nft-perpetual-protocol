@@ -28,14 +28,13 @@ interface IAmm {
     function swapInput(
         Dir _dir,
         uint256 _quoteAssetAmount,
-        uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
     ) external returns (uint256);
 
     function swapOutput(
         Dir _dir,
         uint256 _baseAssetAmount,
-        uint256 _quoteAssetAmountLimit
+        bool _canOverFluctuationLimit
     ) external returns (uint256);
 
     function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
