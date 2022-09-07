@@ -209,10 +209,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         Dir _dirOfQuote,
         uint256 _quoteAssetAmount,
         bool _canOverFluctuationLimit
-    ) external override onlyOpen onlyCounterParty returns (uint256) {
-        if (_quoteAssetAmount == 0) {
-            return 0;
-        }
+    ) external override onlyOpen onlyCounterParty returns (uint256, uint256, uint256) {
+
         if (_dirOfQuote == Dir.REMOVE_FROM_AMM) {
             require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "over trading limit");
         }
@@ -231,7 +229,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         _updateReserve(_dirOfQuote, _quoteAssetAmount, baseAssetAmount, _canOverFluctuationLimit);
         emit SwapInput(_dirOfQuote, _quoteAssetAmount, baseAssetAmount);
-        return baseAssetAmount;
+        return (baseAssetAmount, _quoteAssetAmount.mulD(spreadRatio), _quoteAssetAmount.mulD(tollRatio));
     }
 
     /**
@@ -246,10 +244,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         Dir _dirOfBase,
         uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
-    ) external override onlyOpen onlyCounterParty returns (uint256) {
-        if (_baseAssetAmount == 0) {
-            return 0;
-        }
+    ) external override onlyOpen onlyCounterParty returns (uint256, uint256, uint256) {
+
         if (_dirOfBase == Dir.REMOVE_FROM_AMM) {
             require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "over trading limit");
         }
@@ -273,7 +269,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         // it is only used by close/liquidate positions
         _updateReserve(dirOfQuote, quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
         emit SwapOutput(_dirOfBase, quoteAssetAmount, _baseAssetAmount);
-        return quoteAssetAmount;
+        return (quoteAssetAmount, quoteAssetAmount.mulD(spreadRatio), quoteAssetAmount.mulD(tollRatio));
     }
 
     /**

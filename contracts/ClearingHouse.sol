@@ -144,6 +144,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         int256 marginToVault;
         // unrealized pnl after open position
         int256 unrealizedPnlAfter;
+        uint256 spreadFee;
+        uint256 tollFee;
     }
 
     struct AmmMap {
@@ -479,7 +481,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 positionResp = _openReversePosition(_amm, _side, trader, _amount, _leverage, _isQuote, false);
             }
 
-            _checkSlippage(_side, positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize.abs(), _oppositeAmountBound, _isQuote);
+            _checkSlippage(
+                _side,
+                positionResp.exchangedQuoteAssetAmount,
+                positionResp.exchangedPositionSize.abs(),
+                _oppositeAmountBound,
+                _isQuote
+            );
 
             // update the position state
             _setPosition(_amm, trader, positionResp.position);
@@ -499,9 +507,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             }
         }
 
-        // calculate fee and transfer token for fees
-        //@audit - can optimize by changing amm.swapInput/swapOutput's return type to (exchangedAmount, quoteToll, quoteSpread, quoteReserve, baseReserve) (@wraecca)
-        uint256 transferredFee = _transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
+        // transfer token for fees
+        _transferFee(trader, _amm, positionResp.spreadFee, positionResp.tollFee);
 
         // emit event
         uint256 spotPrice = _amm.getSpotPrice();
@@ -512,7 +519,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             positionResp.position.margin,
             positionResp.exchangedQuoteAssetAmount,
             positionResp.exchangedPositionSize,
-            transferredFee,
+            positionResp.spreadFee + positionResp.tollFee,
             positionResp.position.size,
             positionResp.realizedPnl,
             positionResp.unrealizedPnlAfter,
@@ -563,11 +570,23 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                     true,
                     true
                 );
-                _checkSlippage(position.size > 0 ? Side.SELL : Side.BUY, positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize.abs(),  0, false);
+                _checkSlippage(
+                    position.size > 0 ? Side.SELL : Side.BUY,
+                    positionResp.exchangedQuoteAssetAmount,
+                    positionResp.exchangedPositionSize.abs(),
+                    0,
+                    false
+                );
                 _setPosition(_amm, trader, positionResp.position);
             } else {
                 positionResp = _closePosition(_amm, trader);
-                _checkSlippage(position.size > 0 ? Side.SELL : Side.BUY, positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize.abs(),  _quoteAssetAmountLimit, false);
+                _checkSlippage(
+                    position.size > 0 ? Side.SELL : Side.BUY,
+                    positionResp.exchangedQuoteAssetAmount,
+                    positionResp.exchangedPositionSize.abs(),
+                    _quoteAssetAmountLimit,
+                    false
+                );
             }
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
@@ -578,8 +597,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             _withdraw(_amm, trader, positionResp.marginToVault.abs());
         }
 
-        // calculate fee and transfer token for fees
-        uint256 transferredFee = _transferFee(trader, _amm, positionResp.exchangedQuoteAssetAmount);
+        // transfer token for fees
+        _transferFee(trader, _amm, positionResp.spreadFee, positionResp.tollFee);
 
         // prepare event
         uint256 spotPrice = _amm.getSpotPrice();
@@ -590,7 +609,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             positionResp.position.margin,
             positionResp.exchangedQuoteAssetAmount,
             positionResp.exchangedPositionSize,
-            transferredFee,
+            positionResp.spreadFee + positionResp.tollFee,
             positionResp.position.size,
             positionResp.realizedPnl,
             positionResp.unrealizedPnlAfter,
@@ -914,7 +933,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         bool _isQuote
     ) internal returns (PositionResp memory positionResp) {
         Position memory oldPosition = getPosition(_amm, _trader);
-        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize) = _swap(_amm, _side, _amount, _isQuote, false);
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
+            _amm,
+            _side,
+            _amount,
+            _isQuote,
+            false
+        );
+
         int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
         _updateOpenInterestNotional(_amm, positionResp.exchangedQuoteAssetAmount.toInt());
@@ -966,7 +992,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         // reduce position if old position is larger
         if (_isQuote ? oldPositionNotional > _amount : oldPosition.size.abs() > _amount) {
-            (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize) = _swap(_amm, _side, _amount, _isQuote, _canOverFluctuationLimit);
+            (
+                positionResp.exchangedQuoteAssetAmount,
+                positionResp.exchangedPositionSize,
+                positionResp.spreadFee,
+                positionResp.tollFee
+            ) = _swap(_amm, _side, _amount, _isQuote, _canOverFluctuationLimit);
+
             _updateOpenInterestNotional(_amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
@@ -1026,7 +1058,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         require(closePositionResp.badDebt == 0, "reduce an underwater position");
 
         // update open notional after closing position
-        uint256 amount = _isQuote ? _amount - closePositionResp.exchangedQuoteAssetAmount : _amount - closePositionResp.exchangedPositionSize.abs();
+        uint256 amount = _isQuote
+            ? _amount - closePositionResp.exchangedQuoteAssetAmount
+            : _amount - closePositionResp.exchangedPositionSize.abs();
 
         // if remain exchangedQuoteAssetAmount is too small (eg. 1wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
@@ -1038,14 +1072,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             //     updatedBaseAssetAmountLimit = _baseAssetAmountLimit - closePositionResp.exchangedPositionSize.abs();
             // }
 
-            PositionResp memory increasePositionResp = _increasePosition(
-                _amm,
-                _side,
-                _trader,
-                amount,
-                _leverage,
-                _isQuote
-            );
+            PositionResp memory increasePositionResp = _increasePosition(_amm, _side, _trader, amount, _leverage, _isQuote);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
                 exchangedQuoteAssetAmount: closePositionResp.exchangedQuoteAssetAmount + increasePositionResp.exchangedQuoteAssetAmount,
@@ -1054,16 +1081,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 exchangedPositionSize: closePositionResp.exchangedPositionSize + increasePositionResp.exchangedPositionSize,
                 realizedPnl: closePositionResp.realizedPnl + increasePositionResp.realizedPnl,
                 unrealizedPnlAfter: 0,
-                marginToVault: closePositionResp.marginToVault + increasePositionResp.marginToVault
+                marginToVault: closePositionResp.marginToVault + increasePositionResp.marginToVault,
+                spreadFee: closePositionResp.spreadFee + increasePositionResp.spreadFee,
+                tollFee: closePositionResp.tollFee + increasePositionResp.tollFee
             });
         }
         return positionResp;
     }
 
-    function _closePosition(
-        IAmm _amm,
-        address _trader
-    ) private returns (PositionResp memory positionResp) {
+    function _closePosition(IAmm _amm, address _trader) private returns (PositionResp memory positionResp) {
         // check conditions
         Position memory oldPosition = getPosition(_amm, _trader);
         _requirePositionSize(oldPosition.size);
@@ -1081,7 +1107,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         positionResp.fundingPayment = fundingPayment;
         positionResp.marginToVault = remainMargin.toInt() * -1;
         // for amm.swapOutput, the direction is in base asset, from the perspective of Amm
-        positionResp.exchangedQuoteAssetAmount = _amm.swapOutput(
+        (positionResp.exchangedQuoteAssetAmount, positionResp.spreadFee, positionResp.tollFee) = _amm.swapOutput(
             oldPosition.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
             oldPosition.size.abs(),
             true
@@ -1098,30 +1124,47 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 _amount,
         bool _isQuote,
         bool _canOverFluctuationLimit
-    ) internal returns (uint256 quoteAmount, int256 baseAmount) {
-        if(_isQuote) {
+    )
+        internal
+        returns (
+            uint256 quoteAmount,
+            int256 baseAmount,
+            uint256 spreadFee,
+            uint256 tollFee
+        )
+    {
+        if (_isQuote) {
             // swap quote
             // long => add, short => remove
             quoteAmount = _amount;
-            if(_side == Side.BUY){
-                baseAmount = _amm.swapInput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit).toInt();
+            uint256 ubaseAmount;
+            if (_side == Side.BUY) {
+                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
+                baseAmount = ubaseAmount.toInt();
             } else {
-                baseAmount = _amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit).toInt() * -1;
+                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
+                baseAmount = ubaseAmount.toInt() * -1;
             }
         } else {
             // swap base
             // long => remove, short => add
-            if(_side == Side.BUY) {
-                quoteAmount = _amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
+            if (_side == Side.BUY) {
+                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
                 baseAmount = _amount.toInt();
             } else {
-                quoteAmount = _amm.swapOutput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
+                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
                 baseAmount = _amount.toInt() * -1;
             }
         }
     }
 
-    function _checkSlippage(Side _side, uint256 _quote, uint256 _base, uint256 _oppositeAmountBound, bool _isQuote) internal pure {
+    function _checkSlippage(
+        Side _side,
+        uint256 _quote,
+        uint256 _base,
+        uint256 _oppositeAmountBound,
+        bool _isQuote
+    ) internal pure {
         // skip when _oppositeAmountBound is zero
         if (_oppositeAmountBound == 0) {
             return;
@@ -1138,7 +1181,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 // too much requested when long
                 require(_quote <= _oppositeAmountBound, "CH_TMRL");
             }
-
         } else {
             if (!_isQuote) {
                 // too little received when short
@@ -1153,30 +1195,23 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function _transferFee(
         address _from,
         IAmm _amm,
-        uint256 _positionNotional
-    ) internal returns (uint256 fee) {
-        // the logic of toll fee can be removed if the bytecode size is too large
-        (uint256 toll, uint256 spread) = _amm.calcFee(_positionNotional);
-        bool hasToll = toll > 0;
-        bool hasSpread = spread > 0;
-        if (hasToll || hasSpread) {
-            IERC20 quoteAsset = _amm.quoteAsset();
+        uint256 _spreadFee,
+        uint256 _tollFee
+    ) internal {
+        IERC20 quoteAsset = _amm.quoteAsset();
 
-            // transfer spread to market in order to use it to make market better
-            if (hasSpread) {
-                quoteAsset.safeTransferFrom(_from, address(insuranceFund), spread);
-                totalFees[address(_amm)] += spread;
-                totalMinusFees[address(_amm)] += spread;
-                netRevenuesSinceLastFunding[address(_amm)] += spread.toInt();
-            }
+        // transfer spread to market in order to use it to make market better
+        if (_spreadFee > 0) {
+            quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
+            totalFees[address(_amm)] += _spreadFee;
+            totalMinusFees[address(_amm)] += _spreadFee;
+            netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
+        }
 
-            // transfer toll to tollPool
-            if (hasToll) {
-                require(address(tollPool) != address(0), "Invalid"); //Invalid tollPool
-                quoteAsset.safeTransferFrom(_from, address(tollPool), toll);
-            }
-
-            fee = toll + spread;
+        // transfer toll to tollPool
+        if (_tollFee > 0) {
+            require(address(tollPool) != address(0), "Invalid"); //Invalid tollPool
+            quoteAsset.safeTransferFrom(_from, address(tollPool), _tollFee);
         }
     }
 
