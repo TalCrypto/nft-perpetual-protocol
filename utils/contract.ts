@@ -197,8 +197,8 @@ export async function deployProxyClearingHouse(
   return instance;
 }
 
-export async function deployLiquidator(signer: Signer, clearingHouse: string): Promise<Liquidator> {
-  const instance = await new Liquidator__factory(signer).deploy(clearingHouse);
+export async function deployLiquidator(signer: Signer, clearingHouse: string, mmRatio: BigNumber): Promise<Liquidator> {
+  const instance = await new Liquidator__factory(signer).deploy(clearingHouse, mmRatio);
   await instance.deployed();
   return instance;
 }

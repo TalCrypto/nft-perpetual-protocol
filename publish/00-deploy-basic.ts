@@ -33,7 +33,13 @@ async function deployAmm(deployConfig: DeployConfig, ammInstanceName: AmmInstanc
   return amm;
 }
 
-async function configAmm(deployConfig: DeployConfig, amm: Amm, ammInstanceName: AmmInstanceName, insuranceFund: InsuranceFund, clearingHouse: ClearingHouse) {
+async function configAmm(
+  deployConfig: DeployConfig,
+  amm: Amm,
+  ammInstanceName: AmmInstanceName,
+  insuranceFund: InsuranceFund,
+  clearingHouse: ClearingHouse
+) {
   await amm.setGlobalShutdown(insuranceFund.address);
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
@@ -106,7 +112,7 @@ async function main() {
   await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
 
-  const liquidator = await deployLiquidator(ledger, clearingHouse.address);
+  const liquidator = await deployLiquidator(ledger, clearingHouse.address, deployConfig.maintenanceMarginRequirement);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 

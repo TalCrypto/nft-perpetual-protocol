@@ -2,6 +2,7 @@ import { run, network, upgrades } from "hardhat";
 import { ContractAddresses, getAddresses, saveAddresses } from "./addresses";
 import { LedgerSigner } from "@ethersproject/hardware-wallets";
 import { AmmInstanceName, ContractFullyQualifiedName } from "./Constants";
+import { DeployConfig } from "./DeployConfig";
 
 export async function getImplementation(proxyAddr: string) {
   const proxyAdmin = await upgrades.admin.getInstance();
@@ -61,10 +62,11 @@ async function main() {
     contract: ContractFullyQualifiedName.AmmReader,
   });
 
+  const deployConfig = new DeployConfig(network.name);
   console.log("verifying Liquidator contract");
   await run("verify:verify", {
     address: addresses.liquidator,
-    constructorArguments: [addresses.clearingHouse],
+    constructorArguments: [addresses.clearingHouse, deployConfig.maintenanceMarginRequirement],
     contract: ContractFullyQualifiedName.Liquidator,
   });
 }
