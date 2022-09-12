@@ -12,8 +12,15 @@ contract Liquidator is Ownable {
     event PositionLiquidated(address amm, address[] traders, bool[] results, string[] reasons);
     IClearingHouse clearingHouse;
 
-    constructor(IClearingHouse _clearingHouse) {
+    uint256 public mmRatio;
+
+    constructor(IClearingHouse _clearingHouse, uint256 _mmRatio) {
         clearingHouse = _clearingHouse;
+        mmRatio = _mmRatio;
+    }
+
+    function setMMRatio(uint256 _mmRatio) external onlyOwner {
+        mmRatio = _mmRatio;
     }
 
     function withdrawERC20(IERC20 _token) external onlyOwner {
@@ -34,9 +41,29 @@ contract Liquidator is Ownable {
                 results[i] = true;
             } catch Error(string memory reason) {
                 reasons[i] = reason;
+            } catch {
+                reasons[i] = "";
             }
         }
         emit PositionLiquidated(address(_amm), _traders, results, reasons);
+    }
+
+    function isLiquidatable(IAmm _amm, address[] memory _traders) external view returns (bool[] memory) {
+        bool[] memory results = new bool[](_traders.length);
+        for (uint256 i = 0; i < _traders.length; i++) {
+            try clearingHouse.getMarginRatio(_amm, _traders[i]) returns (int256 ratio) {
+                if (ratio < int256(mmRatio)) {
+                    results[i] = true;
+                } else {
+                    results[i] = false;
+                }
+            } catch Error(string memory) {
+                results[i] = false;
+            } catch {
+                results[i] = false;
+            }
+        }
+        return results;
     }
 
     receive() external payable {}
