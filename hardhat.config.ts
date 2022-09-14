@@ -10,6 +10,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import "@graphprotocol/hardhat-graph";
+import "hardhat-contract-sizer";
 
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -51,7 +52,7 @@ const config = {
       {
         version: "0.8.9",
         settings: {
-          optimizer: { enabled: true, runs: 1000 },
+          optimizer: { enabled: true, runs: 100 },
         },
       },
     ],
@@ -92,6 +93,13 @@ const config = {
   },
   mocha: {
     timeout: 80000,
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    only: [],
   },
 };
 

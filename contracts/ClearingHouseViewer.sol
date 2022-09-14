@@ -79,24 +79,6 @@ contract ClearingHouseViewer {
     }
 
     /**
-     * @notice verify if trader's position needs to be migrated
-     * @param _amm IAmm address
-     * @param _trader trader address
-     * @return true if trader's position is not at the latest Amm curve, otherwise is false
-     */
-    function isPositionNeedToBeMigrated(IAmm _amm, address _trader) external view returns (bool) {
-        ClearingHouse.Position memory unadjustedPosition = clearingHouse.getUnadjustedPosition(_amm, _trader);
-        if (unadjustedPosition.size == 0) {
-            return false;
-        }
-        uint256 latestLiquidityIndex = _amm.getLiquidityHistoryLength() - 1;
-        if (unadjustedPosition.liquidityHistoryIndex == latestLiquidityIndex) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
      * @notice get personal margin ratio
      * @param _amm IAmm address
      * @param _trader trader address

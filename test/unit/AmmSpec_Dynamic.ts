@@ -29,13 +29,9 @@ describe("Amm Unit Test", () => {
   }
 
   async function deployEnvFixture() {
-    const account = await ethers.getSigners();
-    admin = account[0];
-    alice = account[1];
-
-    priceFeed = (await deployL2MockPriceFeed(admin, toFullDigitBN(ETH_PRICE))) as L2PriceFeedMock;
-    quoteToken = (await deployErc20Fake(admin, toFullDigitBN(20000000))) as ERC20Fake;
-    amm = await deployProxyAmm({
+    const priceFeed = (await deployL2MockPriceFeed(admin, toFullDigitBN(ETH_PRICE))) as L2PriceFeedMock;
+    const quoteToken = (await deployErc20Fake(admin, toFullDigitBN(20000000))) as ERC20Fake;
+    const amm = await deployProxyAmm({
       signer: admin,
       quoteAssetReserve: toFullDigitBN(1000),
       baseAssetReserve: toFullDigitBN(100),
@@ -52,10 +48,17 @@ describe("Amm Unit Test", () => {
     await amm.setOpen(true);
     await amm.setAdjustable(true);
     await amm.setCanLowerK(true);
+    return { priceFeed, quoteToken, amm };
   }
 
   beforeEach(async () => {
-    await loadFixture(deployEnvFixture);
+    const account = await ethers.getSigners();
+    admin = account[0];
+    alice = account[1];
+    const fixture = await loadFixture(deployEnvFixture);
+    priceFeed = fixture.priceFeed;
+    quoteToken = fixture.quoteToken;
+    amm = fixture.amm;
   });
 
   describe("adjust function test", () => {
@@ -93,7 +96,7 @@ describe("Amm Unit Test", () => {
       // B = 90, Q = 1111.11...11, position_size = 10, mark_price = 12.344
       const positionSize = toFullDigitBN(10);
       beforeEach(async () => {
-        await amm.swapOutput(Dir.REMOVE_FROM_AMM, positionSize, 0);
+        await amm.swapOutput(Dir.REMOVE_FROM_AMM, positionSize, true);
       });
 
       describe("when oracle > mark and oracle-mark divergence exceeds limit 10%", () => {
@@ -195,7 +198,7 @@ describe("Amm Unit Test", () => {
       // B = 110, Q = 909.0909, position_size = -10, mark_price = 8.264
       const positionSize = toFullDigitBN(10);
       beforeEach(async () => {
-        await amm.swapOutput(Dir.ADD_TO_AMM, positionSize, 0);
+        await amm.swapOutput(Dir.ADD_TO_AMM, positionSize, true);
       });
 
       describe("when oracle < mark and oracle-mark divergence exceeds limit 10%", () => {
@@ -352,7 +355,7 @@ describe("Amm Unit Test", () => {
       const positionSize = toFullDigitBN(10);
       // B = 90, Q = 1111.11...11, position_size = 10
       beforeEach(async () => {
-        await amm.swapOutput(Dir.REMOVE_FROM_AMM, positionSize, 0);
+        await amm.swapOutput(Dir.REMOVE_FROM_AMM, positionSize, true);
       });
       describe("when budget is positive and a bit small", async () => {
         const budget = toFullDigitBN(0.01);
@@ -492,7 +495,7 @@ describe("Amm Unit Test", () => {
       const positionSize = toFullDigitBN(10);
       // B = 110, Q = 909.0909, position_size = -10
       beforeEach(async () => {
-        await amm.swapOutput(Dir.ADD_TO_AMM, positionSize, 0);
+        await amm.swapOutput(Dir.ADD_TO_AMM, positionSize, true);
       });
       describe("when budget is positive and a bit small", async () => {
         const budget = toFullDigitBN(0.005);

@@ -10,7 +10,8 @@
     "graph-local-clean": "docker-compose down -v && docker-compose rm -v && rm -rf data/ipfs data/postgres",
     "create-local": "graph create --node http://127.0.0.1:8020 tribe3-perp",
     "deploy-local": "cd tribe3-perp-subgraph && graph deploy --ipfs http://127.0.0.1:5001 --node http://127.0.0.1:8020 tribe3-perp",
-    "hardhat-local": "hardhat node --hostname 0.0.0.0"
+    "hardhat-local": "hardhat node --hostname 0.0.0.0",
+    "size-contracts": "hardhat size-contracts"
   },
   "devDependencies": {
     "@ethersproject/hardware-wallets": "^5.6.1",
@@ -34,6 +35,7 @@
     "ethers": "^5.6.9",
     "fs": "^0.0.1-security",
     "hardhat": "^2.9.9",
+    "hardhat-contract-sizer": "^2.6.1",
     "hardhat-gas-reporter": "^1.0.8",
     "matchstick-as": "^0.5.0",
     "prettier": "^2.7.1",

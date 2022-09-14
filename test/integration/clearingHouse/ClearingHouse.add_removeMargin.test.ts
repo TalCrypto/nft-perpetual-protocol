@@ -119,7 +119,9 @@ describe("ClearingHouse add/remove margin Test", () => {
     beforeEach(async () => {
       await approve(alice, clearingHouse.address, 2000);
       await approve(bob, clearingHouse.address, 2000);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(37.5));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(10), toFullDigitBN(37.5), true);
     });
 
     it("add margin", async () => {
@@ -232,10 +234,12 @@ describe("ClearingHouse add/remove margin Test", () => {
     describe("using spot price", () => {
       it("remove margin when a long position with profit", async () => {
         // reserve 1000 : 100
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 1300 : 76.92, price = 16.9
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 1600 : 62.5, price = 25.6
 
         // margin: 60
@@ -254,10 +258,12 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a long position with loss", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 1300 : 76.92, price = 16.9
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 1250 : 80 price = 15.625
 
         // margin: 60
@@ -276,9 +282,11 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a short position with profit", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 900 : 111.11, price = 8.1
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 800 : 125, price = 6.4
 
         // margin: 20
@@ -297,8 +305,10 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a short position with loss", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0), true);
         // reserve 800 : 125, price = 6.4
 
         // margin: 20
@@ -320,11 +330,13 @@ describe("ClearingHouse add/remove margin Test", () => {
     describe("using twap", () => {
       it("remove margin when a long position with profit", async () => {
         // reserve 1000 : 100
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 1300 : 76.92, price = 16.9
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 1600 : 62.5, price = 25.6
 
@@ -342,11 +354,13 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a long position with loss", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 1300 : 76.92, price = 16.9
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 1250 : 80 price = 15.625
         // push the price up, so that CH uses twap to calculate the loss
@@ -367,10 +381,12 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a short position with profit", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 900 : 111.11, price = 8.1
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 800 : 125, price = 6.4
 
@@ -388,9 +404,11 @@ describe("ClearingHouse add/remove margin Test", () => {
       });
 
       it("remove margin when a short position with loss", async () => {
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(5), toFullDigitBN(0));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0), true);
         await forwardBlockTimestamp(450);
         // reserve 800 : 125, price = 6.4
 

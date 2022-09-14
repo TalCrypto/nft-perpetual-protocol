@@ -74,11 +74,13 @@ describe("Bad Debt Test", () => {
 
     // shrimp open small long
     // position size: 7.40740741
-    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(8), toFullDigitBN(0));
+    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(80), toFullDigitBN(8), toFullDigitBN(0), true);
 
     // whale drop spot price
     for (let i = 0; i < 5; i++) {
-      await clearingHouse.connect(whale).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(whale)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
     }
 
     // spot price: 3.364
@@ -92,27 +94,27 @@ describe("Bad Debt Test", () => {
   it("cannot increase position when bad debt", async () => {
     // increase position should fail since margin is not enough
     await expect(
-      clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(10), toFullDigitBN(0))
+      clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true)
     ).to.be.revertedWith("Margin ratio not meet criteria");
 
     // pump spot price
     await clearingHouse.connect(whale).closePosition(amm.address, toFullDigitBN(0));
 
     // increase position should succeed since the position no longer has bad debt
-    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0));
+    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true);
   });
 
   it("cannot reduce position when bad debt", async () => {
     // reduce position should fail since margin is not enough
     await expect(
-      clearingHouse.connect(shrimp).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))
+      clearingHouse.connect(shrimp).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
     ).to.be.revertedWith("Margin ratio not meet criteria");
 
     // pump spot price
     await clearingHouse.connect(whale).closePosition(amm.address, toFullDigitBN(0));
 
     // reduce position should succeed since the position no longer has bad debt
-    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0));
+    await clearingHouse.connect(shrimp).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true);
   });
 
   it("cannot close position when bad debt", async () => {

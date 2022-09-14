@@ -35,7 +35,9 @@ async function main() {
     await quoteToken.connect(accounts[i]).approve(clearingHouse.address, toFullDigitBN(15, +(await quoteToken.decimals())));
   }
   for (let i = 1; i < 6; i++) {
-    await clearingHouse.connect(accounts[i]).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(10), toFullDigitBN(0));
+    await clearingHouse
+      .connect(accounts[i])
+      .openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(10), toFullDigitBN(0), true);
     await forward(1);
   }
   await clearingHouse.connect(accounts[1]).closePosition(amm.address, toFullDigitBN(0));

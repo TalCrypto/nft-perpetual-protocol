@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library TransferHelper {
     /// @notice Transfers tokens from the targeted address to the given destination
@@ -16,9 +16,8 @@ library TransferHelper {
         address to,
         uint256 value
     ) internal {
-        (bool success, bytes memory data) =
-            address(token).call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'STF');
+        (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "STF");
     }
 
     /// @notice Transfers tokens from msg.sender to a recipient
@@ -32,7 +31,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'ST');
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "ST");
     }
 
     /// @notice Approves the stipulated contract to spend the given allowance in the given token
@@ -46,7 +45,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'SA');
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "SA");
     }
 
     // /// @notice Transfers ETH to the recipient address

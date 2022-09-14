@@ -79,20 +79,13 @@ describe("ClearingHouse Test", () => {
   }
 
   async function deployEnvFixture() {
-    const account = await ethers.getSigners();
-    admin = account[0];
-    alice = account[1];
-    bob = account[2];
-    carol = account[3];
-    relayer = account[4];
-
     const contracts = await fullDeploy({ sender: admin });
-    amm = contracts.amm;
-    insuranceFund = contracts.insuranceFund;
-    quoteToken = contracts.quoteToken;
-    mockPriceFeed = contracts.priceFeed;
-    clearingHouse = contracts.clearingHouse;
-    clearingHouseViewer = contracts.clearingHouseViewer;
+    const amm = contracts.amm;
+    const insuranceFund = contracts.insuranceFund;
+    const quoteToken = contracts.quoteToken;
+    const mockPriceFeed = contracts.priceFeed;
+    const clearingHouse = contracts.clearingHouse;
+    const clearingHouseViewer = contracts.clearingHouseViewer;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
@@ -103,11 +96,20 @@ describe("ClearingHouse Test", () => {
     await amm.setAdjustable(true);
     await amm.setCanLowerK(true);
 
-    await syncAmmPriceToOracle();
+    const marketPrice = await amm.getSpotPrice();
+    await mockPriceFeed.setPrice(marketPrice);
+    return { amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer };
   }
 
   beforeEach(async () => {
-    await loadFixture(deployEnvFixture);
+    [admin, alice, bob, carol, relayer] = await ethers.getSigners();
+    const fixture = await loadFixture(deployEnvFixture);
+    amm = fixture.amm;
+    insuranceFund = fixture.insuranceFund;
+    quoteToken = fixture.quoteToken;
+    mockPriceFeed = fixture.mockPriceFeed;
+    clearingHouse = fixture.clearingHouse;
+    clearingHouseViewer = fixture.clearingHouseViewer;
   });
 
   describe("manual repeg test when position size = -25", () => {
@@ -115,12 +117,12 @@ describe("ClearingHouse Test", () => {
       await amm.setSpreadRatio(toFullDigitBN(0.1));
       // given alice takes 2x long position (20B) with 125 margin
       await approve(alice, clearingHouse.address, 250);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(125), toFullDigitBN(2), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
       // B = 80, Q = 1250
 
       // given bob takes 1x short position (-45B) with 450 margin
       await approve(bob, clearingHouse.address, 900);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
       // B = 125, Q = 800
       expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
       expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
@@ -164,12 +166,12 @@ describe("ClearingHouse Test", () => {
       await amm.setSpreadRatio(toFullDigitBN(0.1));
       // given alice takes 2x long position (20B) with 125 margin
       await approve(alice, clearingHouse.address, 250);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(125), toFullDigitBN(2), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
       // B = 80, Q = 1250
 
       // given bob takes 1x short position (-45B) with 450 margin
       await approve(bob, clearingHouse.address, 900);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
       // B = 125, Q = 800
       expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
       expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
@@ -217,12 +219,12 @@ describe("ClearingHouse Test", () => {
       await amm.setSpreadRatio(toFullDigitBN(0.5));
       // given alice takes 2x long position (20B) with 125 margin
       await approve(alice, clearingHouse.address, 250);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(125), toFullDigitBN(2), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
       // B = 80, Q = 1250
 
       // given bob takes 1x short position (-45B) with 450 margin
       await approve(bob, clearingHouse.address, 900);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
       // B = 125, Q = 800
 
       //mark_twap = 6.4
@@ -327,12 +329,14 @@ describe("ClearingHouse Test", () => {
     beforeEach(async () => {
       // given alice takes 2x long position (37.5B) with 300 margin
       await approve(alice, clearingHouse.address, 600);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(2), toFullDigitBN(37.5), true);
       // B = 62.5, Q = 1600
 
       // given bob takes 1x short position (-17.5B) with 350 margin
       await approve(bob, clearingHouse.address, 500);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(350), toFullDigitBN(1), toFullDigitBN(500));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(350), toFullDigitBN(1), toFullDigitBN(500), true);
       // B = 80, Q = 1250
 
       // mark_twap = 15.625
@@ -385,12 +389,12 @@ describe("ClearingHouse Test", () => {
     beforeEach(async () => {
       // given alice takes 2x long position (0.019996B) with 0.1 margin
       await approve(alice, clearingHouse.address, 1);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.1), toFullDigitBN(2), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.2), toFullDigitBN(2), toFullDigitBN(0), true);
       // B = 99.98000399920016, Q = 1000.2.
 
       // given bob takes 1x short position (-0.009997B) with 0.1 margin
       await approve(bob, clearingHouse.address, 500);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(0.1), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(0.1), toFullDigitBN(1), toFullDigitBN(0), true);
       // B = 99.99000099990001, Q = 1000.1
       baseAssetReserveBefore = await amm.baseAssetReserve();
       quoteAssetReserveBefore = await amm.quoteAssetReserve();

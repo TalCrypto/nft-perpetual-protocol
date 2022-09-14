@@ -209,8 +209,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         Dir _dirOfQuote,
         uint256 _quoteAssetAmount,
         bool _canOverFluctuationLimit
-    ) external override onlyOpen onlyCounterParty returns (uint256, uint256, uint256) {
-
+    )
+        external
+        override
+        onlyOpen
+        onlyCounterParty
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         if (_dirOfQuote == Dir.REMOVE_FROM_AMM) {
             require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "over trading limit");
         }
@@ -244,8 +253,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         Dir _dirOfBase,
         uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
-    ) external override onlyOpen onlyCounterParty returns (uint256, uint256, uint256) {
-
+    )
+        external
+        override
+        onlyOpen
+        onlyCounterParty
+        returns (
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         if (_dirOfBase == Dir.REMOVE_FROM_AMM) {
             require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "over trading limit");
         }

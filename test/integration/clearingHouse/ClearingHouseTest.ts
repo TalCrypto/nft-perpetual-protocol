@@ -81,20 +81,13 @@ describe("ClearingHouse Test", () => {
   }
 
   async function deployEnvFixture() {
-    const account = await ethers.getSigners();
-    admin = account[0];
-    alice = account[1];
-    bob = account[2];
-    carol = account[3];
-    relayer = account[4];
-
     const contracts = await fullDeploy({ sender: admin });
-    amm = contracts.amm;
-    insuranceFund = contracts.insuranceFund;
-    quoteToken = contracts.quoteToken;
-    mockPriceFeed = contracts.priceFeed;
-    clearingHouse = contracts.clearingHouse;
-    clearingHouseViewer = contracts.clearingHouseViewer;
+    const amm = contracts.amm;
+    const insuranceFund = contracts.insuranceFund;
+    const quoteToken = contracts.quoteToken;
+    const mockPriceFeed = contracts.priceFeed;
+    const clearingHouse = contracts.clearingHouse;
+    const clearingHouseViewer = contracts.clearingHouseViewer;
     // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
@@ -104,18 +97,35 @@ describe("ClearingHouse Test", () => {
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
-    await syncAmmPriceToOracle();
+    const marketPrice = await amm.getSpotPrice();
+    await mockPriceFeed.setPrice(marketPrice);
+
+    return { amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer };
   }
 
   beforeEach(async () => {
-    await loadFixture(deployEnvFixture);
+    const account = await ethers.getSigners();
+    admin = account[0];
+    alice = account[1];
+    bob = account[2];
+    carol = account[3];
+    relayer = account[4];
+    const fixture = await loadFixture(deployEnvFixture);
+    amm = fixture.amm;
+    insuranceFund = fixture.insuranceFund;
+    quoteToken = fixture.quoteToken;
+    mockPriceFeed = fixture.mockPriceFeed;
+    clearingHouse = fixture.clearingHouse;
+    clearingHouseViewer = fixture.clearingHouseViewer;
   });
 
   describe("getPersonalPositionWithFundingPayment", () => {
     it("return 0 margin when alice's position is underwater", async () => {
       // given alice takes 10x short position (size: -150) with 60 margin
       await approve(alice, clearingHouse.address, 60);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(60), toFullDigitBN(10), toFullDigitBN(150));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(600), toFullDigitBN(10), toFullDigitBN(150), true);
 
       // given the underlying twap price is $2.1, and current snapShot price is 400B/250Q = $1.6
       await mockPriceFeed.setTwapPrice(toFullDigitBN(2.1));
@@ -144,18 +154,18 @@ describe("ClearingHouse Test", () => {
     });
 
     it("increase when increase position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
     });
 
     it("reduce when reduce position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0));
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
     });
 
     it("reduce when close position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(400), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(400), toFullDigitBN(1), toFullDigitBN(0), true);
 
       await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
 
@@ -166,16 +176,16 @@ describe("ClearingHouse Test", () => {
 
     it("increase when traders open positions in different direction", async () => {
       await approve(alice, clearingHouse.address, 300);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
       await approve(bob, clearingHouse.address, 300);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
     });
 
     it("increase when traders open larger position in reverse direction", async () => {
       await approve(alice, clearingHouse.address, 600);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(200));
     });
 
@@ -183,8 +193,8 @@ describe("ClearingHouse Test", () => {
       // avoid two closing positions from exceeding the fluctuation limit
       await amm.setFluctuationLimitRatio(toFullDigitBN(0.8));
 
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
 
       await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
@@ -196,8 +206,8 @@ describe("ClearingHouse Test", () => {
 
     it("is 0 when everyone close position, one of them is bankrupt position", async () => {
       await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // when alice close, it create bad debt (bob's position is bankrupt), so we can only liquidate her position
       // await clearingHouse.closePosition(amm.address, toFullDigitBN(0), { from: alice })
@@ -213,23 +223,23 @@ describe("ClearingHouse Test", () => {
     });
 
     it("stop trading if it's over openInterestCap", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
       await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
       ).to.be.revertedWith("over limit");
     });
 
     it("won't be limited by the open interest cap if the trader is the whitelist", async () => {
       await approve(alice, clearingHouse.address, 700);
       await clearingHouse.setWhitelist(alice.address);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(700), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(700), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(700));
     });
 
     it("won't stop trading if it's reducing position, even it's more than cap", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
       await amm.setCap(toFullDigitBN(0), toFullDigitBN(300));
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
       expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
     });
   });
@@ -239,11 +249,15 @@ describe("ClearingHouse Test", () => {
       await amm.setSpreadRatio(toFullDigitBN(0.5));
       // given alice takes 2x long position (37.5B) with 300 margin
       await approve(alice, clearingHouse.address, 600);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(2), toFullDigitBN(37.5));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(2), toFullDigitBN(37.5), true);
 
       // given bob takes 1x short position (-187.5B) with 1200 margin
       await approve(bob, clearingHouse.address, 1800);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5), true);
 
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
@@ -503,7 +517,9 @@ describe("ClearingHouse Test", () => {
   describe("getMarginRatio", () => {
     it("get margin ratio", async () => {
       await approve(alice, clearingHouse.address, 2000);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
 
       const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
       expect(marginRatio).to.eq(toFullDigitBN(0.1));
@@ -519,14 +535,16 @@ describe("ClearingHouse Test", () => {
       // (1000 + 250) * (100 - y) = 1000 * 100
       // y = 20
       // AMM: 1250, 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
 
       // Bob goes short with 15 quote and 10x leverage
       // (1250 - 150) * (80 + y) = 1000 * 100
       // y = 10.9090909091
       // AMM: 1100, 90.9090909091
       await approve(bob, clearingHouse.address, 2000);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(15), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(150), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // (1100 - x) * (90.9090909091 + 20) = 1000 * 100
       // position notional / x : 1100 - 901.6393442622 = 198.3606
@@ -544,14 +562,16 @@ describe("ClearingHouse Test", () => {
       // (1000 - 250) * (100 + y) = 1000 * 100
       // y = 33.3333333333
       // AMM: 750, 133.3333333333
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(33.4));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(33.4), true);
 
       // Bob goes long with 15 quote and 10x leverage
       // (750 + 150) * (133.3333333333 - y) = 1000 * 100
       // y = 22.222222222
       // AMM: 900, 111.1111111111
       await approve(bob, clearingHouse.address, 2000);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(15), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(150), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // (900 + x) * (111.1111111111 - 33.3333333333) = 1000 * 100
       // position notional / x : 1285.7142857139 - 900 = 385.7142857139
@@ -601,7 +621,9 @@ describe("ClearingHouse Test", () => {
         await approve(alice, clearingHouse.address, 2000);
 
         // price: 1250 / 80 = 15.625
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
 
         // given the underlying twap price: 15.5
         await mockPriceFeed.setTwapPrice(toFullDigitBN(15.5));
@@ -623,7 +645,9 @@ describe("ClearingHouse Test", () => {
         await approve(alice, clearingHouse.address, 2000);
 
         // price: 1250 / 80 = 15.625
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
 
         // given the underlying twap price is 15.7
         await mockPriceFeed.setTwapPrice(toFullDigitBN(15.7));
@@ -646,9 +670,13 @@ describe("ClearingHouse Test", () => {
         await approve(bob, clearingHouse.address, 2000);
 
         // price: 1250 / 80 = 15.625
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
         // price: 800 / 125 = 6.4
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(10), toFullDigitBN(45));
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(10), toFullDigitBN(45), true);
 
         // given the underlying twap price: 6.3
         await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
@@ -677,9 +705,13 @@ describe("ClearingHouse Test", () => {
         await approve(bob, clearingHouse.address, 2000);
 
         // price: 1250 / 80 = 15.625
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(20));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
         // price: 800 / 125 = 6.4
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(10), toFullDigitBN(45));
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(10), toFullDigitBN(45), true);
 
         // given the underlying twap price: 6.5
         await mockPriceFeed.setTwapPrice(toFullDigitBN(6.5));
@@ -718,12 +750,14 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 45.18072289 margin * 1x position to get 3 short position
       // AMM after: 1204.819277 : 83
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // partially liquidate 25%
       // liquidated positionNotional: getOutputPrice(20 (original position) * 0.25) = 68.455
@@ -780,12 +814,14 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 45.18072289 margin * 1x position to get 3 short position
       // AMM after: 1204.819277 : 83
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // partially liquidate 25%
       // liquidated positionNotional: getOutputPrice(20 (original position) * 0.25) = 68.455
@@ -805,12 +841,16 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 19.67213115 margin * 1x position to get 3 long position
       // AMM after: 819.6721311 : 122
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(19.67213115), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(19.67213115), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // remainMargin = (margin + unrealizedPnL) = 20 - 15.38 = 4.62
       // marginRatio = remainMargin / openNotional = 4.62 / 100 = 0.0462 < minMarginRatio(0.05)
@@ -870,12 +910,16 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 19.67213115 margin * 1x position to get 3 long position
       // AMM after: 819.6721311 : 122
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(19.67213115), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(19.67213115), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // remainMargin = (margin + unrealizedPnL) = 20 - 15.38 = 4.62
       // marginRatio = remainMargin / openNotional = 4.62 / 100 = 0.0462 < minMarginRatio(0.05)
@@ -902,12 +946,14 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 73.52941176 margin * 1x position to get 3 short position
       // AMM after: 1176.470588 : 85
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(73.52941176), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(73.52941176), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // the badDebt params of the two events are different
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
@@ -951,12 +997,14 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 73.52941176 margin * 1x position to get 3 short position
       // AMM after: 1176.470588 : 85
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(73.52941176), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(73.52941176), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // set carol to backstop LP
       await clearingHouse.connect(admin).setBackstopLiquidityProvider(carol.address, true);
@@ -979,12 +1027,14 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(25), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 73.52941176 margin * 1x position to get 4 short position
       // AMM after: 1190.476190 : 84
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(59.52381), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(59.52381), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // the badDebt params of the two events are different
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
@@ -1029,12 +1079,16 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 40.33613445 margin * 1x position to get 3 long position
       // AMM after: 840.3361345 : 119
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(40.33613445), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(40.33613445), toFullDigitBN(1), toFullDigitBN(0), true);
 
       await syncAmmPriceToOracle();
 
@@ -1102,12 +1156,16 @@ describe("ClearingHouse Test", () => {
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
 
       // when bob create a 33.333333 margin * 1x position to get 5 long position
       // AMM after: 833.333333 : 120
       await forwardBlockTimestamp(15); // 15 secs. later
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(33.333333), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(33.333333), toFullDigitBN(1), toFullDigitBN(0), true);
 
       await syncAmmPriceToOracle();
 
@@ -1151,17 +1209,21 @@ describe("ClearingHouse Test", () => {
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909091
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9.09));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9.09), true);
 
       // when alice create a 20 margin * 5x long position when 7.5757575758 quoteAsset = 100 DAI
       // AMM after: 1200 : 83.3333333333
       await forwardBlockTimestamp(15);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.57));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.57), true);
 
       // when bob sell his position when 7.5757575758 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909091
       await forwardBlockTimestamp(600);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.58));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.58), true);
 
       // verify alice's openNotional = 100 DAI
       // spot price PnL = positionValue - openNotional = 84.62 - 100 = -15.38
@@ -1190,7 +1252,9 @@ describe("ClearingHouse Test", () => {
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909091
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9.09));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9.09), true);
 
       // verify alice's openNotional = 100 DAI
       // spot price PnL = positionValue - openNotional = 100 - 100 = 0
@@ -1235,7 +1299,9 @@ describe("ClearingHouse Test", () => {
       count: number
     ): Promise<void> {
       for (let i = 0; i < count; i++) {
-        await clearingHouse.connect(account).openPosition(amm.address, side, margin, leverage, toFullDigitBN(0));
+        await clearingHouse
+          .connect(account)
+          .openPosition(amm.address, side, margin.mul(leverage).div(toFullDigitBN("1")), leverage, toFullDigitBN(0), true);
         await forwardBlockTimestamp(15);
       }
     }
@@ -1464,7 +1530,7 @@ describe("ClearingHouse Test", () => {
       await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0));
 
       await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(44), toFullDigitBN(1), toFullDigitBN(0))
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(44), toFullDigitBN(1), toFullDigitBN(0), true)
       ).to.be.revertedWith("price is over fluctuation limit");
 
       await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
@@ -1763,10 +1829,14 @@ describe("ClearingHouse Test", () => {
       await approve(bob, clearingHouse.address, 200);
 
       // AMM after: 900 : 111.1111111111
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(11.12));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true);
 
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(25), toFullDigitBN(4), toFullDigitBN(13.89));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(4), toFullDigitBN(13.89), true);
       // 20(bob's margin) + 25(alice's margin) = 45
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(45, +(await quoteToken.decimals())));
 
@@ -1784,10 +1854,14 @@ describe("ClearingHouse Test", () => {
       await approve(bob, clearingHouse.address, 200);
 
       // AMM after: 900 : 111.1111111111
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(11.12));
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true);
 
       // AMM after: 800 : 125
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(13.89));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(13.89), true);
       // 20(bob's margin) + 20(alice's margin) = 40
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(40, +(await quoteToken.decimals())));
 
@@ -1810,7 +1884,7 @@ describe("ClearingHouse Test", () => {
       // alice pays 20 margin * 5x long quote when 9.0909091 base
       // AMM after: 1100 : 90.9090909, price: 12.1000000012
       await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9))
+        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9), true)
       ).to.be.revertedWith("price is over fluctuation limit");
     });
 
@@ -1820,13 +1894,13 @@ describe("ClearingHouse Test", () => {
 
       // alice pays 250 margin * 1x long to get 20 base
       // AMM after: 1250 : 80, price: 15.625
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
 
       await amm.setFluctuationLimitRatio(toFullDigitBN(0.078));
       // AMM after: 1200 : 83.3333333333, price: 14.4
       // price fluctuation: (15.625 - 14.4) / 15.625 = 0.0784
       await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0))
+        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
       ).to.be.revertedWith("price is over fluctuation limit");
     });
   });
@@ -1839,12 +1913,14 @@ describe("ClearingHouse Test", () => {
 
       // when bob create a 20 margin * 5x long position when 9.0909091 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909, price: 12.1000000012
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9), true);
 
       // when alice create a 20 margin * 5x long position when 7.5757609 quoteAsset = 100 DAI
       // AMM after: 1200 : 83.3333333, price: 14.4000000058
       await forwardBlockTimestamp(15);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.5));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.5), true);
 
       await forwardBlockTimestamp(15);
       // set 0.5 here to avoid the above opening positions from failing
@@ -1875,12 +1951,14 @@ describe("ClearingHouse Test", () => {
 
         // when bob create a 20 margin * 5x short position when 9.0909091 quoteAsset = 100 DAI
         // AMM after: 1100 : 90.9090909
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9), true);
 
         // when alice create a 20 margin * 5x short position when 7.5757609 quoteAsset = 100 DAI
         // AMM after: 1200 : 83.3333333
         await forwardBlockTimestamp(15);
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.5));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.5), true);
 
         // when bob close his position
         // AMM after: 1081.96721 : 92.4242424
@@ -1900,12 +1978,16 @@ describe("ClearingHouse Test", () => {
 
         // when bob create a 20 margin * 5x short position when 11.1111111111 quoteAsset = 100 DAI
         // AMM after: 900 : 111.1111111111
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(11.12));
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true);
 
         // when alice create a 20 margin * 5x short position when 13.8888888889 quoteAsset = 100 DAI
         // AMM after: 800 : 125
         await forwardBlockTimestamp(15);
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(13.89));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(13.89), true);
 
         // when bob close his position
         // AMM after: 878.0487804877 : 113.8888888889
@@ -1924,15 +2006,15 @@ describe("ClearingHouse Test", () => {
         await approve(alice, clearingHouse.address, 100);
         await approve(bob, clearingHouse.address, 100);
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(9));
+        await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9), true);
 
         await forwardBlockTimestamp(15);
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(7.5));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.5), true);
 
         await forwardBlockTimestamp(15);
-        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(119))).to.be.revertedWith(
-          "Less than minimal quote token"
-        );
+        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(119))).to.be.revertedWith("CH_TLRS");
       });
 
       // Case 2
@@ -1940,15 +2022,17 @@ describe("ClearingHouse Test", () => {
         await approve(alice, clearingHouse.address, 100);
         await approve(bob, clearingHouse.address, 100);
 
-        await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(11.12));
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true);
 
         await forwardBlockTimestamp(15);
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(13.89));
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(13.89), true);
 
         await forwardBlockTimestamp(15);
-        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(78))).to.be.revertedWith(
-          "More than maximal quote token"
-        );
+        await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(78))).to.be.revertedWith("CH_TMRL");
       });
     });
   });
@@ -1958,7 +2042,7 @@ describe("ClearingHouse Test", () => {
       const error = "Pausable: paused";
       await clearingHouse.pause();
       await expect(
-        clearingHouse.openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0))
+        clearingHouse.openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
       ).to.be.revertedWith(error);
 
       await expect(clearingHouse.addMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith(error);
@@ -1974,7 +2058,7 @@ describe("ClearingHouse Test", () => {
       await quoteToken.connect(alice).approve(clearingHouse.address, toFullDigitBN(2));
       await clearingHouse.pause();
       await clearingHouse.unpause();
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true);
       await clearingHouse.connect(alice).addMargin(amm.address, toFullDigitBN(1));
       await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(1));
       await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
@@ -1995,11 +2079,11 @@ describe("ClearingHouse Test", () => {
 
     // copy from above so skip the comment for calculation
     async function makeLiquidatableByShort(addr: SignerWithAddress): Promise<void> {
-      await clearingHouse.connect(admin).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+      await clearingHouse.connect(admin).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
-      await clearingHouse.connect(addr).openPosition(amm.address, Side.BUY, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+      await clearingHouse.connect(addr).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
-      await clearingHouse.connect(admin).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
+      await clearingHouse.connect(admin).openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
     }
 
@@ -2018,10 +2102,12 @@ describe("ClearingHouse Test", () => {
       await clearingHouse.connect(admin).setBackstopLiquidityProvider(alice.address, true);
       // just make some trades to make bob's bad debt larger than 0 by checking args[8] of event
       // price become 11.03 after openPosition
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(5), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(5), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
       // price become 7.23 after openPosition
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(10), toFullDigitBN(0));
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
 
       await forwardBlockTimestamp(15);
       // liquidate bad debt position
@@ -2137,7 +2223,7 @@ describe("ClearingHouse Test", () => {
       await amm.setFluctuationLimitRatio(toFullDigitBN(0.5));
 
       await makeLiquidatableByShort(alice);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(1), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
       await clearingHouse.closePosition(amm.address, toFullDigitBN(0));
       await syncAmmPriceToOracle();
@@ -2170,10 +2256,10 @@ describe("ClearingHouse Test", () => {
     });
 
     it("close then open", async () => {
-      await clearingHouse.openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true);
       await forwardBlockTimestamp(15);
       await clearingHouse.closePosition(amm.address, toFullDigitBN(0));
-      await clearingHouse.openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0));
+      await clearingHouse.openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true);
     });
   });
 

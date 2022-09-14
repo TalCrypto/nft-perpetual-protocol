@@ -386,7 +386,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         Position memory pos = getPosition(_amm, trader);
         _requirePositionSize(pos.size);
         // update position
-        _clearPosition(_amm, trader);
+        _setPosition(
+            _amm,
+            trader,
+            Position({
+                size: 0,
+                margin: 0,
+                openNotional: 0,
+                lastUpdatedCumulativePremiumFraction: 0,
+                blockNumber: _blockNumber(),
+                liquidityHistoryIndex: 0
+            })
+        );
         // calculate settledValue
         // If Settlement Price = 0, everyone takes back her collateral.
         // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
@@ -793,18 +804,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         positionStorage.liquidityHistoryIndex = _position.liquidityHistoryIndex;
     }
 
-    function _clearPosition(IAmm _amm, address _trader) internal {
-        // keep the record in order to retain the last updated block number
-        ammMap[address(_amm)].positionMap[_trader] = Position({
-            size: 0,
-            margin: 0,
-            openNotional: 0,
-            lastUpdatedCumulativePremiumFraction: 0,
-            blockNumber: _blockNumber(),
-            liquidityHistoryIndex: 0
-        });
-    }
-
     function _liquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
         _requireAmm(_amm, true);
         int256 marginRatio = getMarginRatio(_amm, _trader);
@@ -1062,16 +1061,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             ? _amount - closePositionResp.exchangedQuoteAssetAmount
             : _amount - closePositionResp.exchangedPositionSize.abs();
 
-        // if remain exchangedQuoteAssetAmount is too small (eg. 1wei) then the required margin might be 0
+        // if remain exchangedQuoteAssetAmount is too small (eg. 10 wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
-        if (amount.divD(_leverage) == 0) {
+        if (amount <= 10 wei) {
             positionResp = closePositionResp;
         } else {
-            // uint256 updatedBaseAssetAmountLimit;
-            // if (_baseAssetAmountLimit > closePositionResp.exchangedPositionSize.toUint()) {
-            //     updatedBaseAssetAmountLimit = _baseAssetAmountLimit - closePositionResp.exchangedPositionSize.abs();
-            // }
-
             PositionResp memory increasePositionResp = _increasePosition(_amm, _side, _trader, amount, _leverage, _isQuote);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
@@ -1101,21 +1095,33 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             unrealizedPnl
         );
 
-        positionResp.exchangedPositionSize = oldPosition.size * -1;
         positionResp.realizedPnl = unrealizedPnl;
         positionResp.badDebt = badDebt;
         positionResp.fundingPayment = fundingPayment;
         positionResp.marginToVault = remainMargin.toInt() * -1;
-        // for amm.swapOutput, the direction is in base asset, from the perspective of Amm
-        (positionResp.exchangedQuoteAssetAmount, positionResp.spreadFee, positionResp.tollFee) = _amm.swapOutput(
-            oldPosition.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
+            _amm,
+            oldPosition.size > 0 ? Side.SELL : Side.BUY,
             oldPosition.size.abs(),
+            false,
             true
         );
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
         _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
-        _clearPosition(_amm, _trader);
+        _setPosition(
+            _amm,
+            _trader,
+            Position({
+                size: 0,
+                margin: 0,
+                openNotional: 0,
+                lastUpdatedCumulativePremiumFraction: 0,
+                blockNumber: _blockNumber(),
+                liquidityHistoryIndex: 0
+            })
+        );
     }
 
     function _swap(
@@ -1378,10 +1384,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (unrealizedPnl, positionNotional) = (_pnlPreference == PnlPreferenceOption.MAX_PNL) == (spotPricePnl > twapPricePnl)
             ? (spotPricePnl, spotPositionNotional)
             : (twapPricePnl, twapPositionNotional);
-    }
-
-    function getUnadjustedPosition(IAmm _amm, address _trader) public view returns (Position memory position) {
-        position = ammMap[address(_amm)].positionMap[_trader];
     }
 
     //

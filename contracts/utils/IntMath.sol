@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./FullMath.sol";
+
 /// @dev Implements simple signed fixed point math add, sub, mul and div operations.
 library IntMath {
     /// @dev Returns 1 in the fixed point representation, with `decimals` decimals.
