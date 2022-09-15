@@ -567,18 +567,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 partialLiquidationRatio < 1 ether &&
                 partialLiquidationRatio != 0
             ) {
-                uint256 partiallyClosedPositionNotional = _amm.getOutputPrice(
-                    dirOfBase,
-                    position.size.mulD(partialLiquidationRatio.toInt()).abs()
-                );
-
                 positionResp = _openReversePosition(
                     _amm,
                     position.size > 0 ? Side.SELL : Side.BUY,
                     trader,
-                    partiallyClosedPositionNotional,
+                    position.size.mulD(partialLiquidationRatio.toInt()).abs(),
                     1 ether,
-                    true,
+                    false,
                     true
                 );
                 _checkSlippage(
@@ -832,18 +827,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 marginRatio > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
-                uint256 partiallyLiquidatedPositionNotional = _amm.getOutputPrice(
-                    position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
-                    position.size.mulD(partialLiquidationRatio.toInt()).abs()
-                );
-
                 positionResp = _openReversePosition(
                     _amm,
                     position.size > 0 ? Side.SELL : Side.BUY,
                     _trader,
-                    partiallyLiquidatedPositionNotional,
+                    position.size.mulD(partialLiquidationRatio.toInt()).abs(),
                     1 ether,
-                    true,
+                    false,
                     true
                 );
 
@@ -902,7 +892,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         // emit event
         uint256 spotPrice = _amm.getSpotPrice();
-        int256 fundingPayment = positionResp.fundingPayment;
         emit PositionChanged(
             _trader,
             address(_amm),
@@ -916,7 +905,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             positionResp.badDebt,
             liquidationPenalty,
             spotPrice,
-            fundingPayment
+            positionResp.fundingPayment
         );
 
         return (positionResp.exchangedQuoteAssetAmount, isPartialClose);
@@ -1061,7 +1050,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             ? _amount - closePositionResp.exchangedQuoteAssetAmount
             : _amount - closePositionResp.exchangedPositionSize.abs();
 
-        // if remain exchangedQuoteAssetAmount is too small (eg. 10 wei) then the required margin might be 0
+        // if remain asset amount is too small (eg. 10 wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
         if (amount <= 10 wei) {
             positionResp = closePositionResp;
@@ -1176,24 +1165,24 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             return;
         }
         // long + isQuote, want more output base as possible, so we set a lower bound of output base
+        // short + isQuote, want less input base as possible, so we set a upper bound of input base
         // long + !isQuote, want less input quote as possible, so we set a upper bound of input quote
         // short + !isQuote, want more output quote as possible, so we set a lower bound of output quote
-        // short + isQuote, want less input base as possible, so we set a upper bound of input base
-        if (_side == Side.BUY) {
-            if (_isQuote) {
+        if (_isQuote) {
+            if (_side == Side.BUY) {
                 // too little received when long
                 require(_base >= _oppositeAmountBound, "CH_TLRL");
             } else {
-                // too much requested when long
-                require(_quote <= _oppositeAmountBound, "CH_TMRL");
-            }
-        } else {
-            if (!_isQuote) {
-                // too little received when short
-                require(_quote >= _oppositeAmountBound, "CH_TLRS");
-            } else {
                 // too much requested when short
                 require(_base <= _oppositeAmountBound, "CH_TMRS");
+            }
+        } else {
+            if (_side == Side.BUY) {
+                // too much requested when long
+                require(_quote <= _oppositeAmountBound, "CH_TMRL");
+            } else {
+                // too little received when short
+                require(_quote >= _oppositeAmountBound, "CH_TLRS");
             }
         }
     }
