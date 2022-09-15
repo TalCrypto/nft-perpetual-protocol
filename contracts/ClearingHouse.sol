@@ -576,13 +576,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                     false,
                     true
                 );
-                _checkSlippage(
-                    position.size > 0 ? Side.SELL : Side.BUY,
-                    positionResp.exchangedQuoteAssetAmount,
-                    positionResp.exchangedPositionSize.abs(),
-                    0,
-                    false
-                );
+                // dont check slippage
                 _setPosition(_amm, trader, positionResp.position);
             } else {
                 positionResp = _closePosition(_amm, trader);
