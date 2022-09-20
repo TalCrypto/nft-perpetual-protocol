@@ -1,6 +1,6 @@
 import { ethers, network } from "hardhat";
 import { ContractAddresses, saveAddresses } from "./addresses";
-import { LedgerSigner } from "@ethersproject/hardware-wallets";
+// import { LedgerSigner } from "@ethersproject/hardware-wallets";
 import {
   deployAmmReader,
   deployClearingHouseViewer,
@@ -13,8 +13,9 @@ import {
 import { DeployConfig } from "./DeployConfig";
 import { AmmInstanceName } from "./Constants";
 import { Amm, InsuranceFund, ClearingHouse } from "../typechain-types";
+import { Signer } from "ethers";
 
-async function deployAmm(deployConfig: DeployConfig, ammInstanceName: AmmInstanceName, ledger: LedgerSigner) {
+async function deployAmm(deployConfig: DeployConfig, ammInstanceName: AmmInstanceName, ledger: Signer) {
   console.log(`deploying ${ammInstanceName}`);
   const amm = await deployProxyAmm({
     signer: ledger,
@@ -58,8 +59,10 @@ async function configAmm(
 }
 
 async function main() {
-  const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
-  console.log("deployer: ", await ledger.getAddress());
+  // const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
+  // console.log("deployer: ", await ledger.getAddress());
+
+  const ledger = (await ethers.getSigners())[0];
 
   const deployConfig = new DeployConfig(network.name);
 

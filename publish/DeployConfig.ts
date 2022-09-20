@@ -32,7 +32,7 @@ const BAYC_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("243"),
+    baseAssetReserve: utils.parseEther("226.02"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -51,7 +51,7 @@ const DOODLES_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("2357"),
+    baseAssetReserve: utils.parseEther("1862.9"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -70,7 +70,7 @@ const AZUKI_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("2750"),
+    baseAssetReserve: utils.parseEther("1636"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -89,7 +89,7 @@ const MOONBIRDS_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("1375"),
+    baseAssetReserve: utils.parseEther("1513.7"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -108,7 +108,7 @@ const CLONEX_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("2538"),
+    baseAssetReserve: utils.parseEther("2773.1"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -127,7 +127,7 @@ const CRYPTOPUNKS_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("250"),
+    baseAssetReserve: utils.parseEther("254"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -146,7 +146,7 @@ const MEEBITS_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("4400"),
+    baseAssetReserve: utils.parseEther("4963.6"),
     tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
