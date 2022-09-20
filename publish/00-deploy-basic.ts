@@ -53,6 +53,8 @@ async function configAmm(
     );
   }
   await amm.setOpen(true);
+  await amm.setAdjustable(true);
+  await amm.setCanLowerK(true);
 }
 
 async function main() {
