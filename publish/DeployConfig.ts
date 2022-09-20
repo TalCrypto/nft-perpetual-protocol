@@ -237,6 +237,13 @@ export class DeployConfig {
         // fake address
         this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
         break;
+      case "goerli":
+        this.confirmations = 5;
+        // fake address
+        this.priceFeed = "0xF8d5fd95EB2087E907bA6E78bf873F1A39c273Ed"; // For campaign only
+        // fake address
+        this.weth = "0x823D87cD252b5Ae7c4190832326Bf67d95F1a943"; // Test WETH for campaign only
+        break;
       case "rinkeby":
         this.confirmations = 5;
         // fake address
