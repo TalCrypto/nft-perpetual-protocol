@@ -14,7 +14,7 @@
     },
     "ammReader": "0x8e1a7E776F48D8AEa0cE248f287781a84e88Fe33",
     "tollPool": "0x79d85c0F11671255299978003bFB463D798B5D49",
-    "liquidator": "0x87F476277aeA3f8Fa0d9F7b0311aa576E10f49C0"
+    "liquidator": "0x194664D902c847B72D64f35FF026BF853088860e"
   },
   "goerli": {
     "insuranceFund": "0xc52C4fe0d5f76a5df7c82839A651EfA4aFab352b",
