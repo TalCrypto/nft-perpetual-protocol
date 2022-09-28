@@ -64,7 +64,7 @@ const config = {
     },
     hardhat: {
       forking: {
-        url: `https://rinkeby.infura.io/v3/${INFURA_API_KEY}`,
+        url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
       },
     },
     arbitrum_rinkeby: {

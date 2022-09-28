@@ -22,15 +22,23 @@ async function main() {
   // const res = await amm.getFormulaicRepegResult(ethers.utils.parseEther("101"), false);
   // console.log(res);
   const ClearingHouse = await ethers.getContractFactory("ClearingHouse");
-  const clearing = await ClearingHouse.attach("0x4b9EA0D9bC9997eb2CD0c1C1C83F0AFdAF99641C");
-  const res = await clearing.getLatestCumulativePremiumFraction("0x420D88132aCdf362608f5E877bDe42a8A1587289");
-  const info = await clearing.getPosition("0x420D88132aCdf362608f5E877bDe42a8A1587289", "0xDce3D0dD6D7556597dAa334da7942f5268628DCb");
+  const Liquidator = await ethers.getContractFactory("Liquidator");
+  const clearing = await ClearingHouse.attach("0x0c578801Ae88e92A06732A68A51698c4fA55aE73");
+  // const res = await clearing.getLatestCumulativePremiumFraction("0x420D88132aCdf362608f5E877bDe42a8A1587289");
+  // const info = await clearing.getPosition("0x420D88132aCdf362608f5E877bDe42a8A1587289", "0xDce3D0dD6D7556597dAa334da7942f5268628DCb");
   const marginRatio = await clearing.getMarginRatio(
-    "0x420D88132aCdf362608f5E877bDe42a8A1587289",
-    "0xED673572e139C190f31A60D9eF0dFAF500CcF165"
+    "0x0b363Cf92Caf7c587F1891614c090E45Db1482b8",
+    "0x4dd5f835f3d8b7a2f569b2cebc67869d7811bbc1"
   );
+
+  const liquidator = await Liquidator.attach("0x8b139f1841C01e849aC8364802eF0e39a5A9CeA2");
   console.log(ethers.utils.formatEther(marginRatio));
-  // console.log(info);
+  const tx = await liquidator.singleLiquidate("0x0b363Cf92Caf7c587F1891614c090E45Db1482b8", "0x4dd5f835f3d8b7a2f569b2cebc67869d7811bbc1");
+  const receipt = await tx.wait();
+  const event = receipt.events?.find((x) => {
+    return x.event == "PositionLiquidated";
+  });
+  console.log("event", event);
 }
 
 main()

@@ -32,6 +32,10 @@ contract Liquidator is Ownable {
         require(success, "failed eth transfer");
     }
 
+    function singleLiquidate(IAmm _amm, address _trader) external {
+        clearingHouse.liquidate(_amm, _trader);
+    }
+
     function liquidate(IAmm _amm, address[] memory _traders) external {
         bool[] memory results = new bool[](_traders.length);
         string[] memory reasons = new string[](_traders.length);
