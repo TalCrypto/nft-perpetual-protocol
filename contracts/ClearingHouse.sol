@@ -567,17 +567,20 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 partialLiquidationRatio < 1 ether &&
                 partialLiquidationRatio != 0
             ) {
-                positionResp = _openReversePosition(
-                    _amm,
-                    position.size > 0 ? Side.SELL : Side.BUY,
-                    trader,
-                    position.size.mulD(partialLiquidationRatio.toInt()).abs(),
-                    1 ether,
-                    false,
-                    true
-                );
-                // dont check slippage
-                _setPosition(_amm, trader, positionResp.position);
+                // positionResp = _openReversePosition(
+                //     _amm,
+                //     position.size > 0 ? Side.SELL : Side.BUY,
+                //     trader,
+                //     position.size.mulD(partialLiquidationRatio.toInt()).abs(),
+                //     1 ether,
+                //     false,
+                //     true
+                // );
+                // // dont check slippage
+                // _setPosition(_amm, trader, positionResp.position);
+
+                // Temporary update to fail the transaction if over fluctuation limit
+                revert("over fluctuation limit");
             } else {
                 positionResp = _closePosition(_amm, trader);
                 _checkSlippage(
