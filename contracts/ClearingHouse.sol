@@ -559,38 +559,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // if it is long position, close a position means short it(which means base dir is ADD_TO_AMM) and vice versa
             IAmm.Dir dirOfBase = position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
 
-            // check if this position exceed fluctuation limit
-            // if over fluctuation limit, then close partial position. Otherwise close all.
-            // if partialLiquidationRatio is 1, then close whole position
-            if (
-                _amm.isOverFluctuationLimit(dirOfBase, position.size.abs()) &&
-                partialLiquidationRatio < 1 ether &&
-                partialLiquidationRatio != 0
-            ) {
-                // positionResp = _openReversePosition(
-                //     _amm,
-                //     position.size > 0 ? Side.SELL : Side.BUY,
-                //     trader,
-                //     position.size.mulD(partialLiquidationRatio.toInt()).abs(),
-                //     1 ether,
-                //     false,
-                //     true
-                // );
-                // // dont check slippage
-                // _setPosition(_amm, trader, positionResp.position);
-
-                // Temporary update to fail the transaction if over fluctuation limit
-                revert("over fluctuation limit");
-            } else {
-                positionResp = _closePosition(_amm, trader);
-                _checkSlippage(
-                    position.size > 0 ? Side.SELL : Side.BUY,
-                    positionResp.exchangedQuoteAssetAmount,
-                    positionResp.exchangedPositionSize.abs(),
-                    _quoteAssetAmountLimit,
-                    false
-                );
-            }
+            positionResp = _closePosition(_amm, trader, false);
+            _checkSlippage(
+                position.size > 0 ? Side.SELL : Side.BUY,
+                positionResp.exchangedQuoteAssetAmount,
+                positionResp.exchangedPositionSize.abs(),
+                _quoteAssetAmountLimit,
+                false
+            );
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
             require(positionResp.badDebt == 0, "bad debt");
@@ -845,7 +821,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 isPartialClose = true;
             } else {
                 liquidationPenalty = getPosition(_amm, _trader).margin;
-                positionResp = _closePosition(_amm, _trader);
+                positionResp = _closePosition(_amm, _trader, true);
                 uint256 remainMargin = positionResp.marginToVault.abs();
                 feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio) / 2;
 
@@ -1037,7 +1013,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     ) internal returns (PositionResp memory positionResp) {
         // new position size is larger than or equal to the old position size
         // so either close or close then open a larger position
-        PositionResp memory closePositionResp = _closePosition(_amm, _trader);
+        PositionResp memory closePositionResp = _closePosition(_amm, _trader, false);
 
         // the old position is underwater. trader should close a position first
         require(closePositionResp.badDebt == 0, "reduce an underwater position");
@@ -1069,7 +1045,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         return positionResp;
     }
 
-    function _closePosition(IAmm _amm, address _trader) private returns (PositionResp memory positionResp) {
+    function _closePosition(
+        IAmm _amm,
+        address _trader,
+        bool _canOverFluctuationLimit
+    ) private returns (PositionResp memory positionResp) {
         // check conditions
         Position memory oldPosition = getPosition(_amm, _trader);
         _requirePositionSize(oldPosition.size);
@@ -1091,7 +1071,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             oldPosition.size > 0 ? Side.SELL : Side.BUY,
             oldPosition.size.abs(),
             false,
-            true
+            _canOverFluctuationLimit
         );
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
