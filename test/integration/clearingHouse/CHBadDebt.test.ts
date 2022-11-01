@@ -132,34 +132,34 @@ describe("Bad Debt Test", () => {
     await clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0));
   });
 
-  it("can not partial close position when bad debt", async () => {
-    // set fluctuation limit ratio to trigger partial close
-    await amm.setFluctuationLimitRatio(toFullDigitBN("0.000001"));
-    await clearingHouse.setPartialLiquidationRatio(toFullDigitBN("0.25"));
+  // it("can not partial close position when bad debt", async () => {
+  //   // set fluctuation limit ratio to trigger partial close
+  //   await amm.setFluctuationLimitRatio(toFullDigitBN("0.000001"));
+  //   await clearingHouse.setPartialLiquidationRatio(toFullDigitBN("0.25"));
 
-    // position size: 7.4074074074
-    // open notional = 80
-    // estimated realized PnL (partial close) = 7.4 * 0.25 * 3.36 - 80 * 0.25 = -13.784
-    // estimated remaining margin = 10 + (-13.784) = -3.784
-    // real bad debt = 4.027
-    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
-  });
+  //   // position size: 7.4074074074
+  //   // open notional = 80
+  //   // estimated realized PnL (partial close) = 7.4 * 0.25 * 3.36 - 80 * 0.25 = -13.784
+  //   // estimated remaining margin = 10 + (-13.784) = -3.784
+  //   // real bad debt = 4.027
+  //   await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
+  // });
 
-  it("can partial close position as long as it does not incur bad debt", async () => {
-    // set fluctuation limit ratio to trigger partial close
-    await amm.setFluctuationLimitRatio(toFullDigitBN("0.000001"));
-    await clearingHouse.setPartialLiquidationRatio(toFullDigitBN("0.1"));
+  // it("can partial close position as long as it does not incur bad debt", async () => {
+  //   // set fluctuation limit ratio to trigger partial close
+  //   await amm.setFluctuationLimitRatio(toFullDigitBN("0.000001"));
+  //   await clearingHouse.setPartialLiquidationRatio(toFullDigitBN("0.1"));
 
-    // position size: 7.4074074074
-    // open notional = 80
-    // estimated realized PnL (partial close) = 7.4 * 0.1 * 3.36 - 80 * 0.1 = -5.5136
-    // estimated remaining margin = 10 + (-5.5136) = 4.4864
-    // real bad debt = 0
-    await clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0));
+  //   // position size: 7.4074074074
+  //   // open notional = 80
+  //   // estimated realized PnL (partial close) = 7.4 * 0.1 * 3.36 - 80 * 0.1 = -5.5136
+  //   // estimated remaining margin = 10 + (-5.5136) = 4.4864
+  //   // real bad debt = 0
+  //   await clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0));
 
-    // remaining position size = 7.4074074074 * 0.9 = 6.66666667
-    expect((await clearingHouse.getPosition(amm.address, shrimp.address)).size).to.be.eq("6666666666666666667");
-  });
+  //   // remaining position size = 7.4074074074 * 0.9 = 6.66666667
+  //   expect((await clearingHouse.getPosition(amm.address, shrimp.address)).size).to.be.eq("6666666666666666667");
+  // });
 
   it("can liquidate position by backstop LP when bad debt", async () => {
     // set whale to backstop LP

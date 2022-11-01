@@ -1928,14 +1928,18 @@ describe("ClearingHouse Test", () => {
 
       // after alice closes her position partially, price: 13.767109
       // price fluctuation: (14.4000000058 - 13.767109) / 14.4000000058 = 0.0524
-      await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
-
-      // after bob closes his position partially, price: 13.0612
-      // price fluctuation: (13.767109 - 13.0612) / 13.767109 = 0.04278
-      await amm.setFluctuationLimitRatio(toFullDigitBN(0.042));
-      await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
-        "price is already over fluctuation limit"
+      // so it must be reverted
+      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
+        "price is over fluctuation limit"
       );
+      // await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+
+      // // after bob closes his position partially, price: 13.0612
+      // // price fluctuation: (13.767109 - 13.0612) / 13.767109 = 0.04278
+      // await amm.setFluctuationLimitRatio(toFullDigitBN(0.042));
+      // await expect(clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
+      //   "price is already over fluctuation limit"
+      // );
     });
 
     describe("slippage limit", () => {

@@ -1166,87 +1166,89 @@ describe("ClearingHouse - open/close position Test", () => {
         await approve(alice, clearingHouse.address, 100);
       });
 
-      it("partially close a long position when closing whole position will over fluctuation limit ", async () => {
+      // it("partially close a long position when closing whole position will over fluctuation limit ", async () => {
+      //   // AMM after: 1250 : 80, price: 15.625
+      //   await clearingHouse
+      //     .connect(alice)
+      //     .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
+      //   await forwardBlockTimestamp(15);
+
+      //   await amm.setSpreadRatio(toFullDigitBN(0.001));
+      //   await amm.setFluctuationLimitRatio(toFullDigitBN(0.359));
+      //   // the price will be dropped to 10 if we close whole position
+      //   // the price fluctuation will be (15.625 - 10) / 15.625 = 0.36
+      //   // only 25% position (20 * 0.25 = 5) will be closed,
+      //   // position notional is 73.53
+      //   // amm reserves after 1176.47 : 85
+      //   const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+      //   const pos = await clearingHouse.getPosition(amm.address, alice.address);
+      //   expect(pos.size).eq(toFullDigitBN(15));
+      //   expect(pos.margin).eq(toFullDigitBN(25));
+
+      //   await expectPositionChanged(receipt, {
+      //     trader: alice.address,
+      //     amm: amm.address,
+      //     positionNotional: "73529411764705882352",
+      //     margin: toFullDigitBN(25),
+      //     exchangedPositionSize: toFullDigitBN(-5),
+      //     fee: "73529411764705882",
+      //     positionSizeAfter: toFullDigitBN(15),
+      //   });
+
+      //   // 5000 - open pos margin (25) + fee (-73.53 * 0.1%)
+      //   expect(await quoteToken.balanceOf(alice.address)).eq("4974926470588235294118");
+      // });
+
+      // it("partially close a short position when closing whole position will over fluctuation limit ", async () => {
+      //   // AMM after: 800 : 125, price: 6.4
+      //   await clearingHouse
+      //     .connect(alice)
+      //     .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
+      //   await forwardBlockTimestamp(15);
+      //   const posAfterOpen = await clearingHouse.getPosition(amm.address, alice.address);
+      //   expect(posAfterOpen.size).eq(toFullDigitBN(-25));
+
+      //   await amm.setSpreadRatio(toFullDigitBN(0.001));
+      //   await amm.setFluctuationLimitRatio(toFullDigitBN(0.5624));
+      //   // the price will be dropped to 10 if we close whole position
+      //   // the price fluctuation will be (10 - 6.4) / 6.4 = 0.5625
+      //   // only 25% position (25 * 0.25 = 6.25) will be closed,
+      //   // position notional is 42.11
+      //   // amm reserves after 842.11 : 118.75
+      //   const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+
+      //   const pos = await clearingHouse.getPosition(amm.address, alice.address);
+      //   expect(pos.size).eq(toFullDigitBN(-18.75));
+      //   expect(pos.margin).eq(toFullDigitBN(20));
+
+      //   await expectPositionChanged(receipt, {
+      //     trader: alice.address,
+      //     amm: amm.address,
+      //     positionNotional: "42105263157894736843",
+      //     margin: toFullDigitBN(20),
+      //     exchangedPositionSize: toFullDigitBN(6.25), // 25 * 0.25
+      //     fee: "42105263157894736",
+      //     positionSizeAfter: toFullDigitBN(-18.75), // position size - partial closed position size
+      //   });
+      // });
+
+      it("should fail to close whole position when over fluctuation limit", async () => {
         // AMM after: 1250 : 80, price: 15.625
         await clearingHouse
           .connect(alice)
           .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
         await forwardBlockTimestamp(15);
 
-        await amm.setSpreadRatio(toFullDigitBN(0.001));
         await amm.setFluctuationLimitRatio(toFullDigitBN(0.359));
-        // the price will be dropped to 10 if we close whole position
-        // the price fluctuation will be (15.625 - 10) / 15.625 = 0.36
-        // only 25% position (20 * 0.25 = 5) will be closed,
-        // position notional is 73.53
-        // amm reserves after 1176.47 : 85
-        const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
-        const pos = await clearingHouse.getPosition(amm.address, alice.address);
-        expect(pos.size).eq(toFullDigitBN(15));
-        expect(pos.margin).eq(toFullDigitBN(25));
-
-        await expectPositionChanged(receipt, {
-          trader: alice.address,
-          amm: amm.address,
-          positionNotional: "73529411764705882352",
-          margin: toFullDigitBN(25),
-          exchangedPositionSize: toFullDigitBN(-5),
-          fee: "73529411764705882",
-          positionSizeAfter: toFullDigitBN(15),
-        });
-
-        // 5000 - open pos margin (25) + fee (-73.53 * 0.1%)
-        expect(await quoteToken.balanceOf(alice.address)).eq("4974926470588235294118");
-      });
-
-      it("partially close a short position when closing whole position will over fluctuation limit ", async () => {
-        // AMM after: 800 : 125, price: 6.4
-        await clearingHouse
-          .connect(alice)
-          .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
-        await forwardBlockTimestamp(15);
-        const posAfterOpen = await clearingHouse.getPosition(amm.address, alice.address);
-        expect(posAfterOpen.size).eq(toFullDigitBN(-25));
-
-        await amm.setSpreadRatio(toFullDigitBN(0.001));
-        await amm.setFluctuationLimitRatio(toFullDigitBN(0.5624));
-        // the price will be dropped to 10 if we close whole position
-        // the price fluctuation will be (10 - 6.4) / 6.4 = 0.5625
-        // only 25% position (25 * 0.25 = 6.25) will be closed,
-        // position notional is 42.11
-        // amm reserves after 842.11 : 118.75
-        const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
-
-        const pos = await clearingHouse.getPosition(amm.address, alice.address);
-        expect(pos.size).eq(toFullDigitBN(-18.75));
-        expect(pos.margin).eq(toFullDigitBN(20));
-
-        await expectPositionChanged(receipt, {
-          trader: alice.address,
-          amm: amm.address,
-          positionNotional: "42105263157894736843",
-          margin: toFullDigitBN(20),
-          exchangedPositionSize: toFullDigitBN(6.25), // 25 * 0.25
-          fee: "42105263157894736",
-          positionSizeAfter: toFullDigitBN(-18.75), // position size - partial closed position size
-        });
-      });
-
-      it("should close whole position when partialLiquidationRatio is 1", async () => {
-        // AMM after: 1250 : 80, price: 15.625
-        await clearingHouse
-          .connect(alice)
-          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
-        await forwardBlockTimestamp(15);
-
-        await amm.setFluctuationLimitRatio(toFullDigitBN(0.359));
-        await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
-
-        const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
-        const pos = await clearingHouse.getPosition(amm.address, alice.address);
-        expect(pos.size).eq(toFullDigitBN(0));
-        expect(pos.margin).eq(toFullDigitBN(0));
-        expect(await quoteToken.balanceOf(alice.address)).eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
+        // await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
+        await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
+          "price is over fluctuation limit"
+        );
+        // const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+        // const pos = await clearingHouse.getPosition(amm.address, alice.address);
+        // expect(pos.size).eq(toFullDigitBN(0));
+        // expect(pos.margin).eq(toFullDigitBN(0));
+        // expect(await quoteToken.balanceOf(alice.address)).eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
       });
     });
 
