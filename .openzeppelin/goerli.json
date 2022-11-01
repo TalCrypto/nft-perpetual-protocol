@@ -1439,6 +1439,367 @@
           }
         }
       }
+    },
+    "bac11e1d948fb7c10f9428e4c98b7ecfae9875fba9c8df9efa99d5716458ecb1": {
+      "address": "0x3468Fef890d74FB0cFC0260417A2B9e8fDaFC27a",
+      "txHash": "0xe78add70bdf127e82852016ac086bc044b1cad6a85ac0af3d906957f9d9ede86",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "OwnerPausableUpgradeSafe",
+            "src": "contracts\\OwnerPausable.sol:21"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "initMarginRatio",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:176"
+          },
+          {
+            "label": "maintenanceMarginRatio",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:179"
+          },
+          {
+            "label": "liquidationFeeRatio",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:182"
+          },
+          {
+            "label": "partialLiquidationRatio",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_uint256",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:185"
+          },
+          {
+            "label": "openInterestNotionalMap",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:189"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_mapping(t_address,t_struct(AmmMap)7412_storage)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:192"
+          },
+          {
+            "label": "prepaidBadDebts",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:195"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_contract(IInsuranceFund)13928",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:198"
+          },
+          {
+            "label": "tollPool",
+            "offset": 0,
+            "slot": "309",
+            "type": "t_contract(IMultiTokenRewardRecipient)13960",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:199"
+          },
+          {
+            "label": "whitelist",
+            "offset": 0,
+            "slot": "310",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:202"
+          },
+          {
+            "label": "backstopLiquidityProviderMap",
+            "offset": 0,
+            "slot": "311",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:204"
+          },
+          {
+            "label": "vaults",
+            "offset": 0,
+            "slot": "312",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:207"
+          },
+          {
+            "label": "totalFees",
+            "offset": 0,
+            "slot": "313",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:210"
+          },
+          {
+            "label": "totalMinusFees",
+            "offset": 0,
+            "slot": "314",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:211"
+          },
+          {
+            "label": "netRevenuesSinceLastFunding",
+            "offset": 0,
+            "slot": "315",
+            "type": "t_mapping(t_address,t_int256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:214"
+          },
+          {
+            "label": "operator",
+            "offset": 0,
+            "slot": "316",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:217"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "317",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:219"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_int256)dyn_storage": {
+            "label": "int256[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IInsuranceFund)13928": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMultiTokenRewardRecipient)13960": {
+            "label": "contract IMultiTokenRewardRecipient",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_int256)": {
+            "label": "mapping(address => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AmmMap)7412_storage)": {
+            "label": "mapping(address => struct ClearingHouse.AmmMap)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Position)7379_storage)": {
+            "label": "mapping(address => struct ClearingHouse.Position)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AmmMap)7412_storage": {
+            "label": "struct ClearingHouse.AmmMap",
+            "members": [
+              {
+                "label": "lastRestrictionBlock",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "cumulativePremiumFractions",
+                "type": "t_array(t_int256)dyn_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "positionMap",
+                "type": "t_mapping(t_address,t_struct(Position)7379_storage)",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(Position)7379_storage": {
+            "label": "struct ClearingHouse.Position",
+            "members": [
+              {
+                "label": "size",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margin",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "openNotional",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdatedCumulativePremiumFraction",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "liquidityHistoryIndex",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
     }
   }
 }
