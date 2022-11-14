@@ -120,51 +120,51 @@ describe("Amm Unit Test", () => {
     });
   });
 
-  describe("calculate fee/spread", () => {
-    it("calcFee", async () => {
-      // tx fee is 1%, spread is 1%
-      await amm.setTollRatio(toFullDigitBN(0.01));
-      await amm.setSpreadRatio(toFullDigitBN(0.01));
-      const fee = await amm.calcFee(toFullDigitBN(10));
+  // describe("calculate fee/spread", () => {
+  //   it("calcFee", async () => {
+  //     // tx fee is 1%, spread is 1%
+  //     await amm.setTollRatio(toFullDigitBN(0.01));
+  //     await amm.setSpreadRatio(toFullDigitBN(0.01));
+  //     const fee = await amm.calcFee(toFullDigitBN(10));
 
-      // [0] is tx fee, [1] is spread
-      expect(fee[0]).to.eq(toFullDigitBN(0.1));
-      expect(fee[1]).to.eq(toFullDigitBN(0.1));
-    });
+  //     // [0] is tx fee, [1] is spread
+  //     expect(fee[0]).to.eq(toFullDigitBN(0.1));
+  //     expect(fee[1]).to.eq(toFullDigitBN(0.1));
+  //   });
 
-    it("set different fee ratio", async () => {
-      // tx fee is 10%, spread is 5%
-      await amm.setTollRatio(toFullDigitBN(0.1));
-      await amm.setSpreadRatio(toFullDigitBN(0.05));
+  //   it("set different fee ratio", async () => {
+  //     // tx fee is 10%, spread is 5%
+  //     await amm.setTollRatio(toFullDigitBN(0.1));
+  //     await amm.setSpreadRatio(toFullDigitBN(0.05));
 
-      const fee = await amm.calcFee(toFullDigitBN(100));
-      expect(fee[0]).to.eq(toFullDigitBN(10));
-      expect(fee[1]).to.eq(toFullDigitBN(5));
-    });
+  //     const fee = await amm.calcFee(toFullDigitBN(100));
+  //     expect(fee[0]).to.eq(toFullDigitBN(10));
+  //     expect(fee[1]).to.eq(toFullDigitBN(5));
+  //   });
 
-    it("set fee ratio to zero", async () => {
-      // tx fee is 0%, spread is 5%
-      await amm.setTollRatio(toFullDigitBN(0));
-      await amm.setSpreadRatio(toFullDigitBN(0.05));
+  //   it("set fee ratio to zero", async () => {
+  //     // tx fee is 0%, spread is 5%
+  //     await amm.setTollRatio(toFullDigitBN(0));
+  //     await amm.setSpreadRatio(toFullDigitBN(0.05));
 
-      const fee = await amm.calcFee(toFullDigitBN(100));
-      expect(fee[0]).to.eq(toFullDigitBN(0));
-      expect(fee[1]).to.eq(toFullDigitBN(5));
-    });
+  //     const fee = await amm.calcFee(toFullDigitBN(100));
+  //     expect(fee[0]).to.eq(toFullDigitBN(0));
+  //     expect(fee[1]).to.eq(toFullDigitBN(5));
+  //   });
 
-    it("calcFee with input `0` ", async () => {
-      const fee = await amm.calcFee(toFullDigitBN(0));
+  //   it("calcFee with input `0` ", async () => {
+  //     const fee = await amm.calcFee(toFullDigitBN(0));
 
-      expect(fee[0]).to.eq(toFullDigitBN(0));
-      expect(fee[1]).to.eq(toFullDigitBN(0));
-    });
+  //     expect(fee[0]).to.eq(toFullDigitBN(0));
+  //     expect(fee[1]).to.eq(toFullDigitBN(0));
+  //   });
 
-    it("force error, only owner can set fee/spread ratio", async () => {
-      const error = "Ownable: caller is not the owner";
-      await expect(amm.connect(alice).setTollRatio(toFullDigitBN(0.2))).to.be.revertedWith(error);
-      await expect(amm.connect(alice).setSpreadRatio(toFullDigitBN(0.2))).to.be.revertedWith(error);
-    });
-  });
+  //   it("force error, only owner can set fee/spread ratio", async () => {
+  //     const error = "Ownable: caller is not the owner";
+  //     await expect(amm.connect(alice).setTollRatio(toFullDigitBN(0.2))).to.be.revertedWith(error);
+  //     await expect(amm.connect(alice).setSpreadRatio(toFullDigitBN(0.2))).to.be.revertedWith(error);
+  //   });
+  // });
 
   describe("getInputPrice/getOutputPrice", () => {
     beforeEach(async () => {

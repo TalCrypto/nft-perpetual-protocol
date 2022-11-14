@@ -15,16 +15,6 @@ import { TransferHelper } from "./utils/TransferHelper.sol";
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
     using TransferHelper for IERC20;
-    //
-    // EVENTS
-    //
-
-    event Withdrawn(address withdrawer, uint256 amount);
-    event TokenAdded(address tokenAddress);
-    event TokenRemoved(address tokenAddress);
-    event ShutdownAllAmms(uint256 blockNumber);
-    event AmmAdded(address amm);
-    event AmmRemoved(address amm);
 
     //**********************************************************//
     //    The below state variables can not change the order    //
@@ -46,6 +36,17 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     uint256[50] private __gap;
+
+    //
+    // EVENTS
+    //
+
+    event Withdrawn(address withdrawer, uint256 amount);
+    event TokenAdded(address tokenAddress);
+    event TokenRemoved(address tokenAddress);
+    event ShutdownAllAmms(uint256 blockNumber);
+    event AmmAdded(address amm);
+    event AmmRemoved(address amm);
 
     //
     // FUNCTIONS

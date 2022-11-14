@@ -9,13 +9,6 @@ import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     using SafeMath for uint256;
 
-    modifier onlyBridge() {
-        require(_msgSender() == ambBridge, "!ambBridge");
-        _;
-    }
-
-    event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp, uint256 roundId);
-
     struct PriceData {
         uint256 roundId;
         uint256 price;
@@ -46,6 +39,13 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     uint256[50] private __gap;
+
+    event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp, uint256 roundId);
+
+    modifier onlyBridge() {
+        require(_msgSender() == ambBridge, "!ambBridge");
+        _;
+    }
 
     //
     // FUNCTIONS
@@ -106,15 +106,6 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         uint256 len = getPriceFeedLength(_priceFeedKey);
         require(len > 0, "no price data");
         return priceFeedMap[_priceFeedKey].priceData[len - 1].price;
-    }
-
-    function getLatestTimestamp(bytes32 _priceFeedKey) public view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
-        uint256 len = getPriceFeedLength(_priceFeedKey);
-        if (len == 0) {
-            return 0;
-        }
-        return priceFeedMap[_priceFeedKey].priceData[len - 1].timestamp;
     }
 
     function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view override returns (uint256) {
@@ -179,6 +170,15 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
             previousTimestamp = currentTimestamp;
         }
         return weightedPrice.div(_interval);
+    }
+
+    function getLatestTimestamp(bytes32 _priceFeedKey) public view override returns (uint256) {
+        require(isExistedKey(_priceFeedKey), "key not existed");
+        uint256 len = getPriceFeedLength(_priceFeedKey);
+        if (len == 0) {
+            return 0;
+        }
+        return priceFeedMap[_priceFeedKey].priceData[len - 1].timestamp;
     }
 
     function getPreviousPrice(bytes32 _priceFeedKey, uint256 _numOfRoundBack) public view override returns (uint256) {

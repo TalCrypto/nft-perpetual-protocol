@@ -9,15 +9,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract Liquidator is Ownable {
     using SafeERC20 for IERC20;
 
-    event PositionLiquidated(address amm, address[] traders, bool[] results, string[] reasons);
     IClearingHouse clearingHouse;
 
     uint256 public mmRatio;
+
+    event PositionLiquidated(address amm, address[] traders, bool[] results, string[] reasons);
 
     constructor(IClearingHouse _clearingHouse, uint256 _mmRatio) {
         clearingHouse = _clearingHouse;
         mmRatio = _mmRatio;
     }
+
+    receive() external payable {}
 
     function setMMRatio(uint256 _mmRatio) external onlyOwner {
         mmRatio = _mmRatio;
@@ -69,6 +72,4 @@ contract Liquidator is Ownable {
         }
         return results;
     }
-
-    receive() external payable {}
 }

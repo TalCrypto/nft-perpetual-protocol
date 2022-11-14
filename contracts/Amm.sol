@@ -16,50 +16,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     using IntMath for int256;
 
     //
-    // CONSTANT
-    //
-    // because position decimal rounding error,
-    // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
-    uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 100;
-
-    // a margin to prevent from rounding when calc liquidity multiplier limit
-    uint256 private constant MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING = 1e9;
-
-    //
-    // EVENTS
-    //
-    event SwapInput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
-    event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
-    event FundingRateUpdated(int256 rate, uint256 underlyingPrice);
-    event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
-    event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
-    event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
-    event Shutdown(uint256 settlementPrice);
-    event PriceFeedUpdated(address priceFeed);
-    event ReservesAdjusted(uint256 quoteAssetReserve, uint256 baseAssetReserve);
-
-    //
-    // MODIFIERS
-    //
-    modifier onlyOpen() {
-        require(open, "amm was closed");
-        _;
-    }
-
-    modifier onlyCounterParty() {
-        require(counterParty == _msgSender(), "caller is not counterParty");
-        _;
-    }
-
-    //
     // enum and struct
     //
-    struct ReserveSnapshot {
-        uint256 quoteAssetReserve;
-        uint256 baseAssetReserve;
-        uint256 timestamp;
-        uint256 blockNumber;
-    }
 
     // internal usage
     enum QuoteAssetDir {
@@ -70,6 +28,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     enum TwapCalcOption {
         RESERVE_ASSET,
         INPUT_ASSET
+    }
+
+    struct ReserveSnapshot {
+        uint256 quoteAssetReserve;
+        uint256 baseAssetReserve;
+        uint256 timestamp;
+        uint256 blockNumber;
     }
 
     // To record current base/quote asset to calculate TWAP
@@ -87,8 +52,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     //
-    // Constant
+    // CONSTANT
     //
+    // because position decimal rounding error,
+    // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
+    uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 100;
+
+    // a margin to prevent from rounding when calc liquidity multiplier limit
+    uint256 private constant MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING = 1e9;
+
     // 10%
     uint256 public constant MAX_ORACLE_SPREAD_RATIO = 1e17;
 
@@ -146,6 +118,32 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
+
+    //
+    // EVENTS
+    //
+    event SwapInput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
+    event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
+    event FundingRateUpdated(int256 rate, uint256 underlyingPrice);
+    event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
+    event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
+    event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
+    event Shutdown(uint256 settlementPrice);
+    event PriceFeedUpdated(address priceFeed);
+    event ReservesAdjusted(uint256 quoteAssetReserve, uint256 baseAssetReserve);
+
+    //
+    // MODIFIERS
+    //
+    modifier onlyOpen() {
+        require(open, "amm was closed");
+        _;
+    }
+
+    modifier onlyCounterParty() {
+        require(counterParty == _msgSender(), "caller is not counterParty");
+        _;
+    }
 
     //
     // FUNCTIONS
@@ -335,7 +333,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         // update funding rate = premiumFraction / twapIndexPrice
-        updateFundingRate(premiumFraction, underlyingPrice);
+        _updateFundingRate(premiumFraction, underlyingPrice);
 
         // in order to prevent multiple funding settlement during very short time after network congestion
         uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
@@ -373,30 +371,30 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve);
     }
 
-    function calcBaseAssetAfterLiquidityMigration(
-        int256 _baseAssetAmount,
-        uint256 _fromQuoteReserve,
-        uint256 _fromBaseReserve
-    ) public view override returns (int256) {
-        if (_baseAssetAmount == 0) {
-            return _baseAssetAmount;
-        }
+    // function calcBaseAssetAfterLiquidityMigration(
+    //     int256 _baseAssetAmount,
+    //     uint256 _fromQuoteReserve,
+    //     uint256 _fromBaseReserve
+    // ) public view override returns (int256) {
+    //     if (_baseAssetAmount == 0) {
+    //         return _baseAssetAmount;
+    //     }
 
-        bool isPositiveValue = _baseAssetAmount > 0 ? true : false;
+    //     bool isPositiveValue = _baseAssetAmount > 0 ? true : false;
 
-        // measure the trader position's notional value on the old curve
-        // (by simulating closing the position)
-        uint256 posNotional = getOutputPriceWithReserves(
-            isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
-            _baseAssetAmount.abs(),
-            _fromQuoteReserve,
-            _fromBaseReserve
-        );
+    //     // measure the trader position's notional value on the old curve
+    //     // (by simulating closing the position)
+    //     uint256 posNotional = getOutputPriceWithReserves(
+    //         isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
+    //         _baseAssetAmount.abs(),
+    //         _fromQuoteReserve,
+    //         _fromBaseReserve
+    //     );
 
-        // calculate and apply the required size on the new curve
-        int256 newBaseAsset = getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional).toInt();
-        return newBaseAsset * (isPositiveValue ? int256(1) : int256(-1));
-    }
+    //     // calculate and apply the required size on the new curve
+    //     int256 newBaseAsset = getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional).toInt();
+    //     return newBaseAsset * (isPositiveValue ? int256(1) : int256(-1));
+    // }
 
     /**
      * @notice shutdown amm,
@@ -431,7 +429,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @dev only owner can call this function
      * @param _fluctuationLimitRatio fluctuation limit rate in 18 digits, 0 means skip the checking
      */
-    function setFluctuationLimitRatio(uint256 _fluctuationLimitRatio) public onlyOwner {
+    function setFluctuationLimitRatio(uint256 _fluctuationLimitRatio) external onlyOwner {
         fluctuationLimitRatio = _fluctuationLimitRatio;
     }
 
@@ -484,7 +482,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @dev only owner can call
      * @param _tollRatio new toll ratio in 18 digits
      */
-    function setTollRatio(uint256 _tollRatio) public onlyOwner {
+    function setTollRatio(uint256 _tollRatio) external onlyOwner {
         tollRatio = _tollRatio;
     }
 
@@ -493,7 +491,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @dev only owner can call
      * @param _spreadRatio new toll spread in 18 digits
      */
-    function setSpreadRatio(uint256 _spreadRatio) public onlyOwner {
+    function setSpreadRatio(uint256 _spreadRatio) external onlyOwner {
         spreadRatio = _spreadRatio;
     }
 
@@ -503,7 +501,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
      * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
      */
-    function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) public onlyOwner {
+    function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
         maxHoldingBaseAsset = _maxHoldingBaseAsset;
         openInterestNotionalCap = _openInterestNotionalCap;
         emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
@@ -514,7 +512,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @dev only owner can call
      * @param _priceFeed new price feed for this AMM
      */
-    function setPriceFeed(IPriceFeed _priceFeed) public onlyOwner {
+    function setPriceFeed(IPriceFeed _priceFeed) external onlyOwner {
         require(address(_priceFeed) != address(0), "invalid PriceFeed address");
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
@@ -523,6 +521,16 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
+
+    /**
+     * @notice get the cost and reserves of formulaic repeg
+     * @param _budget the budget available for repeg
+     * @param _adjustK if true, repeg curve with adjusting K
+     * @return isAdjustable if true, curve can be adjustable by repeg
+     * @return cost the amount of cost of repeg
+     * @return newQuoteAssetReserve the new quote asset reserve by repeg
+     * @return newBaseAssetReserve the new base asset reserve by repeg
+     */
     function getFormulaicRepegResult(uint256 _budget, bool _adjustK)
         external
         view
@@ -563,6 +571,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             }
         }
     }
+
+    /**
+     * @notice get the cost and reserves when adjust k
+     * @param _budget the budget available for adjust
+     * @return isAdjustable if true, curve can be adjustable by adjust k
+     * @return cost the amount of cost of adjust k
+     * @return newQuoteAssetReserve the new quote asset reserve by adjust k
+     * @return newBaseAssetReserve the new base asset reserve by adjust k
+     */
 
     function getFormulaicUpdateKResult(int256 _budget)
         external
@@ -695,19 +712,19 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @notice get current quote/base asset reserve.
      * @return (quote asset reserve, base asset reserve)
      */
-    function getReserve() external view returns (uint256, uint256) {
+    function getReserve() public view returns (uint256, uint256) {
         return (quoteAssetReserve, baseAssetReserve);
     }
 
-    function getSnapshotLen() external view returns (uint256) {
+    function getSnapshotLen() public view returns (uint256) {
         return reserveSnapshots.length;
     }
 
-    function getLiquidityHistoryLength() external view override returns (uint256) {
+    function getLiquidityHistoryLength() public view override returns (uint256) {
         return liquidityChangedSnapshots.length;
     }
 
-    function getCumulativeNotional() external view override returns (int256) {
+    function getCumulativeNotional() public view override returns (int256) {
         return cumulativeNotional;
     }
 
@@ -715,12 +732,12 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return liquidityChangedSnapshots[liquidityChangedSnapshots.length - 1];
     }
 
-    function getLiquidityChangedSnapshots(uint256 i) external view override returns (LiquidityChangedSnapshot memory) {
+    function getLiquidityChangedSnapshots(uint256 i) public view override returns (LiquidityChangedSnapshot memory) {
         require(i < liquidityChangedSnapshots.length, "incorrect index");
         return liquidityChangedSnapshots[i];
     }
 
-    function getSettlementPrice() external view override returns (uint256) {
+    function getSettlementPrice() public view override returns (uint256) {
         return settlementPrice;
     }
 
@@ -729,15 +746,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //     return baseAssetDeltaThisFundingPeriod;
     // }
 
-    function getMaxHoldingBaseAsset() external view override returns (uint256) {
+    function getMaxHoldingBaseAsset() public view override returns (uint256) {
         return maxHoldingBaseAsset;
     }
 
-    function getOpenInterestNotionalCap() external view override returns (uint256) {
+    function getOpenInterestNotionalCap() public view override returns (uint256) {
         return openInterestNotionalCap;
     }
 
-    function getBaseAssetDelta() external view override returns (int256) {
+    function getBaseAssetDelta() public view override returns (int256) {
         return totalPositionSize;
     }
 
@@ -750,17 +767,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
-    /**
-     * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
-     * @param _quoteAssetAmount quoteAssetAmount
-     * @return total tx fee
-     */
-    function calcFee(uint256 _quoteAssetAmount) external view override returns (uint256, uint256) {
-        if (_quoteAssetAmount == 0) {
-            return (0, 0);
-        }
-        return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
-    }
+    // /**
+    //  * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
+    //  * @param _quoteAssetAmount quoteAssetAmount
+    //  * @return total tx fee
+    //  */
+    // function calcFee(uint256 _quoteAssetAmount) external view override returns (uint256, uint256) {
+    //     if (_quoteAssetAmount == 0) {
+    //         return (0, 0);
+    //     }
+    //     return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
+    // }
 
     /*       plus/minus 1 while the amount is not dividable
      *
@@ -860,7 +877,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // INTERNAL FUNCTIONS
     //
     // update funding rate = premiumFraction / twapIndexPrice
-    function updateFundingRate(int256 _premiumFraction, uint256 _underlyingPrice) private {
+    function _updateFundingRate(int256 _premiumFraction, uint256 _underlyingPrice) internal {
         fundingRate = _premiumFraction.divD(_underlyingPrice.toInt());
         emit FundingRateUpdated(fundingRate, _underlyingPrice);
     }

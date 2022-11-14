@@ -22,73 +22,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     using TransferHelper for IERC20;
 
     //
-    // EVENTS
-    //
-    //event MarginRatioChanged(uint256 marginRatio);
-    //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
-    event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
-    event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
-    event PositionAdjusted(
-        address indexed amm,
-        address indexed trader,
-        int256 newPositionSize,
-        uint256 oldLiquidityIndex,
-        uint256 newLiquidityIndex
-    );
-    event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
-    event RestrictionModeEntered(address amm, uint256 blockNumber);
-    event Repeg(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
-    event UpdateK(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
-
-    /// @notice This event is emitted when position change
-    /// @param trader the address which execute this transaction
-    /// @param amm IAmm address
-    /// @param margin margin
-    /// @param positionNotional margin * leverage
-    /// @param exchangedPositionSize position size, e.g. ETHUSDC or LINKUSDC
-    /// @param fee transaction fee
-    /// @param positionSizeAfter position size after this transaction, might be increased or decreased
-    /// @param realizedPnl realized pnl after this position changed
-    /// @param unrealizedPnlAfter unrealized pnl after this position changed
-    /// @param badDebt position change amount cleared by insurance funds
-    /// @param liquidationPenalty amount of remaining margin lost due to liquidation
-    /// @param spotPrice quote asset reserve / base asset reserve
-    /// @param fundingPayment funding payment (+: trader paid, -: trader received)
-    event PositionChanged(
-        address indexed trader,
-        address indexed amm,
-        uint256 margin,
-        uint256 positionNotional,
-        int256 exchangedPositionSize,
-        uint256 fee,
-        int256 positionSizeAfter,
-        int256 realizedPnl,
-        int256 unrealizedPnlAfter,
-        uint256 badDebt,
-        uint256 liquidationPenalty,
-        uint256 spotPrice,
-        int256 fundingPayment
-    );
-
-    /// @notice This event is emitted when position liquidated
-    /// @param trader the account address being liquidated
-    /// @param amm IAmm address
-    /// @param positionNotional liquidated position value minus liquidationFee
-    /// @param positionSize liquidated position size
-    /// @param liquidationFee liquidation fee to the liquidator
-    /// @param liquidator the address which execute this transaction
-    /// @param badDebt liquidation fee amount cleared by insurance funds
-    event PositionLiquidated(
-        address indexed trader,
-        address indexed amm,
-        uint256 positionNotional,
-        uint256 positionSize,
-        uint256 liquidationFee,
-        address liquidator,
-        uint256 badDebt
-    );
-
-    //
     // Struct and Enum
     //
 
@@ -162,11 +95,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         mapping(address => Position) positionMap;
     }
 
-    modifier onlyOperator() {
-        require(operator == _msgSender(), "caller is not operator");
-        _;
-    }
-
     //**********************************************************//
     //    Can not change the order of below state variables     //
     //**********************************************************//
@@ -226,6 +154,78 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     //
+
+    //
+    // EVENTS
+    //
+    //event MarginRatioChanged(uint256 marginRatio);
+    //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
+    event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
+    event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
+    event PositionAdjusted(
+        address indexed amm,
+        address indexed trader,
+        int256 newPositionSize,
+        uint256 oldLiquidityIndex,
+        uint256 newLiquidityIndex
+    );
+    event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
+    event RestrictionModeEntered(address amm, uint256 blockNumber);
+    event Repeg(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
+    event UpdateK(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
+
+    /// @notice This event is emitted when position change
+    /// @param trader the address which execute this transaction
+    /// @param amm IAmm address
+    /// @param margin margin
+    /// @param positionNotional margin * leverage
+    /// @param exchangedPositionSize position size, e.g. ETHUSDC or LINKUSDC
+    /// @param fee transaction fee
+    /// @param positionSizeAfter position size after this transaction, might be increased or decreased
+    /// @param realizedPnl realized pnl after this position changed
+    /// @param unrealizedPnlAfter unrealized pnl after this position changed
+    /// @param badDebt position change amount cleared by insurance funds
+    /// @param liquidationPenalty amount of remaining margin lost due to liquidation
+    /// @param spotPrice quote asset reserve / base asset reserve
+    /// @param fundingPayment funding payment (+: trader paid, -: trader received)
+    event PositionChanged(
+        address indexed trader,
+        address indexed amm,
+        uint256 margin,
+        uint256 positionNotional,
+        int256 exchangedPositionSize,
+        uint256 fee,
+        int256 positionSizeAfter,
+        int256 realizedPnl,
+        int256 unrealizedPnlAfter,
+        uint256 badDebt,
+        uint256 liquidationPenalty,
+        uint256 spotPrice,
+        int256 fundingPayment
+    );
+
+    /// @notice This event is emitted when position liquidated
+    /// @param trader the account address being liquidated
+    /// @param amm IAmm address
+    /// @param positionNotional liquidated position value minus liquidationFee
+    /// @param positionSize liquidated position size
+    /// @param liquidationFee liquidation fee to the liquidator
+    /// @param liquidator the address which execute this transaction
+    /// @param badDebt liquidation fee amount cleared by insurance funds
+    event PositionLiquidated(
+        address indexed trader,
+        address indexed amm,
+        uint256 positionNotional,
+        uint256 positionSize,
+        uint256 liquidationFee,
+        address liquidator,
+        uint256 badDebt
+    );
+
+    modifier onlyOperator() {
+        require(operator == _msgSender(), "caller is not operator");
+        _;
+    }
 
     // FUNCTIONS
     //
@@ -652,6 +652,72 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         netRevenuesSinceLastFunding[address(_amm)] = 0;
     }
 
+    /**
+     * @notice repeg amm according to off-chain calculation for the healthy of market
+     * @dev only the operator can call this function
+     * @param _amm IAmm address
+     * @param _newQuoteAssetReserve the quote asset amount to be repegged
+     */
+    function repegAmm(IAmm _amm, uint256 _newQuoteAssetReserve) external onlyOperator {
+        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+        int256 positionSize = _amm.getBaseAssetDelta();
+        int256 cost = AmmMath.adjustPegCost(quoteAssetReserve, baseAssetReserve, positionSize, _newQuoteAssetReserve);
+
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
+        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
+        require(_applyCost(_amm, cost), "failed to apply cost");
+        _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
+        emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
+    }
+
+    /**
+     * @notice adjust K of amm according to off-chain calculation for the healthy of market
+     * @dev only the operator can call this function
+     * @param _amm IAmm address
+     * @param _scaleNum the numerator of K scale to be adjusted
+     * @param _scaleDenom the denominator of K scale to be adjusted
+     */
+    function adjustK(
+        IAmm _amm,
+        uint256 _scaleNum,
+        uint256 _scaleDenom
+    ) external onlyOperator {
+        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+        int256 positionSize = _amm.getBaseAssetDelta();
+        (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.adjustKCost(
+            quoteAssetReserve,
+            baseAssetReserve,
+            positionSize,
+            _scaleNum,
+            _scaleDenom
+        );
+
+        uint256 totalFee = totalFees[address(_amm)];
+        uint256 totalMinusFee = totalMinusFees[address(_amm)];
+        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
+        require(_applyCost(_amm, cost), "failed to apply cost");
+        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+        emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    }
+
+    function deposit2FeePool(IAmm _amm, uint256 _amount) external {
+        IERC20 quoteAsset = _amm.quoteAsset();
+        quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
+        totalFees[address(_amm)] += _amount;
+        totalMinusFees[address(_amm)] += _amount;
+    }
+
+    function withdrawFromFeePool(IAmm _amm, uint256 _amount) external onlyOwner {
+        totalFees[address(_amm)] -= _amount;
+        totalMinusFees[address(_amm)] -= _amount;
+        IERC20 quoteAsset = _amm.quoteAsset();
+        insuranceFund.withdraw(quoteAsset, _amount);
+        quoteAsset.safeTransfer(_msgSender(), _amount);
+    }
+
     //
     // VIEW FUNCTIONS
     //
@@ -668,27 +734,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         _requirePositionSize(position.size);
         (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
         return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
-    }
-
-    // function _getMarginRatioByCalcOption(
-    //     IAmm _amm,
-    //     address _trader,
-    //     PnlCalcOption _pnlCalcOption
-    // ) internal view returns (int256) {
-    //     Position memory position = getPosition(_amm, _trader);
-    //     _requirePositionSize(position.size);
-    //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
-    //     return _getMarginRatio(_amm, position, pnl, positionNotional);
-    // }
-
-    function _getMarginRatio(
-        IAmm _amm,
-        Position memory _position,
-        int256 _unrealizedPnl,
-        uint256 _positionNotional
-    ) internal view returns (int256) {
-        (uint256 remainMargin, uint256 badDebt, , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
-        return (remainMargin.toInt() - badDebt.toInt()).divD(_positionNotional.toInt());
     }
 
     /**
@@ -748,9 +793,30 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
+    // function _getMarginRatioByCalcOption(
+    //     IAmm _amm,
+    //     address _trader,
+    //     PnlCalcOption _pnlCalcOption
+    // ) internal view returns (int256) {
+    //     Position memory position = getPosition(_amm, _trader);
+    //     _requirePositionSize(position.size);
+    //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
+    //     return _getMarginRatio(_amm, position, pnl, positionNotional);
+    // }
+
     //
     // INTERNAL FUNCTIONS
     //
+
+    function _getMarginRatio(
+        IAmm _amm,
+        Position memory _position,
+        int256 _unrealizedPnl,
+        uint256 _positionNotional
+    ) internal view returns (int256) {
+        (uint256 remainMargin, uint256 badDebt, , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
+        return (remainMargin.toInt() - badDebt.toInt()).divD(_positionNotional.toInt());
+    }
 
     function _enterRestrictionMode(IAmm _amm) internal {
         uint256 blockNumber = _blockNumber();
@@ -1049,7 +1115,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         IAmm _amm,
         address _trader,
         bool _canOverFluctuationLimit
-    ) private returns (PositionResp memory positionResp) {
+    ) internal returns (PositionResp memory positionResp) {
         // check conditions
         Position memory oldPosition = getPosition(_amm, _trader);
         _requirePositionSize(oldPosition.size);
@@ -1191,7 +1257,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         IAmm _amm,
         address _sender,
         uint256 _amount
-    ) private {
+    ) internal {
         vaults[address(_amm)] += _amount;
         IERC20 quoteToken = _amm.quoteAsset();
         quoteToken.safeTransferFrom(_sender, address(this), _amount);
@@ -1230,7 +1296,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
     }
 
-    function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) private {
+    function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
         IERC20 quoteToken = _amm.quoteAsset();
         vaults[address(_amm)] += _amount;
         insuranceFund.withdraw(quoteToken, _amount);
@@ -1278,7 +1344,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         Position memory _oldPosition,
         int256 _marginDelta
     )
-        private
+        internal
         view
         returns (
             uint256 remainMargin,
@@ -1424,57 +1490,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     /**
-     * @notice repeg amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _newQuoteAssetReserve the quote asset amount to be repegged
+     * @notice apply cost for repeg and adjustment
+     * @dev negative cost is revenue, otherwise is expense of insurance fund
      */
-    function repegAmm(IAmm _amm, uint256 _newQuoteAssetReserve) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        int256 cost = AmmMath.adjustPegCost(quoteAssetReserve, baseAssetReserve, positionSize, _newQuoteAssetReserve);
-
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
-        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
-        require(_applyCost(_amm, cost), "failed to apply cost");
-        _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
-        emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
-    }
-
-    /**
-     * @notice adjust K of amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _scaleNum the numerator of K scale to be adjusted
-     * @param _scaleDenom the denominator of K scale to be adjusted
-     */
-    function adjustK(
-        IAmm _amm,
-        uint256 _scaleNum,
-        uint256 _scaleDenom
-    ) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.adjustKCost(
-            quoteAssetReserve,
-            baseAssetReserve,
-            positionSize,
-            _scaleNum,
-            _scaleDenom
-        );
-
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
-        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
-        require(_applyCost(_amm, cost), "failed to apply cost");
-        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-        emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    }
-
-    // negative cost is revenue, otherwise is expense of insurance fund
     function _applyCost(IAmm _amm, int256 _cost) private returns (bool) {
         uint256 totalMinusFee = totalMinusFees[address(_amm)];
         uint256 costAbs = _cost.abs();
@@ -1491,20 +1509,5 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
         netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - _cost;
         return true;
-    }
-
-    function deposit2FeePool(IAmm _amm, uint256 _amount) external {
-        IERC20 quoteAsset = _amm.quoteAsset();
-        quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
-        totalFees[address(_amm)] += _amount;
-        totalMinusFees[address(_amm)] += _amount;
-    }
-
-    function withdrawFromFeePool(IAmm _amm, uint256 _amount) external onlyOwner {
-        totalFees[address(_amm)] -= _amount;
-        totalMinusFees[address(_amm)] -= _amount;
-        IERC20 quoteAsset = _amm.quoteAsset();
-        insuranceFund.withdraw(quoteAsset, _amount);
-        quoteAsset.safeTransfer(_msgSender(), _amount);
     }
 }
