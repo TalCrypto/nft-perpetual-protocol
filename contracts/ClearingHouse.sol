@@ -559,8 +559,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         PositionResp memory positionResp;
         {
             Position memory position = getPosition(_amm, trader);
-            // if it is long position, close a position means short it(which means base dir is ADD_TO_AMM) and vice versa
-            IAmm.Dir dirOfBase = position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
+            // // if it is long position, close a position means short it(which means base dir is ADD_TO_AMM) and vice versa
+            // IAmm.Dir dirOfBase = position.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM;
 
             positionResp = _closePosition(_amm, trader, false);
             _checkSlippage(
