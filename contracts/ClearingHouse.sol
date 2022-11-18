@@ -135,7 +135,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     mapping(address => uint256) public vaults;
 
     // amm => total fees allocated to market
+    // the cumulative fees collected from traders, not decrease
     mapping(address => uint256) public totalFees;
+
+    // totalMinusFees = totalFees - system funding payment - adjust costs
     mapping(address => uint256) public totalMinusFees;
 
     // amm => revenue since last funding
@@ -635,17 +638,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         _formulaicRepegAmm(_amm);
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 cap = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        uint256 cap = getAdjustmentPoolAmount(address(_amm));
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
         // funding payment is positive means profit
         if (fundingPayment < 0) {
-            totalMinusFees[address(_amm)] = totalMinusFee - fundingPayment.abs();
+            totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] - fundingPayment.abs();
             _withdrawFromInsuranceFund(_amm, fundingPayment.abs());
         } else {
-            totalMinusFees[address(_amm)] = totalMinusFee + fundingPayment.abs();
+            totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] + fundingPayment.abs();
             _transferToInsuranceFund(_amm, fundingPayment.abs());
         }
         _formulaicUpdateK(_amm, fundingImbalanceCost);
@@ -803,6 +804,18 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
     //     return _getMarginRatio(_amm, position, pnl, positionNotional);
     // }
+
+    /**
+     * @notice Only a portion of the protocol fees are allocated to adjustment and funding payment
+     * @dev half of total fee is allocated to market loss, the remain to adjustment
+     * @param _amm the address of vamm
+     * @return amount the fee amount allocated to adjustmnet and funding payment
+     */
+    function getAdjustmentPoolAmount(address _amm) public view returns (uint256 amount) {
+        uint256 totalFee = totalFees[_amm];
+        uint256 totalMinusFee = totalMinusFees[_amm];
+        amount = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+    }
 
     //
     // INTERNAL FUNCTIONS
@@ -1451,10 +1464,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function _formulaicRepegAmm(IAmm _amm) private {
-        // Only a portion of the protocol fees are allocated to repegging
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        uint256 budget = getAdjustmentPoolAmount(address(_amm));
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
             budget,
             true
