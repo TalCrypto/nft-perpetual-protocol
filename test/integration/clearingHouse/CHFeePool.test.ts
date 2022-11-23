@@ -90,9 +90,7 @@ describe("ClearingHouse Test", () => {
       expect(await clearingHouse.totalMinusFees(amm.address)).eql(toFullDigitBN(90));
     });
     it("should be failed of withdrawal exceeding the balance of fee pool", async () => {
-      await expect(clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(101))).revertedWith(
-        "Error: VM Exception while processing transaction"
-      );
+      await expect(clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(101))).reverted;
     });
   });
 });

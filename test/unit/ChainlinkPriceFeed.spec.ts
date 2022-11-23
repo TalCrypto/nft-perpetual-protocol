@@ -1,5 +1,4 @@
 import { ethers } from "hardhat";
-import { expectRevert } from "@openzeppelin/test-helpers";
 import { expect, use } from "chai";
 import { ChainlinkPriceFeedFake, ChainlinkAggregatorMock } from "../../typechain-types";
 import { deployChainlinkAggregatorMock, deployChainlinkPriceFeedFake } from "../../utils/contract";
@@ -54,7 +53,7 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, addAggregator with zero address", async () => {
-      await expectRevert(priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), EMPTY_ADDRESS), "empty address");
+      await expect(priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), EMPTY_ADDRESS)).revertedWith("empty address");
     });
   });
 
@@ -63,7 +62,7 @@ describe("ChainlinkPriceFeed Spec", () => {
       await priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), chainlinkMock1.address);
       await priceFeed.removeAggregator(ethers.utils.formatBytes32String("ETH"));
 
-      // cant use expectRevert because the error message is different between CI and local env
+      // cant use expect because the error message is different between CI and local env
 
       expect(await priceFeed.aggregators(ethers.utils.formatBytes32String("ETH"))).eq(EMPTY_ADDRESS);
     });
@@ -152,7 +151,7 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, interval is zero", async () => {
-      await expectRevert(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 0), "interval can't be 0");
+      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("interval can't be 0");
     });
   });
 
@@ -204,8 +203,8 @@ describe("ChainlinkPriceFeed Spec", () => {
     it("force error, getPreviousPrice/getPreviousTimestamp fail if the price at that time < 0", async () => {
       await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-10), 250, 250, 3);
 
-      await expectRevert(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0), "Negative price");
-      await expectRevert(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0), "Negative price");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
 
       const price = await priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 2);
       expect(price).to.eq(toFullDigitBN(405));
@@ -214,8 +213,8 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, getPreviousPrice/getPreviousTimestamp more than current history", async () => {
-      await expectRevert(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 10), "Not enough history");
-      await expectRevert(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 10), "Not enough history");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("Not enough history");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("Not enough history");
     });
   });
 
@@ -228,20 +227,20 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, getTwapPrice", async () => {
-      await expectRevert(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 40), "Not enough history");
+      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 40)).revertedWith("Not enough history");
     });
 
     it("force error, getprice/getLatestTimestamp", async () => {
-      await expectRevert(priceFeed.getPrice(ethers.utils.formatBytes32String("ETH")), "Not enough history");
-      await expectRevert(priceFeed.getLatestTimestamp(ethers.utils.formatBytes32String("ETH")), "Not enough history");
+      await expect(priceFeed.getPrice(ethers.utils.formatBytes32String("ETH"))).revertedWith("Not enough history");
+      await expect(priceFeed.getLatestTimestamp(ethers.utils.formatBytes32String("ETH"))).revertedWith("Not enough history");
     });
 
     it("force error, getPreviousPrice/getPreviousTimestamp still get the 'Negative price' error, as these two functions do not traverse back to a valid one", async () => {
-      await expectRevert(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0), "Negative price");
-      await expectRevert(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0), "Negative price");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
 
-      await expectRevert(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 1), "Negative price");
-      await expectRevert(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 1), "Negative price");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("Negative price");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("Negative price");
     });
   });
 });

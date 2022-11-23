@@ -5,8 +5,7 @@
     "strict": true,
     "esModuleInterop": true,
     "outDir": "dist",
-    "moduleResolution": "node",
-    "noImplicitAny": false
+    "moduleResolution": "node"
   },
   "include": ["./test", "./scripts", "./utils", "./typechain-types/**/*.ts", "utils/helper", "./publish"],
   "exclude": ["./src"],

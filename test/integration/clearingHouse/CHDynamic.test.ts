@@ -279,47 +279,46 @@ describe("ClearingHouse Test", () => {
       });
       describe("when oracle twap is higher than mark twap", () => {
         beforeEach(async () => {
-          await mockPriceFeed.setTwapPrice(toFullDigitBN(6.5));
+          await mockPriceFeed.setTwapPrice(toFullDigitBN(8));
         });
-        it("repeg to 10", async () => {
+        it("repeg occurs", async () => {
           await gotoNextFundingTime();
           await clearingHouse.payFunding(amm.address);
           const quoteAssetReserve = await amm.quoteAssetReserve();
           const baseAssetReserve = await amm.baseAssetReserve();
-          expect(quoteAssetReserve.div(baseAssetReserve)).eq(10);
+          expect(quoteAssetReserve.div(baseAssetReserve)).eq(8);
         });
         it("should increase k because funding payment is positive", async () => {
           await gotoNextFundingTime();
           // funding imbalance cost = 2
           await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-1.6));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
           expect(Number(baseAssetReserve) / 125).above(1);
-          expect(Number(quoteAssetReserve) / 1250).above(1);
-          expect(Number(baseAssetReserve) / 125).eq(Number(quoteAssetReserve) / 1250);
+          expect(Number(quoteAssetReserve) / 1000).above(1);
         });
       });
       describe("when oracle twap is lower than mark twap", () => {
         beforeEach(async () => {
-          await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
+          await mockPriceFeed.setTwapPrice(toFullDigitBN(5));
         });
-        it("repeg to 10", async () => {
+        it("repeg occurs", async () => {
           await gotoNextFundingTime();
           await clearingHouse.payFunding(amm.address);
           const quoteAssetReserve = await amm.quoteAssetReserve();
           const baseAssetReserve = await amm.baseAssetReserve();
-          expect(quoteAssetReserve.div(baseAssetReserve)).eq(10);
+          expect(quoteAssetReserve.div(baseAssetReserve)).eq(5);
         });
         it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
           await gotoNextFundingTime();
           // funding imbalance cost = -2
           await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(1.4));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
           expect(Number(baseAssetReserve) / 125).eq(1);
-          expect(Number(quoteAssetReserve) / 1250).eq(1);
+          expect(Number(quoteAssetReserve) / 625).eq(1);
         });
       });
     });
