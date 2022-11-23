@@ -29,6 +29,12 @@ import {
   ClearingHouse__factory,
   InsuranceFund,
   InsuranceFund__factory,
+  ChainlinkPriceFeedFake,
+  ChainlinkPriceFeedFake__factory,
+  ChainlinkPriceFeed,
+  ChainlinkPriceFeed__factory,
+  ChainlinkAggregatorMock,
+  ChainlinkAggregatorMock__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -255,4 +261,20 @@ export async function deployProxyTollPool(signer: Signer, clearingHouse: string)
   const instance = (await upgrades.deployProxy(new TollPool__factory(signer), [clearingHouse])) as TollPool;
   await instance.deployed();
   return instance;
+}
+
+export async function deployChainlinkPriceFeedFake(signer: Signer): Promise<ChainlinkPriceFeedFake> {
+  const instance = await new ChainlinkPriceFeedFake__factory(signer).deploy();
+  await instance.initialize();
+  return instance;
+}
+
+export async function deployChainlinkPriceFeed(signer: Signer): Promise<ChainlinkPriceFeed> {
+  const instance = (await upgrades.deployProxy(new ChainlinkPriceFeed__factory(signer), [])) as ChainlinkPriceFeed;
+  await instance.deployed();
+  return instance;
+}
+
+export async function deployChainlinkAggregatorMock(signer: Signer): Promise<ChainlinkAggregatorMock> {
+  return new ChainlinkAggregatorMock__factory(signer).deploy();
 }
