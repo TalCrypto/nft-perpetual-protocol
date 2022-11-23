@@ -59,9 +59,6 @@ const config = {
   },
   defaultNetwork: "localhost",
   networks: {
-    localhost: {
-      url: "http://localhost:8545",
-    },
     hardhat: {
       allowUnlimitedContractSize: true,
     },

@@ -45,10 +45,10 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     //
 
     function setLatestData(
-        bytes32 _priceFeedKey,
-        uint256 _price,
-        uint256 _timestamp,
-        uint256 _roundId
+        bytes32,
+        uint256,
+        uint256,
+        uint256
     ) external override {
         revert("not support");
     }
