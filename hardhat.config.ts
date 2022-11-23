@@ -57,7 +57,7 @@ const config = {
       },
     ],
   },
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
