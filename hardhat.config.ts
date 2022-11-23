@@ -63,9 +63,7 @@ const config = {
       url: "http://localhost:8545",
     },
     hardhat: {
-      forking: {
-        url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
-      },
+      allowUnlimitedContractSize: true,
     },
     arbitrum_rinkeby: {
       url: "https://rinkeby.arbitrum.io/rpc",
