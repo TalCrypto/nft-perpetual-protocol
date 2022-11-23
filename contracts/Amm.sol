@@ -543,7 +543,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         )
     {
         if (open && adjustable && isOverSpreadLimit()) {
-            uint256 targetPrice = getUnderlyingPrice();
+            uint256 targetPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost
@@ -759,7 +759,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     function isOverSpreadLimit() public view override returns (bool) {
-        uint256 oraclePrice = getUnderlyingPrice();
+        uint256 oraclePrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
         require(oraclePrice > 0, "underlying price is 0");
         uint256 marketPrice = getSpotPrice();
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
