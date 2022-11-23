@@ -77,7 +77,7 @@ describe("ClearingHouse Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setPrice(marketPrice);
+    await mockPriceFeed.setTwapPrice(marketPrice);
   }
 
   async function deployEnvFixture() {
@@ -98,7 +98,7 @@ describe("ClearingHouse Test", () => {
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setPrice(marketPrice);
+    await mockPriceFeed.setTwapPrice(marketPrice);
 
     return { amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer };
   }

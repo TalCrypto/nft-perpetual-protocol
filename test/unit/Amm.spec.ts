@@ -874,26 +874,26 @@ describe("Amm Unit Test", () => {
     });
 
     it("will fail if price feed return 0", async () => {
-      await priceFeed.setPrice(0);
+      await priceFeed.setTwapPrice(0);
       await expect(amm.isOverSpreadLimit()).to.be.revertedWith("underlying price is 0");
     });
 
     it("is true if abs((marketPrice-oraclePrice)/oraclePrice) >= 10%", async () => {
       // (10-12)/12=0.16
-      await priceFeed.setPrice(toFullDigitBN(12));
+      await priceFeed.setTwapPrice(toFullDigitBN(12));
       expect(await amm.isOverSpreadLimit()).eq(true);
 
       // (10-8)/8=0.25
-      await priceFeed.setPrice(toFullDigitBN(8));
+      await priceFeed.setTwapPrice(toFullDigitBN(8));
       expect(await amm.isOverSpreadLimit()).eq(true);
     });
 
     it("is false if abs((marketPrice-oraclePrice)/oraclePrice) < 10%", async () => {
       // (10-10.5)/10.5=-0.04
-      await priceFeed.setPrice(toFullDigitBN(10.5));
+      await priceFeed.setTwapPrice(toFullDigitBN(10.5));
       expect(await amm.isOverSpreadLimit()).eq(false);
       // (10-9.5)/9.5=0.05
-      await priceFeed.setPrice(toFullDigitBN(9.5));
+      await priceFeed.setTwapPrice(toFullDigitBN(9.5));
       expect(await amm.isOverSpreadLimit()).eq(false);
     });
   });

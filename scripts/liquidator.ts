@@ -18,7 +18,7 @@ async function main() {
   const traders = await queryTraders(contracts.amm.address);
 
   const marketPrice = await amm.getSpotPrice();
-  await mockPriceFeed.setPrice(marketPrice);
+  await mockPriceFeed.setTwapPrice(marketPrice);
 
   let addressesOfLiquidatableTraders: Array<string> = [];
 

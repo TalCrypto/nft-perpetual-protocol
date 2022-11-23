@@ -67,7 +67,7 @@ describe("ClearingHouse - open/close position Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setPrice(marketPrice);
+    await mockPriceFeed.setTwapPrice(marketPrice);
   }
 
   async function expectPositionChanged(tx: ContractTransaction, val: PositionChangedStruct) {

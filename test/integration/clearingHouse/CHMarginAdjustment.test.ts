@@ -67,7 +67,7 @@ describe("ClearingHouse add/remove margin Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setPrice(marketPrice);
+    await mockPriceFeed.setTwapPrice(marketPrice);
   }
 
   async function expectMarginChanged(tx: ContractTransaction, val: MarginChangedStruct) {

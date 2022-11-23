@@ -103,7 +103,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(50);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         describe("when budget is enough", () => {
           const budget = toFullDigitBN(1000);
@@ -150,7 +150,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(12.4);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -163,7 +163,7 @@ describe("Amm Unit Test", () => {
         const budget = toFullDigitBN(0);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should be updatable with negative cost", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -184,7 +184,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(12.3);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -205,7 +205,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(4);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         describe("when budget is enough", () => {
           const budget = toFullDigitBN(1000);
@@ -245,7 +245,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(8.2);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -258,7 +258,7 @@ describe("Amm Unit Test", () => {
         const budget = toFullDigitBN(0);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should be updatable with negative cost", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -279,7 +279,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(8.3);
         beforeEach(async () => {
           //oracle_price = 12.3
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -299,7 +299,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(5);
         const budget = toFullDigitBN(0);
         beforeEach(async () => {
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should be updatable to oracle price with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -312,7 +312,7 @@ describe("Amm Unit Test", () => {
         const budget = toFullDigitBN(0);
         const oraclePrice = toFullDigitBN(9.99);
         beforeEach(async () => {
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -324,7 +324,7 @@ describe("Amm Unit Test", () => {
         const oraclePrice = toFullDigitBN(20);
         const budget = toFullDigitBN(0);
         beforeEach(async () => {
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
@@ -337,7 +337,7 @@ describe("Amm Unit Test", () => {
         const budget = toFullDigitBN(0);
         const oraclePrice = toFullDigitBN(10.01);
         beforeEach(async () => {
-          await priceFeed.setPrice(oraclePrice);
+          await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
