@@ -6,9 +6,7 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
-import { IMinter } from "./interfaces/IMinter.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
-import { IInflationMonitor } from "./interfaces/IInflationMonitor.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 
