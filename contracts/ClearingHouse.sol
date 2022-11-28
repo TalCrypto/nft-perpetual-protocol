@@ -120,7 +120,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     mapping(address => AmmMap) internal ammMap;
 
     // prepaid bad debt balance, key by Amm address
-    mapping(address => uint256) internal prepaidBadDebts;
+    mapping(address => uint256) public prepaidBadDebts;
 
     // contract dependencies
     IInsuranceFund public insuranceFund;
