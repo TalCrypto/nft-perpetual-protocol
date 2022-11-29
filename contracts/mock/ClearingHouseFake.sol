@@ -45,14 +45,14 @@ contract ClearingHouseFake is ClearingHouse {
     }
 
     function mockSetRestrictionMode(IAmm _amm) external {
-        enterRestrictionMode(_amm);
+        _enterRestrictionMode(_amm);
     }
 
     function isInRestrictMode(address _amm, uint256 _block) external view returns (bool) {
         return ammMap[_amm].lastRestrictionBlock == _block;
     }
 
-    function getPrepaidBadDebt(address _token) public view returns (uint256) {
-        return prepaidBadDebt[_token];
+    function getPrepaidBadDebt(address _amm) public view returns (uint256) {
+        return prepaidBadDebts[_amm];
     }
 }

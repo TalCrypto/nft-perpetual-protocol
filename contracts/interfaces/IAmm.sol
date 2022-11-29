@@ -28,33 +28,72 @@ interface IAmm {
     function swapInput(
         Dir _dir,
         uint256 _quoteAssetAmount,
-        uint256 _baseAssetAmountLimit,
         bool _canOverFluctuationLimit
-    ) external returns (uint256);
+    )
+        external
+        returns (
+            uint256,
+            uint256,
+            uint256
+        );
 
     function swapOutput(
         Dir _dir,
         uint256 _baseAssetAmount,
-        uint256 _quoteAssetAmountLimit
-    ) external returns (uint256);
+        bool _canOverFluctuationLimit
+    )
+        external
+        returns (
+            uint256,
+            uint256,
+            uint256
+        );
+
+    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
 
     function shutdown() external;
 
-    function settleFunding() external returns (int256);
+    function settleFunding(uint256 _cap)
+        external
+        returns (
+            int256 premiumFraction,
+            int256 fundingPayment,
+            int256 uncappedFundingPayment
+        );
 
-    function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
+    // function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
 
     //
     // VIEW
     //
 
+    function getFormulaicRepegResult(uint256 budget, bool adjustK)
+        external
+        view
+        returns (
+            bool,
+            int256,
+            uint256,
+            uint256
+        );
+
+    function getFormulaicUpdateKResult(int256 budget)
+        external
+        view
+        returns (
+            bool isAdjustable,
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        );
+
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 
-    function calcBaseAssetAfterLiquidityMigration(
-        int256 _baseAssetAmount,
-        uint256 _fromQuoteReserve,
-        uint256 _fromBaseReserve
-    ) external view returns (int256);
+    // function calcBaseAssetAfterLiquidityMigration(
+    //     int256 _baseAssetAmount,
+    //     uint256 _fromQuoteReserve,
+    //     uint256 _fromBaseReserve
+    // ) external view returns (int256);
 
     function getInputTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
@@ -97,10 +136,12 @@ interface IAmm {
 
     function open() external view returns (bool);
 
+    function adjustable() external view returns (bool);
+
     // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);
 
-    function getBaseAssetDeltaThisFundingPeriod() external view returns (int256);
+    // function getBaseAssetDeltaThisFundingPeriod() external view returns (int256);
 
     function getCumulativeNotional() external view returns (int256);
 

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
+import "./FullMath.sol";
+
 /// @dev Implements simple signed fixed point math add, sub, mul and div operations.
 library IntMath {
     /// @dev Returns 1 in the fixed point representation, with `decimals` decimals.
@@ -33,7 +35,10 @@ library IntMath {
         int256 y,
         uint8 decimals
     ) internal pure returns (int256) {
-        return (x * y) / unit(decimals);
+        if (x == 0 || y == 0) {
+            return 0;
+        }
+        return int256(FullMath.mulDiv(abs(x), abs(y), 10**uint256(decimals))) * (int256(abs(x)) / x) * (int256(abs(y)) / y);
     }
 
     /// @dev Divides x between y, assuming they are both fixed point with 18 digits.
@@ -47,6 +52,9 @@ library IntMath {
         int256 y,
         uint8 decimals
     ) internal pure returns (int256) {
-        return (x * unit(decimals)) / y;
+        if (x == 0 || y == 0) {
+            return 0;
+        }
+        return int256(FullMath.mulDiv(abs(x), 10**uint256(decimals), abs(y))) * (int256(abs(x)) / x) * (int256(abs(y)) / y);
     }
 }

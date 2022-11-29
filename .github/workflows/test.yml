@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [staging, main]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -17,6 +17,8 @@ jobs:
           node-version: "18.x"
       - run: yarn --ignore-scripts
         shell: bash
+      - name: Generating typechain
+        run: yarn hardhat typechain
       # - name: Create local node and deploy
       #   run: |
       #     yarn hardhat node &

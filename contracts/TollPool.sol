@@ -12,23 +12,6 @@ contract TollPool is OwnableUpgradeable {
 
     uint256 public constant TOKEN_AMOUNT_LIMIT = 20;
 
-    //
-    // EVENTS
-    //
-    event TokenReceived(address token, uint256 amount);
-    event TokenTransferred(address token, uint256 amount);
-    event FeeTokenPoolDispatcherSet(address feeTokenPoolDispatcher);
-    event FeeTokenAdded(address token);
-    event FeeTokenRemoved(address token);
-
-    //
-    // MODIFIERS
-    //
-    modifier onlyClearingHouse() {
-        require(_msgSender() == address(clearingHouse), "only clearingHouse");
-        _;
-    }
-
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -46,6 +29,23 @@ contract TollPool is OwnableUpgradeable {
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
     uint256[50] private __gap;
+
+    //
+    // EVENTS
+    //
+    event TokenReceived(address token, uint256 amount);
+    event TokenTransferred(address token, uint256 amount);
+    event FeeTokenPoolDispatcherSet(address feeTokenPoolDispatcher);
+    event FeeTokenAdded(address token);
+    event FeeTokenRemoved(address token);
+
+    //
+    // MODIFIERS
+    //
+    modifier onlyClearingHouse() {
+        require(_msgSender() == address(clearingHouse), "only clearingHouse");
+        _;
+    }
 
     //
     // FUNCTIONS
@@ -97,7 +97,7 @@ contract TollPool is OwnableUpgradeable {
     //
     // VIEW FUNCTIONS
     //
-    function isFeeTokenExisted(IERC20 _token) public view returns (bool) {
+    function isFeeTokenExisted(IERC20 _token) external view returns (bool) {
         return feeTokens.isExisted(address(_token));
     }
 
