@@ -428,14 +428,17 @@ describe("ClearingHouse Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(9.9));
       });
-      it("decrease K because total position size is positive and oracle > mark", async () => {
+      it("increase K because total position size is positive and oracle < mark", async () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
+        const fraction = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
+        const positionSize = await amm.getBaseAssetDelta();
+        expect(fraction.mul(positionSize)).above(toFullDigitBN(0));
         const baseAssetReserve = await amm.baseAssetReserve();
         const quoteAssetReserve = await amm.quoteAssetReserve();
-        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).below(toFullDigitBN(1));
-        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).above(toFullDigitBN(1));
+        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).above(toFullDigitBN(1));
         expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(
           quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)
         );
