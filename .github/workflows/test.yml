@@ -10,10 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Install packages
         uses: actions/setup-node@v3
         with:
           node-version: "18.x"
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
       - run: yarn --ignore-scripts
         shell: bash
       - name: Generating typechain
@@ -22,20 +28,7 @@ jobs:
       #   run: |
       #     yarn hardhat node &
       #     yarn hardhat run scripts/deploy.ts --network localhost
-      - name: Run Tests
+      - name: Run NPM Tests
         run: yarn hardhat test
-  check:
-    name: Foundry test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Run tests
+      - name: Run Foundry Test
         run: forge test -vvv
