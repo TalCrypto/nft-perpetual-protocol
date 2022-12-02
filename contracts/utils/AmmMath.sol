@@ -81,12 +81,12 @@ library AmmMath {
             uint256 newPositionNotionalSize = FullMath.mulDiv(
                 newQuoteAssetReserve,
                 uint256(-_positionSize),
-                newBaseAssetReserve + uint256(-_positionSize)
+                newBaseAssetReserve - uint256(-_positionSize)
             );
             uint256 positionNotionalSize = FullMath.mulDiv(
                 _quoteAssetReserve,
                 uint256(-_positionSize),
-                _baseAssetReserve + uint256(-_positionSize)
+                _baseAssetReserve - uint256(-_positionSize)
             );
             cost = positionNotionalSize.toInt() - newPositionNotionalSize.toInt();
         }

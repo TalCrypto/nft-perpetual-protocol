@@ -236,7 +236,7 @@ describe("Amm Unit Test", () => {
             const baseAssetReserve = await amm.baseAssetReserve();
             const quoteAssetReserve = await amm.quoteAssetReserve();
             expect(res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(0.999));
-            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserve)).eq("998999099999999999");
+            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserve)).eq("998999999999999999");
           });
         });
       });
@@ -350,7 +350,7 @@ describe("Amm Unit Test", () => {
 
   describe("getFormulaicUpdateKResult function test", () => {
     const maxIncreaseRatio = toFullDigitBN(1.001);
-    const minDecreaseRatio = toFullDigitBN(0.978);
+    const minDecreaseRatio = toFullDigitBN(0.999);
     describe("when there are more long open interests", () => {
       const positionSize = toFullDigitBN(10);
       // B = 90, Q = 1111.11...11, position_size = 10
@@ -559,25 +559,19 @@ describe("Amm Unit Test", () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.isAdjustable).to.be.true;
         });
-        it("ratio of reserves should be the same", async () => {
-          const res = await amm.getFormulaicUpdateKResult(budget);
-          expect(res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve())).eql(
-            res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(await amm.quoteAssetReserve())
-          );
-        });
         it("should decrease K", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
           expect(ratio).below(toFullDigitBN(1));
         });
-        it("ratio should be bigger than minDecreaseRatio", async () => {
+        it("ratio should be same as minDecreaseRatio", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
-          expect(ratio).above(minDecreaseRatio);
+          expect(ratio).eql(minDecreaseRatio);
         });
-        it("cost should be same as budget", async () => {
+        it("cost should be greater than budget", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
-          expect(res.cost).eql(budget);
+          expect(res.cost).gt(budget);
         });
         it("cost should be one bigger than the difference of position notional values", async () => {
           const valueBefore = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
@@ -643,15 +637,15 @@ describe("Amm Unit Test", () => {
             res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(await amm.quoteAssetReserve())
           );
         });
-        it("should decrease K", async () => {
+        it("should increase K", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
-          expect(ratio).below(toFullDigitBN(1));
+          expect(ratio).above(toFullDigitBN(1));
         });
-        it("ratio should be same as minDecreaseRatio", async () => {
+        it("ratio should be same as maxIncreaseRatio", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
-          expect(ratio).eql(minDecreaseRatio);
+          expect(ratio).eql(maxIncreaseRatio);
         });
         it("cost should be 0", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
@@ -664,15 +658,15 @@ describe("Amm Unit Test", () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           expect(res.isAdjustable).to.be.true;
         });
-        it("should decrease K", async () => {
+        it("should increase K", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
-          expect(ratio).below(toFullDigitBN(1));
+          expect(ratio).above(toFullDigitBN(1));
         });
-        it("ratio should be same as minDecreaseRatio", async () => {
+        it("ratio should be same as maxIncreaseRatio", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
           const ratio = res.newBaseAssetReserve.mul(toFullDigitBN(1)).div(await amm.baseAssetReserve());
-          expect(ratio).eql(minDecreaseRatio);
+          expect(ratio).eql(maxIncreaseRatio);
         });
         it("cost should be 0", async () => {
           const res = await amm.getFormulaicUpdateKResult(budget);
