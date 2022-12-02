@@ -1,5 +1,5 @@
 <!-- If you want badge for Github Actions & NPM version, uncomment these! -->
-[![Tests](https://github.com/mattstam/solidity-template/actions/workflows/test.yml/badge.svg)](https://github.com/mattstam/solidity-template/actions/workflows/test.yml)
+[![Tests](https://github.com/Tribe3-xyz/tribe3-smart-contract/actions/workflows/test.yml/badge.svg)](https://github.com/Tribe3-xyz/tribe3-smart-contract/actions/workflows/test.yml)
 <!-- [![Integration Tests](https://github.com/mattstam/solidity-template/actions/workflows/integration-test.yaml/badge.svg)](https://github.com/mattstam/solidity-template/actions/workflows/integration-test.yaml)
 [![Slither Static Analysis](https://github.com/mattstam/solidity-template/actions/workflows/slither.yaml/badge.svg)](https://github.com/mattstam/solidity-template/actions/workflows/slither.yaml)
 [![Lint](https://github.com/mattstam/solidity-template/actions/workflows/lint.yaml/badge.svg)](https://github.com/mattstam/solidity-template/actions/workflows/lint.yaml)
