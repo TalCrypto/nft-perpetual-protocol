@@ -8,8 +8,8 @@ import "./UIntMath.sol";
 library AmmMath {
     using UIntMath for uint256;
     using IntMath for int256;
-    uint128 constant K_DECREASE_MAX = 22 * 1e15; //2.2% decrease
-    uint128 constant K_INCREASE_MAX = 1 * 1e15; //0.1% increase
+    uint256 constant K_DECREASE_MAX = 0.999 ether; //99.9% decrease
+    uint256 constant K_INCREASE_MAX = 1.001 ether; //100.1% increase
 
     /**
      * calculate cost of repegging
@@ -63,30 +63,32 @@ library AmmMath {
             uint256 newBaseAssetReserve
         )
     {
-        newQuoteAssetReserve = _quoteAssetReserve.mulD(_numerator).divD(_denominator);
-        newBaseAssetReserve = _baseAssetReserve.mulD(_numerator).divD(_denominator);
-        if (_numerator == _denominator || _positionSize == 0) {
-            cost = 0;
+        newQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _numerator, _denominator);
+        newBaseAssetReserve = FullMath.mulDiv(_baseAssetReserve, _numerator, _denominator);
+        if (_positionSize > 0) {
+            uint256 newPositionNotionalSize = FullMath.mulDiv(
+                newQuoteAssetReserve,
+                uint256(_positionSize),
+                newBaseAssetReserve + uint256(_positionSize)
+            );
+            uint256 positionNotionalSize = FullMath.mulDiv(
+                _quoteAssetReserve,
+                uint256(_positionSize),
+                _baseAssetReserve + uint256(_positionSize)
+            );
+            cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt();
         } else {
-            uint256 baseAsset = _positionSize > 0
-                ? _baseAssetReserve + uint256(_positionSize)
-                : _baseAssetReserve - uint256(0 - _positionSize);
-            uint256 newBaseAsset = _positionSize > 0
-                ? newBaseAssetReserve + uint256(_positionSize)
-                : newBaseAssetReserve - uint256(0 - _positionSize);
-            uint256 newTerminalQuoteAssetReserve = FullMath.mulDiv(newQuoteAssetReserve, newBaseAssetReserve, newBaseAsset);
-            uint256 terminalQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _baseAssetReserve, baseAsset);
-            uint256 newPositionNotionalSize = _positionSize > 0
-                ? newQuoteAssetReserve - newTerminalQuoteAssetReserve
-                : newTerminalQuoteAssetReserve - newQuoteAssetReserve;
-            uint256 positionNotionalSize = _positionSize > 0
-                ? _quoteAssetReserve - terminalQuoteAssetReserve
-                : terminalQuoteAssetReserve - _quoteAssetReserve;
-            if (_positionSize < 0) {
-                cost = positionNotionalSize.toInt() - newPositionNotionalSize.toInt();
-            } else {
-                cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt();
-            }
+            uint256 newPositionNotionalSize = FullMath.mulDiv(
+                newQuoteAssetReserve,
+                uint256(-_positionSize),
+                newBaseAssetReserve + uint256(-_positionSize)
+            );
+            uint256 positionNotionalSize = FullMath.mulDiv(
+                _quoteAssetReserve,
+                uint256(-_positionSize),
+                _baseAssetReserve + uint256(-_positionSize)
+            );
+            cost = positionNotionalSize.toInt() - newPositionNotionalSize.toInt();
         }
     }
 
@@ -96,34 +98,45 @@ library AmmMath {
         int256 _budget,
         int256 _positionSize
     ) internal pure returns (uint256, uint256) {
+        if (_positionSize == 0 && _budget > 0) {
+            return (K_INCREASE_MAX, 1 ether);
+        } else if (_positionSize == 0 && _budget < 0) {
+            return (K_DECREASE_MAX, 1 ether);
+        }
         int256 x = _baseAssetReserve.toInt();
         int256 y = _quoteAssetReserve.toInt();
-        int256 c = -_budget;
-        int256 d = _positionSize;
-        int256 x_d = x + d;
-        int256 num1 = y.mulD(d).mulD(d);
-        int256 num2 = c.mulD(x_d).mulD(d);
-        int256 denom1 = c.mulD(x).mulD(x_d);
-        int256 denom2 = num1;
-        uint256 numerator = (num1 - num2).abs();
-        uint256 denominator = (denom1 + denom2).abs();
-        if (numerator > denominator) {
-            uint256 kUpperBound = 1 ether + K_INCREASE_MAX;
-            uint256 curChange = numerator.divD(denominator);
-            uint256 maxChange = kUpperBound.divD(1 ether);
+        int256 x_d = x + _positionSize;
+        int256 num1 = y.mulD(_positionSize).mulD(_positionSize);
+        int256 num2 = _positionSize.mulD(x_d).mulD(_budget);
+        int256 denom2 = x.mulD(x_d).mulD(_budget);
+        int256 denom1 = num1;
+        int256 numerator = num1 + num2;
+        int256 denominator = denom1 - denom2;
+        if (_budget > 0 && denominator < 0) {
+            return (K_INCREASE_MAX, 1 ether);
+        } else if (_budget < 0 && numerator < 0) {
+            return (K_DECREASE_MAX, 1 ether);
+        }
+        // if (numerator > 0 != denominator > 0 || denominator == 0 || numerator == 0) {
+        //     return (_budget > 0 ? K_INCREASE_MAX : K_DECREASE_MAX, 1 ether);
+        // }
+        uint256 absNum = numerator.abs();
+        uint256 absDen = denominator.abs();
+        if (absNum > absDen) {
+            uint256 curChange = absNum.divD(absDen);
+            uint256 maxChange = K_INCREASE_MAX.divD(1 ether);
             if (curChange > maxChange) {
-                return (kUpperBound, 1 ether);
+                return (K_INCREASE_MAX, 1 ether);
             } else {
-                return (numerator, denominator);
+                return (absNum, absDen);
             }
         } else {
-            uint256 kLowerBound = 1 ether - K_DECREASE_MAX;
-            uint256 curChange = numerator.divD(denominator);
-            uint256 maxChange = kLowerBound.divD(1 ether);
+            uint256 curChange = absNum.divD(absDen);
+            uint256 maxChange = K_DECREASE_MAX.divD(1 ether);
             if (curChange < maxChange) {
-                return (kLowerBound, 1 ether);
+                return (K_DECREASE_MAX, 1 ether);
             } else {
-                return (numerator, denominator);
+                return (absNum, absDen);
             }
         }
     }
