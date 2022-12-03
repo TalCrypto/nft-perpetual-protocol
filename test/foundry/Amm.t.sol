@@ -33,7 +33,7 @@ contract AmmTest is Test {
         assertEq(amm.baseAssetReserve(), 100 ether);
     }
 
-    function testKAdjutment(int96 _totalPositionSize, int80 _budget) public {
+    function testKAdjutment(int56 _totalPositionSize, int48 _budget) public {
         vm.assume(_budget != 0);
         int256 totalPositionSize = _totalPositionSize * PRECISION;
         vm.assume(totalPositionSize < 90 ether);
@@ -54,7 +54,7 @@ contract AmmTest is Test {
             // max increase 100.1%
             assertLe((newQReserve * 1 ether) / oldQReserve, 1.001 ether, "exceeds quote increase limit");
             assertLe((newBReserve * 1 ether) / oldBReserve, 1.001 ether, "exceeds base increase limit");
-            assertLt(cost, budget + 1000, "bigger than positive budget");
+            assertLt(cost / PRECISION, budget, "bigger than positive budget");
         } else {
             // #long < #short
             assertTrue(isAdjustable);
@@ -64,7 +64,7 @@ contract AmmTest is Test {
             // max decrease 99.9%
             assertGe((newQReserve + 1) * 1 ether, oldQReserve * 0.999 ether, "exceeds quote decrease limit");
             assertGe((newBReserve + 1) * 1 ether, oldBReserve * 0.999 ether, "exceeds base decrease limit");
-            assertGt(cost, budget - 1000, "smaller than negative budget");
+            assertGt(cost / PRECISION, budget, "smaller than negative budget");
         }
     }
 

@@ -428,7 +428,7 @@ describe("ClearingHouse Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(9.9));
       });
-      it("increase K because total position size is positive and oracle < mark", async () => {
+      it("increase K because total position size is positive and oracle < mark && positive funding payment", async () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
