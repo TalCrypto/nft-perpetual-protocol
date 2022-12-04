@@ -7,19 +7,14 @@ on:
 
 jobs:
   tests:
+    name: hardhat test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          submodules: recursive
       - name: Install packages
         uses: actions/setup-node@v3
         with:
           node-version: "18.x"
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
       - run: yarn --ignore-scripts
         shell: bash
       - name: Generating typechain
@@ -30,5 +25,3 @@ jobs:
       #     yarn hardhat run scripts/deploy.ts --network localhost
       - name: Run Hardhat Tests
         run: yarn hardhat test
-      - name: Run Foundry Tests
-        run: forge test -vvv
