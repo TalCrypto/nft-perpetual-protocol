@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import "./FullMath.sol";
-import "./IntMath.sol";
-import "./UIntMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IntMath } from "./IntMath.sol";
+import { UIntMath } from "./UIntMath.sol";
 
 library AmmMath {
     using UIntMath for uint256;
@@ -27,12 +27,12 @@ library AmmMath {
             uint256 positionSizeAbs = _positionSize.abs();
             if (_positionSize > 0) {
                 cost =
-                    FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt() -
-                    FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt();
+                    Math.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt() -
+                    Math.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt();
             } else {
                 cost =
-                    FullMath.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt() -
-                    FullMath.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt();
+                    Math.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt() -
+                    Math.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt();
             }
         }
     }
@@ -44,8 +44,8 @@ library AmmMath {
         uint256 _budget
     ) internal pure returns (uint256 newQuoteAssetReserve) {
         newQuoteAssetReserve = _positionSize > 0
-            ? _budget + _quoteAssetReserve + FullMath.mulDiv(_budget, _baseAssetReserve, _positionSize.abs())
-            : _budget + _quoteAssetReserve - FullMath.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
+            ? _budget + _quoteAssetReserve + Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs())
+            : _budget + _quoteAssetReserve - Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
     }
 
     function adjustKCost(
@@ -63,27 +63,27 @@ library AmmMath {
             uint256 newBaseAssetReserve
         )
     {
-        newQuoteAssetReserve = FullMath.mulDiv(_quoteAssetReserve, _numerator, _denominator);
-        newBaseAssetReserve = FullMath.mulDiv(_baseAssetReserve, _numerator, _denominator);
+        newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, _numerator, _denominator);
+        newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, _numerator, _denominator);
         if (_positionSize > 0) {
-            uint256 newPositionNotionalSize = FullMath.mulDiv(
+            uint256 newPositionNotionalSize = Math.mulDiv(
                 newQuoteAssetReserve,
                 uint256(_positionSize),
                 newBaseAssetReserve + uint256(_positionSize)
             );
-            uint256 positionNotionalSize = FullMath.mulDiv(
+            uint256 positionNotionalSize = Math.mulDiv(
                 _quoteAssetReserve,
                 uint256(_positionSize),
                 _baseAssetReserve + uint256(_positionSize)
             );
             cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt();
         } else {
-            uint256 newPositionNotionalSize = FullMath.mulDiv(
+            uint256 newPositionNotionalSize = Math.mulDiv(
                 newQuoteAssetReserve,
                 uint256(-_positionSize),
                 newBaseAssetReserve - uint256(-_positionSize)
             );
-            uint256 positionNotionalSize = FullMath.mulDiv(
+            uint256 positionNotionalSize = Math.mulDiv(
                 _quoteAssetReserve,
                 uint256(-_positionSize),
                 _baseAssetReserve - uint256(-_positionSize)

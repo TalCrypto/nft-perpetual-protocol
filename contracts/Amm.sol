@@ -8,7 +8,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
-import { FullMath } from "./utils/FullMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 
 contract Amm is IAmm, OwnableUpgradeable, BlockContext {
@@ -815,13 +815,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(quoteAssetAfter != 0, "quote asset after is 0");
 
-        baseAssetAfter = FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
+        baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
         if (
-            FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) !=
-            FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter)
+            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) !=
+            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter, Math.Rounding.Up)
         ) {
             if (isAddToAmm) {
                 baseAssetBought = baseAssetBought - 1;
@@ -855,13 +855,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(baseAssetAfter != 0, "base asset after is 0");
 
-        quoteAssetAfter = FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter);
+        quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter);
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
         if (
-            FullMath.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) !=
-            FullMath.mulDivRoundingUp(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter)
+            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) !=
+            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter, Math.Rounding.Up)
         ) {
             if (isAddToAmm) {
                 quoteAssetSold = quoteAssetSold - 1;

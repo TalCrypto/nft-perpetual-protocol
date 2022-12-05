@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import "./FullMath.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Implements simple signed fixed point math add, sub, mul and div operations.
 library IntMath {
@@ -38,7 +38,11 @@ library IntMath {
         if (x == 0 || y == 0) {
             return 0;
         }
-        return int256(FullMath.mulDiv(abs(x), abs(y), 10**uint256(decimals))) * (int256(abs(x)) / x) * (int256(abs(y)) / y);
+        if (x * y < 0) {
+            return int256(Math.mulDiv(abs(x), abs(y), 10**uint256(decimals))) * (-1);
+        } else {
+            return int256(Math.mulDiv(abs(x), abs(y), 10**uint256(decimals)));
+        }
     }
 
     /// @dev Divides x between y, assuming they are both fixed point with 18 digits.
@@ -55,6 +59,10 @@ library IntMath {
         if (x == 0 || y == 0) {
             return 0;
         }
-        return int256(FullMath.mulDiv(abs(x), 10**uint256(decimals), abs(y))) * (int256(abs(x)) / x) * (int256(abs(y)) / y);
+        if (x * y < 0) {
+            return int256(Math.mulDiv(abs(x), 10**uint256(decimals), abs(y))) * (-1);
+        } else {
+            return int256(Math.mulDiv(abs(x), 10**uint256(decimals), abs(y)));
+        }
     }
 }

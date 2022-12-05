@@ -10,7 +10,6 @@ import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipient.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
-import { FullMath } from "./utils/FullMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 
