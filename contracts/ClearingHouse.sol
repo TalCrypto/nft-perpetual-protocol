@@ -662,7 +662,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
         (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
         int256 positionSize = _amm.getBaseAssetDelta();
-        (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcRerservesAfterRepeg(
+        (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
             quoteAssetReserve,
             baseAssetReserve,
             _targetPrice
