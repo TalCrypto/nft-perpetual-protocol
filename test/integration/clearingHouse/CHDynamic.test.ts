@@ -140,24 +140,23 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     it("success to increase mark price with revenue", async () => {
       await clearingHouse.setOperator(admin.address);
       const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6.5));
-      // cost = 800 * 25 / 100 - 900 * 25 / 100 = -25
-      await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(900), toFullDigitBN(125), toFullDigitBN(-25));
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(900));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
-      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(95));
+      await expect(tx)
+        .to.emit(clearingHouse, "Repeg")
+        .withArgs(amm.address, "806225774750000000000", "124034734500000000000", "-3520961312316134901");
     });
     it("success to decrease mark price with expense", async () => {
       await clearingHouse.setOperator(admin.address);
-      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(700));
+      // mark_price = 6.4
+      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6));
       // cost = 800 * 25 / 100 - 700 * 25 / 100 = 25
-      await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(700), toFullDigitBN(125), toFullDigitBN(25));
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(700));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
-      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(45));
+      await expect(tx)
+        .to.emit(clearingHouse, "Repeg")
+        .withArgs(amm.address, "774596669125000000000", "129099444750000000000", "13976752953574231241");
+      expect(await clearingHouse.totalMinusFees(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("13976752953574231241")));
     });
     it("fail to decrease mark price with expense more than half of fee pool", async () => {
       await clearingHouse.setOperator(admin.address);
-      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(600))).to.revertedWith("insufficient fee pool");
+      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(3))).to.revertedWith("insufficient fee pool");
     });
   });
 
@@ -273,7 +272,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     });
 
     describe("when oracle-mark divergence exceeds limit", () => {
-      // mark = 6.4, oralce = 10
+      // mark = 6.4, oralce = 8
       beforeEach(async () => {
         await forwardBlockTimestamp(15);
       });
@@ -295,8 +294,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-1.6));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / 125).above(1);
-          expect(Number(quoteAssetReserve) / 1000).above(1);
+          expect(Number(baseAssetReserve) / (125 * Math.sqrt(6.4 / 8))).above(1);
+          expect(Number(quoteAssetReserve) / (125 * Math.sqrt(6.4 * 8))).above(1);
         });
       });
       describe("when oracle twap is lower than mark twap", () => {
@@ -317,8 +316,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(1.4));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / 125).eq(1);
-          expect(Number(quoteAssetReserve) / 625).eq(1);
+          expect(Number(baseAssetReserve) / (125 * Math.sqrt(6.4 / 5))).eq(0.9999999992058518);
+          expect(Number(quoteAssetReserve) / (125 * Math.sqrt(6.4 * 5))).eq(0.9999999999129586);
         });
       });
     });

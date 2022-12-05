@@ -109,7 +109,7 @@ describe("Amm Adjustment Unit Test", () => {
           const budget = toFullDigitBN(1000);
           it("should be updatable with positive cost smaller than budget", async () => {
             const res = await amm.getFormulaicRepegResult(budget, false);
-            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+            expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN(1)));
             expect(res.isAdjustable).to.be.true;
             expect(res.cost).to.be.below(budget);
             expect(res.cost).to.be.above(toFullDigitBN(0));
@@ -167,7 +167,7 @@ describe("Amm Adjustment Unit Test", () => {
         });
         it("should be updatable with negative cost", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
-          expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+          expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN("1")));
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.below(toFullDigitBN(0));
         });
@@ -211,7 +211,7 @@ describe("Amm Adjustment Unit Test", () => {
           const budget = toFullDigitBN(1000);
           it("should be updatable with positive cost smaller than budget", async () => {
             const res = await amm.getFormulaicRepegResult(budget, false);
-            expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+            expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN(1)));
             expect(res.isAdjustable).to.be.true;
             expect(res.cost).to.be.below(budget);
             expect(res.cost).to.be.above(toFullDigitBN(0));
@@ -221,11 +221,11 @@ describe("Amm Adjustment Unit Test", () => {
             const res = await amm.getFormulaicRepegResult(budget, false);
             await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
             const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-            expect(res.cost).to.be.equal(valueBefore.sub(valueAfter));
+            expect(res.cost.sub(1)).to.be.equal(valueBefore.sub(valueAfter));
           });
         });
         describe("when budget is not enough", () => {
-          const budget = toFullDigitBN(10);
+          const budget = toFullDigitBN(1);
           it("should not be updatable when adjustK = false", async () => {
             const res = await amm.getFormulaicRepegResult(budget, false);
             expect(res.isAdjustable).to.be.false;
@@ -244,7 +244,7 @@ describe("Amm Adjustment Unit Test", () => {
         const budget = toFullDigitBN(0);
         const oraclePrice = toFullDigitBN(8.2);
         beforeEach(async () => {
-          //oracle_price = 12.3
+          //oracle_price = 8.2 spot_price=8.264
           await priceFeed.setTwapPrice(oraclePrice);
         });
         it("should not be updatable with cost 0", async () => {
@@ -262,7 +262,7 @@ describe("Amm Adjustment Unit Test", () => {
         });
         it("should be updatable with negative cost", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
-          expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+          expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN(1)));
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.below(toFullDigitBN(0));
         });
@@ -271,7 +271,7 @@ describe("Amm Adjustment Unit Test", () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
           await amm.adjust(res.newQuoteAssetReserve, res.newBaseAssetReserve);
           const valueAfter = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, positionSize);
-          expect(res.cost).to.be.equal(valueBefore.sub(valueAfter));
+          expect(res.cost.sub(1)).to.be.equal(valueBefore.sub(valueAfter));
         });
       });
       describe("when oracle > mark and oracle-mark divergence doesn't exceed limit 10%", () => {
@@ -303,7 +303,7 @@ describe("Amm Adjustment Unit Test", () => {
         });
         it("should be updatable to oracle price with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
-          expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+          expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN(1)));
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.equal(budget);
         });
@@ -328,7 +328,7 @@ describe("Amm Adjustment Unit Test", () => {
         });
         it("should be updatable with cost 0", async () => {
           const res = await amm.getFormulaicRepegResult(budget, false);
-          expect(res.newQuoteAssetReserve.mul(toFullDigitBN(1)).div(res.newBaseAssetReserve)).to.be.equal(oraclePrice);
+          expect(res.newQuoteAssetReserve.div(res.newBaseAssetReserve)).to.be.equal(oraclePrice.div(toFullDigitBN(1)));
           expect(res.isAdjustable).to.be.true;
           expect(res.cost).to.be.equal(toFullDigitBN(0));
         });
