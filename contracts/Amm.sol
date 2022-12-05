@@ -832,7 +832,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, _baseAssetPoolAmount) != 0) {
+        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != 0) {
             if (isAddToAmm) {
                 baseAssetBought = baseAssetBought - 1;
             } else {
