@@ -20,7 +20,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 use(solidity);
 
-describe("ClearingHouse Test", () => {
+describe("ClearingHouse Fee Pool Test", () => {
   let admin: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;

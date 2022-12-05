@@ -7,7 +7,7 @@ import { toFullDigitBN } from "../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
-describe("Amm Unit Test", () => {
+describe("Amm Adjustment Unit Test", () => {
   const ETH_PRICE = 100;
 
   let amm: Amm;

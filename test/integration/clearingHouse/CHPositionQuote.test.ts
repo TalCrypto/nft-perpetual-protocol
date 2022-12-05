@@ -40,7 +40,7 @@ type PositionChangedStruct = {
   fundingPayment?: BigNumberish;
 };
 
-describe("ClearingHouse - open/close position Test", () => {
+describe("ClearingHouse - open/close by quote asset Test", () => {
   const MAX_INT = BigNumber.from(2).pow(BigNumber.from(255)).sub(BigNumber.from(1));
   let addresses: string[];
   let admin: SignerWithAddress;

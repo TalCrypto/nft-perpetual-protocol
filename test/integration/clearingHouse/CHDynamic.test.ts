@@ -18,7 +18,7 @@ import { toFullDigitBN } from "../../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
-describe("ClearingHouse Test", () => {
+describe("ClearingHouse Dynamic Adjustment Test", () => {
   let admin: SignerWithAddress;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
@@ -139,7 +139,7 @@ describe("ClearingHouse Test", () => {
     });
     it("success to increase mark price with revenue", async () => {
       await clearingHouse.setOperator(admin.address);
-      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(900));
+      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6.5));
       // cost = 800 * 25 / 100 - 900 * 25 / 100 = -25
       await expect(tx).to.emit(clearingHouse, "Repeg").withArgs(amm.address, toFullDigitBN(900), toFullDigitBN(125), toFullDigitBN(-25));
       expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(900));
