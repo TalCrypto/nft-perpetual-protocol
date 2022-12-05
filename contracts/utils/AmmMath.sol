@@ -12,29 +12,16 @@ library AmmMath {
     uint256 constant K_INCREASE_MAX = 1.001 ether; //100.1% increase
 
     /**
-     * calculate cost of repegging
-     * @return cost if > 0, insurance fund should charge it
+     * @notice calculate reserves after repegging with preserving K
+     * @dev https://docs.google.com/document/d/1JcKFCFY7vDxys0eWl0K1B3kQEEz-mrr7VU3-JPLPkkE/edit?usp=sharing
      */
-    function adjustPegCost(
+    function calcReservesAfterRepeg(
         uint256 _quoteAssetReserve,
         uint256 _baseAssetReserve,
-        int256 _positionSize,
-        uint256 _newQuoteAssetReserve
-    ) internal pure returns (int256 cost) {
-        if (_quoteAssetReserve == _newQuoteAssetReserve || _positionSize == 0) {
-            cost = 0;
-        } else {
-            uint256 positionSizeAbs = _positionSize.abs();
-            if (_positionSize > 0) {
-                cost =
-                    Math.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt() -
-                    Math.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve + positionSizeAbs).toInt();
-            } else {
-                cost =
-                    Math.mulDiv(_quoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt() -
-                    Math.mulDiv(_newQuoteAssetReserve, positionSizeAbs, _baseAssetReserve - positionSizeAbs).toInt();
-            }
-        }
+        uint256 _targetPrice
+    ) internal pure returns (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
+        newQuoteAssetReserve = Math.sqrt(_quoteAssetReserve.mulD(_baseAssetReserve).mulD(_targetPrice));
+        newBaseAssetReserve = Math.sqrt(Math.mulDiv(_quoteAssetReserve, _baseAssetReserve, _targetPrice));
     }
 
     function calcBudgetedQuoteReserve(
@@ -48,47 +35,33 @@ library AmmMath {
             : _budget + _quoteAssetReserve - Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
     }
 
-    function adjustKCost(
+    /**
+     *@notice calculate the cost for adjusting the reserves
+     *@dev
+     *For #long>#short (d>0): cost = (y'-x'y'/(x'+d)) - (y-xy/(x+d)) = y'd/(x'+d) - yd/(x+d)
+     *For #long<#short (d<0): cost = (xy/(x-|d|)-y) - (x'y'/(x'-|d|)-y') = y|d|/(x-|d|) - y'|d|/(x'-|d|)
+     *@param _quoteAssetReserve y
+     *@param _baseAssetReserve x
+     *@param _positionSize d
+     *@param _newQuoteAssetReserve y'
+     *@param _newBaseAssetReserve x'
+     */
+
+    function calcCostForAdjustReserves(
         uint256 _quoteAssetReserve,
         uint256 _baseAssetReserve,
         int256 _positionSize,
-        uint256 _numerator,
-        uint256 _denominator
-    )
-        internal
-        pure
-        returns (
-            int256 cost,
-            uint256 newQuoteAssetReserve,
-            uint256 newBaseAssetReserve
-        )
-    {
-        newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, _numerator, _denominator);
-        newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, _numerator, _denominator);
+        uint256 _newQuoteAssetReserve,
+        uint256 _newBaseAssetReserve
+    ) internal pure returns (int256 cost) {
         if (_positionSize > 0) {
-            uint256 newPositionNotionalSize = Math.mulDiv(
-                newQuoteAssetReserve,
-                uint256(_positionSize),
-                newBaseAssetReserve + uint256(_positionSize)
-            );
-            uint256 positionNotionalSize = Math.mulDiv(
-                _quoteAssetReserve,
-                uint256(_positionSize),
-                _baseAssetReserve + uint256(_positionSize)
-            );
-            cost = newPositionNotionalSize.toInt() - positionNotionalSize.toInt();
+            cost =
+                (Math.mulDiv(_newQuoteAssetReserve, uint256(_positionSize), (_newBaseAssetReserve + uint256(_positionSize)))).toInt() -
+                (Math.mulDiv(_quoteAssetReserve, uint256(_positionSize), (_baseAssetReserve + uint256(_positionSize)))).toInt();
         } else {
-            uint256 newPositionNotionalSize = Math.mulDiv(
-                newQuoteAssetReserve,
-                uint256(-_positionSize),
-                newBaseAssetReserve - uint256(-_positionSize)
-            );
-            uint256 positionNotionalSize = Math.mulDiv(
-                _quoteAssetReserve,
-                uint256(-_positionSize),
-                _baseAssetReserve - uint256(-_positionSize)
-            );
-            cost = positionNotionalSize.toInt() - newPositionNotionalSize.toInt();
+            cost =
+                (Math.mulDiv(_quoteAssetReserve, uint256(-_positionSize), (_baseAssetReserve - uint256(-_positionSize)))).toInt() -
+                (Math.mulDiv(_newQuoteAssetReserve, uint256(-_positionSize), (_newBaseAssetReserve - uint256(-_positionSize)))).toInt();
         }
     }
 

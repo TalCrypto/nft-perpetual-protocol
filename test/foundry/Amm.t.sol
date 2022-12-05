@@ -8,8 +8,13 @@ import "../../contracts/mock/ERC20Fake.sol";
 import "../../contracts/interfaces/IPriceFeed.sol";
 import "../../contracts/interfaces/IAmm.sol";
 import "../../contracts/utils/AmmMath.sol";
+import "../../contracts/utils/UIntMath.sol";
+import "../../contracts/utils/IntMath.sol";
 
 contract AmmTest is Test {
+    using UIntMath for uint256;
+    using IntMath for int256;
+
     IPriceFeed public priceFeed;
     ERC20Fake public token;
     AmmFake public amm;
@@ -33,11 +38,12 @@ contract AmmTest is Test {
         assertEq(amm.baseAssetReserve(), 100 ether);
     }
 
-    function testKAdjutment(int56 _totalPositionSize, int48 _budget) public {
+    function testKAdjutment(int56 _totalPositionSize, int56 _budget) public {
         vm.assume(_budget != 0);
         int256 totalPositionSize = _totalPositionSize * PRECISION;
         vm.assume(totalPositionSize < 90 ether);
         int256 budget = _budget * PRECISION;
+        vm.assume(budget.abs() < 10000 ether);
         if (totalPositionSize > 0) {
             amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), true);
         } else {
@@ -52,9 +58,9 @@ contract AmmTest is Test {
             assertGe(newQReserve, oldQReserve, "not quote increase");
             assertGe(newBReserve, oldBReserve, "not base increase");
             // max increase 100.1%
-            assertLe((newQReserve * 1 ether) / oldQReserve, 1.001 ether, "exceeds quote increase limit");
-            assertLe((newBReserve * 1 ether) / oldBReserve, 1.001 ether, "exceeds base increase limit");
-            assertLt(cost / PRECISION, budget, "bigger than positive budget");
+            assertLe(newQReserve * 1 ether, oldQReserve * 1.001 ether, "exceeds quote increase limit");
+            assertLe(newBReserve * 1 ether, oldBReserve * 1.001 ether, "exceeds base increase limit");
+            assertLe(cost / PRECISION, budget / PRECISION, "bigger than positive budget");
         } else {
             // #long < #short
             assertTrue(isAdjustable);
@@ -64,7 +70,20 @@ contract AmmTest is Test {
             // max decrease 99.9%
             assertGe((newQReserve + 1) * 1 ether, oldQReserve * 0.999 ether, "exceeds quote decrease limit");
             assertGe((newBReserve + 1) * 1 ether, oldBReserve * 0.999 ether, "exceeds base decrease limit");
-            assertGt(cost / PRECISION, budget, "smaller than negative budget");
+            assertGe(cost / PRECISION, budget / PRECISION, "smaller than negative budget");
+        }
+
+        // cost correctness
+        if (totalPositionSize > 0) {
+            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            amm.adjust(newQReserve, newBReserve);
+            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            assertEq(cost, notionalAfter.toInt() - notionalBefore.toInt(), "cost calculation incorrect when #long>#short");
+        } else {
+            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            amm.adjust(newQReserve, newBReserve);
+            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            assertEq(cost, notionalBefore.toInt() - notionalAfter.toInt(), "cost calculation incorrect when #long<#short");
         }
     }
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { OwnerPausableUpgradeSafe } from "./OwnerPausable.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
@@ -656,20 +657,28 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @notice repeg amm according to off-chain calculation for the healthy of market
      * @dev only the operator can call this function
      * @param _amm IAmm address
-     * @param _newQuoteAssetReserve the quote asset amount to be repegged
+     * @param _targetPrice target price to be repegged
      */
-    function repegAmm(IAmm _amm, uint256 _newQuoteAssetReserve) external onlyOperator {
+    function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
         (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
         int256 positionSize = _amm.getBaseAssetDelta();
-        int256 cost = AmmMath.adjustPegCost(quoteAssetReserve, baseAssetReserve, positionSize, _newQuoteAssetReserve);
-
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcRerservesAfterRepeg(
+            quoteAssetReserve,
+            baseAssetReserve,
+            _targetPrice
+        );
+        int256 cost = AmmMath.calcCostForAdjustReserves(
+            quoteAssetReserve,
+            baseAssetReserve,
+            positionSize,
+            newQuoteAssetReserve,
+            newBaseAssetReserve
+        );
+        uint256 budget = getAdjustmentPoolAmount(address(_amm));
         require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
         require(_applyCost(_amm, cost), "failed to apply cost");
-        _amm.adjust(_newQuoteAssetReserve, baseAssetReserve);
-        emit Repeg(address(_amm), _newQuoteAssetReserve, baseAssetReserve, cost);
+        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+        emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
 
     /**
@@ -686,17 +695,16 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     ) external onlyOperator {
         (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
         int256 positionSize = _amm.getBaseAssetDelta();
-        (int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.adjustKCost(
+        uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
+        uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
+        int256 cost = AmmMath.calcCostForAdjustReserves(
             quoteAssetReserve,
             baseAssetReserve,
             positionSize,
-            _scaleNum,
-            _scaleDenom
+            newQuoteAssetReserve,
+            newBaseAssetReserve
         );
-
-        uint256 totalFee = totalFees[address(_amm)];
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
-        uint256 budget = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
+        uint256 budget = getAdjustmentPoolAmount(address(_amm));
         require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
         require(_applyCost(_amm, cost), "failed to apply cost");
         _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);

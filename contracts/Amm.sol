@@ -547,18 +547,29 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost
-            newBaseAssetReserve = _baseAssetReserve;
-            newQuoteAssetReserve = targetPrice.mulD(newBaseAssetReserve);
-            cost = AmmMath.adjustPegCost(_quoteAssetReserve, newBaseAssetReserve, _positionSize, newQuoteAssetReserve);
+            (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
+                _quoteAssetReserve,
+                _baseAssetReserve,
+                targetPrice
+            );
+            cost = AmmMath.calcCostForAdjustReserves(
+                _quoteAssetReserve,
+                _baseAssetReserve,
+                _positionSize,
+                newQuoteAssetReserve,
+                newBaseAssetReserve
+            );
             if (cost > 0 && uint256(cost) > _budget) {
                 if (_adjustK && canLowerK) {
                     // scale down K by 0.1% that returns a profit of clearing house
-                    (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(
+                    newQuoteAssetReserve = (_quoteAssetReserve * 999) / 1000;
+                    newBaseAssetReserve = (_baseAssetReserve * 999) / 1000;
+                    cost = AmmMath.calcCostForAdjustReserves(
                         _quoteAssetReserve,
                         _baseAssetReserve,
                         _positionSize,
-                        999,
-                        1000
+                        newQuoteAssetReserve,
+                        newBaseAssetReserve
                     );
                     isAdjustable = true;
                 } else {
@@ -601,16 +612,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 _budget,
                 _positionSize
             );
-            if (scaleNum == scaleDenom) {
+            if (scaleNum == scaleDenom || scaleDenom == 0 || scaleNum == 0) {
                 isAdjustable = false;
             } else {
                 isAdjustable = true;
-                (cost, newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.adjustKCost(
+                newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, scaleNum, scaleDenom);
+                newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
+                cost = AmmMath.calcCostForAdjustReserves(
                     _quoteAssetReserve,
                     _baseAssetReserve,
                     _positionSize,
-                    scaleNum,
-                    scaleDenom
+                    newQuoteAssetReserve,
+                    newBaseAssetReserve
                 );
             }
         }
@@ -819,10 +832,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (
-            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) !=
-            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter, Math.Rounding.Up)
-        ) {
+        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, _baseAssetPoolAmount) != 0) {
             if (isAddToAmm) {
                 baseAssetBought = baseAssetBought - 1;
             } else {
@@ -859,10 +869,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
         // if the amount is not dividable, return 1 wei less for trader
-        if (
-            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) !=
-            Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter, Math.Rounding.Up)
-        ) {
+        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != 0) {
             if (isAddToAmm) {
                 quoteAssetSold = quoteAssetSold - 1;
             } else {
