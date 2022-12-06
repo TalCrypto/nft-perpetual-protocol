@@ -1,4 +1,4 @@
-name: CI
+name: Foundry Test CI
 on:
   push:
     branches: [main]
