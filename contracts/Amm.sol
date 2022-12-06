@@ -550,7 +550,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
                 _quoteAssetReserve,
                 _baseAssetReserve,
-                targetPrice
+                targetPrice,
+                _positionSize
             );
             cost = AmmMath.calcCostForAdjustReserves(
                 _quoteAssetReserve,

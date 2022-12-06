@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
+import { IPriceFeed } from "../interfaces/IPriceFeed.sol";
 
-contract L2PriceFeedMock {
+contract L2PriceFeedMock is IPriceFeed {
     uint256 price;
     uint256 twapPrice;
     uint256 latestTimestamp;
 
-    constructor(uint256 _price) public {
+    constructor(uint256 _price) {
         price = _price;
         twapPrice = _price;
     }
@@ -33,6 +34,14 @@ contract L2PriceFeedMock {
 
     function setPrice(uint256 _price) public {
         price = _price;
+    }
+
+    function getPreviousPrice(bytes32, uint256) external view returns (uint256) {
+        return price;
+    }
+
+    function getPreviousTimestamp(bytes32, uint256) external view returns (uint256) {
+        return latestTimestamp;
     }
 
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp, uint256 roundId);

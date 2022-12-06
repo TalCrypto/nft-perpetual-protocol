@@ -665,7 +665,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
             quoteAssetReserve,
             baseAssetReserve,
-            _targetPrice
+            _targetPrice,
+            positionSize
         );
         int256 cost = AmmMath.calcCostForAdjustReserves(
             quoteAssetReserve,

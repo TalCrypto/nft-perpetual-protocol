@@ -18,22 +18,29 @@ library AmmMath {
     function calcReservesAfterRepeg(
         uint256 _quoteAssetReserve,
         uint256 _baseAssetReserve,
-        uint256 _targetPrice
+        uint256 _targetPrice,
+        int256 _positionSize
     ) internal pure returns (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) {
-        newQuoteAssetReserve = Math.sqrt(_quoteAssetReserve.mulD(_baseAssetReserve).mulD(_targetPrice));
-        newBaseAssetReserve = Math.sqrt(Math.mulDiv(_quoteAssetReserve, _baseAssetReserve, _targetPrice));
+        uint256 spotPrice = _quoteAssetReserve.divD(_baseAssetReserve);
+        newQuoteAssetReserve = Math.mulDiv(_baseAssetReserve, Math.sqrt(spotPrice.mulD(_targetPrice)), 1e9);
+        newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, Math.sqrt(spotPrice.divD(_targetPrice)), 1e9);
+        // in case net user position size is short and its absolute value is bigger than the expected base asset reserve
+        if (_positionSize < 0 && newBaseAssetReserve <= _positionSize.abs()) {
+            newQuoteAssetReserve = _baseAssetReserve.mulD(_targetPrice);
+            newBaseAssetReserve = _baseAssetReserve;
+        }
     }
 
-    function calcBudgetedQuoteReserve(
-        uint256 _quoteAssetReserve,
-        uint256 _baseAssetReserve,
-        int256 _positionSize,
-        uint256 _budget
-    ) internal pure returns (uint256 newQuoteAssetReserve) {
-        newQuoteAssetReserve = _positionSize > 0
-            ? _budget + _quoteAssetReserve + Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs())
-            : _budget + _quoteAssetReserve - Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
-    }
+    // function calcBudgetedQuoteReserve(
+    //     uint256 _quoteAssetReserve,
+    //     uint256 _baseAssetReserve,
+    //     int256 _positionSize,
+    //     uint256 _budget
+    // ) internal pure returns (uint256 newQuoteAssetReserve) {
+    //     newQuoteAssetReserve = _positionSize > 0
+    //         ? _budget + _quoteAssetReserve + Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs())
+    //         : _budget + _quoteAssetReserve - Math.mulDiv(_budget, _baseAssetReserve, _positionSize.abs());
+    // }
 
     /**
      *@notice calculate the cost for adjusting the reserves
