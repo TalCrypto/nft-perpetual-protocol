@@ -1416,4 +1416,50 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.liquidate(amm.address, alice.address);
     });
   });
+
+  describe("partial liquidation with bad debt", () => {
+    beforeEach(async () => {
+      await transfer(admin, carol.address, 1000);
+      await approve(alice, clearingHouse.address, 1000);
+      await approve(bob, clearingHouse.address, 1000);
+      await approve(carol, clearingHouse.address, 1000);
+      await clearingHouse.setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(0.25));
+      await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
+      // B: 100, Q: 1000
+    });
+    it.only("make alice liquidatable by funding payment", async () => {
+      // B: 80, Q: 1250, SpotPrice = 15.625
+      // Alice - OpenNotional: 250, PositionSize: 20, Margin: 25
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
+      // B: 76.923, Q: 1300, SpotPrice = 16.9
+      // Bob - OpenNotional: 50, PositionSize: 3.076, Margin: 5
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(10), toFullDigitBN(0), true);
+      // Alice - PositionNotional: 268.2539, UnrealizedPnl: 18.2539, Margin: 25
+      const { positionNotional, unrealizedPnl } = await clearingHouse.getPositionNotionalAndUnrealizedPnl(
+        amm.address,
+        alice.address,
+        PnlCalcOption.SPOT_PRICE
+      );
+      expect(positionNotional).equal(BigNumber.from("268253968253968253968"));
+      expect(unrealizedPnl).equal(BigNumber.from("18253968253968253968"));
+
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(15.2));
+
+      // funding payment
+      await gotoNextFundingTime();
+
+      await clearingHouse.payFunding(amm.address);
+
+      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).equal(BigNumber.from("1699999999999999999")); //1.699999999999999999
+
+      // Alice - marginRatio = (25 + 18.2539 - 1.699999999999999999 * 20)/268.2539 = 9.2539 / 268.2539 = 0.03449
+      expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).equal(BigNumber.from("34497041420118343"));
+
+      // hence partial liquidate Alice, but failed because of bad debt
+      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith(
+        "Arithmetic operation underflowed or overflowed outside of an unchecked block"
+      );
+    });
+  });
 });
