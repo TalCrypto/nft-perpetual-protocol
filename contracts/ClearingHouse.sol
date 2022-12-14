@@ -1114,7 +1114,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         if (amount <= 100 wei) {
             positionResp = closePositionResp;
         } else {
-            _setPosition(_amm, _trader, closePositionResp.position); //TODO investigate
+            _setPosition(_amm, _trader, closePositionResp.position);
             PositionResp memory increasePositionResp = _increasePosition(_amm, _side, _trader, amount, _leverage, _isQuote);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
