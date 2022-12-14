@@ -343,14 +343,14 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse
         .connect(bob)
         .openPosition(amm.address, Side.SELL, toFullDigitBN(73.52941176), toFullDigitBN(1), toFullDigitBN(0), true);
-
+      // alice's margin = -0.910364380952380952
       // the badDebt params of the two events are different
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
         .to.emit(clearingHouse, "PositionLiquidated")
         .withArgs(
           alice.address, // trader
           amm.address, // amm
-          "224089635855963718818", // positionNotional
+          "224089635855963718818", // positionNotional 224.08
           "20000000000000000000", // positionSize
           "2801120448199546485", // liquidationFee
           carol.address, // liquidator
@@ -368,7 +368,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "-25910364144036281182", // realizedPnl
           "0", // unrealizedPnlAfter
           "910364144036281182", // badDebt
-          "25000000000000000000", // liquidationPenalty
+          "2801120448199546485", // liquidationPenalty margin<0 => liquidationPenalty=feeToLiquidator
           "9070294784639239822", // spotPrice
           "0" // fundingPayment
         );
@@ -424,8 +424,10 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse
         .connect(bob)
         .openPosition(amm.address, Side.SELL, toFullDigitBN(59.52381), toFullDigitBN(1), toFullDigitBN(0), true);
+      expect(await clearingHouse.vaults(amm.address)).equal(toFullDigitBN(84.52381));
 
       // the badDebt params of the two events are different
+      // alice - margin: 3.93773, feeToLiquidator = 5.72325
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0)))
         .to.emit(clearingHouse, "PositionLiquidated")
         .withArgs(
@@ -449,7 +451,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "-21062271227810650865", // realizedPnl
           "0", // unrealizedPnlAfter
           "0", // badDebt
-          "25000000000000000000", // liquidationPenalty
+          "5723443219304733728", // margin(25) + realizedPnL(-21.06) < feeToLiquidator => liquidationPenalty = liquidationFee
           "9245562124203459263", // spotPrice
           "0" // fundingPayment
         );
@@ -504,7 +506,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "-23493652777982118604", // realizedPnl
           "0", // unrealizedPnlAfter
           "3493652777982118604", // badDebt
-          "20000000000000000000", // liquidationPenalty
+          "2793670659724776482", // liquidationPenalty
           "11317338161935337063", // spotPrice
           "0" // fundingPayment
         );
@@ -581,7 +583,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "-19298245415512465429", // realizedPnl
           "0", // unrealizedPnlAfter
           "0", // badDebt
-          "20000000000000000000", // liquidationPenalty
+          "5482456135387811635", // liquidationPenalty
           "11080332398775331684", // spotPrice
           "0" // fundingPayment
         );
@@ -1428,7 +1430,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
       // B: 100, Q: 1000
     });
-    it.only("make alice liquidatable by funding payment", async () => {
+    it("make alice liquidatable by funding payment", async () => {
       // B: 80, Q: 1250, SpotPrice = 15.625
       // Alice - OpenNotional: 250, PositionSize: 20, Margin: 25
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
@@ -1456,10 +1458,12 @@ describe("ClearingHouse Liquidation Test", () => {
       // Alice - marginRatio = (25 + 18.2539 - 1.699999999999999999 * 20)/268.2539 = 9.2539 / 268.2539 = 0.03449
       expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).equal(BigNumber.from("34497041420118343"));
 
-      // hence partial liquidate Alice, but failed because of bad debt
-      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith(
-        "Arithmetic operation underflowed or overflowed outside of an unchecked block"
-      );
+      // // hence partial liquidate Alice, but failed because of bad debt
+      // await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith(
+      //   "Arithmetic operation underflowed or overflowed outside of an unchecked block"
+      // );
+      await clearingHouse.liquidate(amm.address, alice.address);
+      expect((await clearingHouse.getPosition(amm.address, alice.address)).margin).equal("-6420076011625307380");
     });
   });
 });

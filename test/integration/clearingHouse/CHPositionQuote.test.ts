@@ -953,12 +953,12 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // Since -128.77 - 16.06 < 0
       //   position changed badDebt = 128.77
       //   liquidation badDebt = 8.03
-      // Trader total liquidation penalty = -278.77 + 128.77 = -150
+      // Trader total liquidation penalty = 8.03
 
       await expectPositionChanged(tx, {
         realizedPnl: "-278761061946902654868",
         badDebt: "128761061946902654868",
-        liquidationPenalty: "150000000000000000000",
+        liquidationPenalty: "8030973451327433628",
       });
 
       const receipt = await tx.wait();
