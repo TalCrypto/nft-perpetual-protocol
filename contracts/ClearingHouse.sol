@@ -14,8 +14,6 @@ import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 
-// note BaseRelayRecipient must come after OwnerPausableUpgradeSafe so its _msgSender() takes precedence
-// (yes, the ordering is reversed comparing to Python)
 contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
@@ -47,14 +45,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     /// @param margin isolated margin
     /// @param openNotional the quoteAsset value of position when opening position. the cost of the position
     /// @param lastUpdatedCumulativePremiumFraction for calculating funding payment, record at the moment every time when trader open/reduce/close position
-    /// @param liquidityHistoryIndex
     /// @param blockNumber the block number of the last position
     struct Position {
         int256 size;
-        uint256 margin;
+        int256 margin;
         uint256 openNotional;
         int256 lastUpdatedCumulativePremiumFraction;
-        uint256 liquidityHistoryIndex;
         uint256 blockNumber;
     }
 
@@ -91,7 +87,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // This design is to prevent the attacker being benefited from the multiple action in one block
         // in extreme cases
         uint256 lastRestrictionBlock;
-        int256[] cumulativePremiumFractions;
+        int256 latestCumulativePremiumFraction;
         mapping(address => Position) positionMap;
     }
 
@@ -194,7 +190,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     event PositionChanged(
         address indexed trader,
         address indexed amm,
-        uint256 margin,
+        int256 margin,
         uint256 positionNotional,
         int256 exchangedPositionSize,
         uint256 fee,
@@ -332,7 +328,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         address trader = _msgSender();
         Position memory position = getPosition(_amm, trader);
         // update margin
-        position.margin = position.margin + _addedMargin;
+        position.margin = position.margin + _addedMargin.toInt();
 
         _setPosition(_amm, trader, position);
         // transfer token from trader
@@ -357,7 +353,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // update margin and cumulativePremiumFraction
         int256 marginDelta = _removedMargin.toInt() * -1;
         (
-            uint256 remainMargin,
+            int256 remainMargin,
             uint256 badDebt,
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
@@ -369,7 +365,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // check enough margin (same as the way Curie calculates the free collateral)
         // Use a more conservative way to restrict traders to remove their margin
         // We don't allow unrealized PnL to support their margin removal
-        require(_calcFreeCollateral(_amm, trader, remainMargin - badDebt) >= 0, "free collateral is not enough");
+        require(_calcFreeCollateral(_amm, trader, remainMargin) >= 0, "free collateral is not enough");
 
         _setPosition(_amm, trader, position);
 
@@ -397,8 +393,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 margin: 0,
                 openNotional: 0,
                 lastUpdatedCumulativePremiumFraction: 0,
-                blockNumber: _blockNumber(),
-                liquidityHistoryIndex: 0
+                blockNumber: _blockNumber()
+                // liquidityHistoryIndex: 0
             })
         );
         // calculate settledValue
@@ -406,13 +402,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
         uint256 settlementPrice = _amm.getSettlementPrice();
         uint256 settledValue;
-        if (settlementPrice == 0) {
-            settledValue = pos.margin;
+        if (settlementPrice == 0 && pos.margin > 0) {
+            settledValue = pos.margin.abs();
         } else {
             // returnedFund = positionSize * (settlementPrice - openPrice) + positionMargin
             // openPrice = positionOpenNotional / positionSize.abs()
-            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) +
-                pos.margin.toInt();
+            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) + pos.margin;
             // if `returnedFund` is negative, trader can't get anything back
             if (returnedFund > 0) {
                 settledValue = returnedFund.abs();
@@ -574,6 +569,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
             require(positionResp.badDebt == 0, "bad debt");
 
+            _setPosition(_amm, trader, positionResp.position);
+
             // add scope for stack too deep error
             // transfer the actual token from trader and vault
             _withdraw(_amm, trader, positionResp.marginToVault.abs());
@@ -640,7 +637,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         _formulaicRepegAmm(_amm);
         uint256 cap = getAdjustmentPoolAmount(address(_amm));
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
-        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
+        ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // funding payment is positive means profit
         if (fundingPayment < 0) {
             totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] - fundingPayment.abs();
@@ -796,10 +793,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @return latest cumulative premium fraction in 18 digits
      */
     function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256 latest) {
-        uint256 len = ammMap[address(_amm)].cumulativePremiumFractions.length;
-        if (len > 0) {
-            latest = ammMap[address(_amm)].cumulativePremiumFractions[len - 1];
-        }
+        latest = ammMap[address(_amm)].latestCumulativePremiumFraction;
     }
 
     // function _getMarginRatioByCalcOption(
@@ -835,8 +829,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         int256 _unrealizedPnl,
         uint256 _positionNotional
     ) internal view returns (int256) {
-        (uint256 remainMargin, uint256 badDebt, , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
-        return (remainMargin.toInt() - badDebt.toInt()).divD(_positionNotional.toInt());
+        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
+        return remainMargin.divD(_positionNotional.toInt());
     }
 
     function _enterRestrictionMode(IAmm _amm) internal {
@@ -856,7 +850,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         positionStorage.openNotional = _position.openNotional;
         positionStorage.lastUpdatedCumulativePremiumFraction = _position.lastUpdatedCumulativePremiumFraction;
         positionStorage.blockNumber = _position.blockNumber;
-        positionStorage.liquidityHistoryIndex = _position.liquidityHistoryIndex;
     }
 
     function _liquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
@@ -902,24 +895,26 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 feeToLiquidator = liquidationPenalty / 2;
                 feeToInsuranceFund = liquidationPenalty - feeToLiquidator;
 
-                positionResp.position.margin = positionResp.position.margin - liquidationPenalty;
+                positionResp.position.margin = positionResp.position.margin - liquidationPenalty.toInt();
                 _setPosition(_amm, _trader, positionResp.position);
 
                 isPartialClose = true;
             } else {
-                liquidationPenalty = getPosition(_amm, _trader).margin;
+                // liquidationPenalty = getPosition(_amm, _trader).margin.abs();
                 positionResp = _closePosition(_amm, _trader, true);
-                uint256 remainMargin = positionResp.marginToVault.abs();
+                uint256 remainMargin = positionResp.marginToVault < 0 ? positionResp.marginToVault.abs() : 0;
                 feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio) / 2;
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund
                 uint256 totalBadDebt = positionResp.badDebt;
                 if (feeToLiquidator > remainMargin) {
+                    liquidationPenalty = feeToLiquidator;
                     liquidationBadDebt = feeToLiquidator - remainMargin;
                     totalBadDebt = totalBadDebt + liquidationBadDebt;
                     remainMargin = 0;
                 } else {
+                    liquidationPenalty = remainMargin;
                     remainMargin = remainMargin - feeToLiquidator;
                 }
 
@@ -931,6 +926,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 if (remainMargin > 0) {
                     feeToInsuranceFund = remainMargin;
                 }
+
+                _setPosition(_amm, _trader, positionResp.position);
             }
 
             if (feeToInsuranceFund > 0) {
@@ -1003,8 +1000,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         int256 increaseMarginRequirement = positionResp.exchangedQuoteAssetAmount.divD(_leverage).toInt();
         (
-            uint256 remainMargin, // the 2nd return (bad debt) must be 0 - already checked from caller
-            ,
+            int256 remainMargin,
+            uint256 badDebt,
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
         ) = _calcRemainMarginWithFundingPayment(_amm, oldPosition, increaseMarginRequirement);
@@ -1012,6 +1009,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
 
         // update positionResp
+        positionResp.badDebt = badDebt;
         positionResp.unrealizedPnlAfter = unrealizedPnl;
         positionResp.marginToVault = increaseMarginRequirement;
         positionResp.fundingPayment = fundingPayment;
@@ -1020,7 +1018,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             remainMargin,
             oldPosition.openNotional + positionResp.exchangedQuoteAssetAmount, //In Quote Asset (e.g. USDC)
             latestCumulativePremiumFraction,
-            oldPosition.liquidityHistoryIndex,
             _blockNumber()
         );
     }
@@ -1055,7 +1052,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                     oldPosition.size.abs().toInt()
                 );
             }
-            uint256 remainMargin;
+            int256 remainMargin;
             int256 latestCumulativePremiumFraction;
             (
                 remainMargin,
@@ -1081,7 +1078,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 remainMargin,
                 remainOpenNotional.abs(),
                 latestCumulativePremiumFraction,
-                oldPosition.liquidityHistoryIndex,
                 _blockNumber()
             );
             return positionResp;
@@ -1110,11 +1106,12 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             ? _amount - closePositionResp.exchangedQuoteAssetAmount
             : _amount - closePositionResp.exchangedPositionSize.abs();
 
-        // if remain asset amount is too small (eg. 10 wei) then the required margin might be 0
+        // if remain asset amount is too small (eg. 100 wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
-        if (amount <= 10 wei) {
+        if (amount <= 100 wei) {
             positionResp = closePositionResp;
         } else {
+            _setPosition(_amm, _trader, closePositionResp.position);
             PositionResp memory increasePositionResp = _increasePosition(_amm, _side, _trader, amount, _leverage, _isQuote);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
@@ -1142,7 +1139,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         _requirePositionSize(oldPosition.size);
 
         (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        (uint256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = _calcRemainMarginWithFundingPayment(
+        (int256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = _calcRemainMarginWithFundingPayment(
             _amm,
             oldPosition,
             unrealizedPnl
@@ -1151,7 +1148,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         positionResp.realizedPnl = unrealizedPnl;
         positionResp.badDebt = badDebt;
         positionResp.fundingPayment = fundingPayment;
-        positionResp.marginToVault = remainMargin.toInt() * -1;
+        positionResp.marginToVault = remainMargin * -1;
+        positionResp.position = Position({
+            size: 0,
+            margin: 0,
+            openNotional: 0,
+            lastUpdatedCumulativePremiumFraction: 0,
+            blockNumber: _blockNumber()
+        });
 
         (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
             _amm,
@@ -1163,18 +1167,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
         _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
-        _setPosition(
-            _amm,
-            _trader,
-            Position({
-                size: 0,
-                margin: 0,
-                openNotional: 0,
-                lastUpdatedCumulativePremiumFraction: 0,
-                blockNumber: _blockNumber(),
-                liquidityHistoryIndex: 0
-            })
-        );
     }
 
     function _swap(
@@ -1368,7 +1360,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         internal
         view
         returns (
-            uint256 remainMargin,
+            int256 remainMargin,
             uint256 badDebt,
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
@@ -1381,13 +1373,11 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         }
 
         // calculate remain margin
-        int256 signedRemainMargin = _marginDelta - fundingPayment + _oldPosition.margin.toInt();
+        remainMargin = _marginDelta - fundingPayment + _oldPosition.margin;
 
         // if remain margin is negative, set to zero and leave the rest to bad debt
-        if (signedRemainMargin < 0) {
-            badDebt = signedRemainMargin.abs();
-        } else {
-            remainMargin = signedRemainMargin.abs();
+        if (remainMargin < 0) {
+            badDebt = remainMargin.abs();
         }
     }
 
@@ -1395,7 +1385,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function _calcFreeCollateral(
         IAmm _amm,
         address _trader,
-        uint256 _marginWithFundingPayment
+        int256 _marginWithFundingPayment
     ) internal view returns (int256) {
         Position memory pos = getPosition(_amm, _trader);
         (int256 unrealizedPnl, uint256 positionNotional) = _getPreferencePositionNotionalAndUnrealizedPnl(
@@ -1405,8 +1395,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         );
 
         // min(margin + funding, margin + funding + unrealized PnL) - position value * initMarginRatio
-        int256 accountValue = unrealizedPnl + _marginWithFundingPayment.toInt();
-        int256 minCollateral = unrealizedPnl > 0 ? _marginWithFundingPayment.toInt() : accountValue;
+        int256 accountValue = unrealizedPnl + _marginWithFundingPayment;
+        int256 minCollateral = unrealizedPnl > 0 ? _marginWithFundingPayment : accountValue;
 
         // margin requirement
         // if holding a long position, using open notional (mapping to quote debt in Curie)

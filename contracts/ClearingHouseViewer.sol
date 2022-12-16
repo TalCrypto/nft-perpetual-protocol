@@ -49,14 +49,14 @@ contract ClearingHouseViewer {
      * @param _trader trader address
      * @return margin personal balance with funding payment in 18 digits
      */
-    function getPersonalBalanceWithFundingPayment(IERC20 _quoteToken, address _trader) external view returns (uint256 margin) {
+    function getPersonalBalanceWithFundingPayment(IERC20 _quoteToken, address _trader) external view returns (int256 margin) {
         IInsuranceFund insuranceFund = clearingHouse.insuranceFund();
         IAmm[] memory amms = insuranceFund.getAllAmms();
         for (uint256 i = 0; i < amms.length; i++) {
             if (IAmm(amms[i]).quoteAsset() != _quoteToken) {
                 continue;
             }
-            uint256 posMargin = getPersonalPositionWithFundingPayment(amms[i], _trader).margin;
+            int256 posMargin = getPersonalPositionWithFundingPayment(amms[i], _trader).margin;
             margin = margin + posMargin;
         }
     }
@@ -73,9 +73,8 @@ contract ClearingHouseViewer {
         returns (ClearingHouse.Position memory position)
     {
         position = clearingHouse.getPosition(_amm, _trader);
-        int256 marginWithFundingPayment = position.margin.toInt() +
-            getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm));
-        position.margin = marginWithFundingPayment >= 0 ? marginWithFundingPayment.abs() : 0;
+        position.margin = position.margin + getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm));
+        // position.margin = marginWithFundingPayment >= 0 ? marginWithFundingPayment.abs() : 0;
     }
 
     /**
@@ -113,8 +112,8 @@ contract ClearingHouseViewer {
             : (spotPricePnl, spotPositionNotional);
 
         // min(margin + funding, margin + funding + unrealized PnL) - position value * initMarginRatio
-        int256 accountValue = unrealizedPnl + position.margin.toInt();
-        int256 minCollateral = accountValue - position.margin.toInt() > 0 ? position.margin.toInt() : accountValue;
+        int256 accountValue = unrealizedPnl + position.margin;
+        int256 minCollateral = accountValue - position.margin > 0 ? position.margin : accountValue;
 
         uint256 initMarginRatio = clearingHouse.initMarginRatio();
         int256 marginRequirement = position.size > 0

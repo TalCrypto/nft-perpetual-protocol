@@ -1,6 +1,6 @@
 {
   "name": "@tribe3-xyz/protocol",
-  "version": "1.0.0",
+  "version": "1.1.0-alpha",
   "license": "MIT",
   "scripts": {
     "graph-codegen": "cd tribe3-perp-subgraph && graph codegen",
