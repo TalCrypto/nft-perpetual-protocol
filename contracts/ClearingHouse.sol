@@ -87,7 +87,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // This design is to prevent the attacker being benefited from the multiple action in one block
         // in extreme cases
         uint256 lastRestrictionBlock;
-        int256[] cumulativePremiumFractions;
+        int256 latestCumulativePremiumFraction;
         mapping(address => Position) positionMap;
     }
 
@@ -637,7 +637,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         _formulaicRepegAmm(_amm);
         uint256 cap = getAdjustmentPoolAmount(address(_amm));
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
-        ammMap[address(_amm)].cumulativePremiumFractions.push(premiumFraction + getLatestCumulativePremiumFraction(_amm));
+        ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // funding payment is positive means profit
         if (fundingPayment < 0) {
             totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] - fundingPayment.abs();
@@ -793,10 +793,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @return latest cumulative premium fraction in 18 digits
      */
     function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256 latest) {
-        uint256 len = ammMap[address(_amm)].cumulativePremiumFractions.length;
-        if (len > 0) {
-            latest = ammMap[address(_amm)].cumulativePremiumFractions[len - 1];
-        }
+        latest = ammMap[address(_amm)].latestCumulativePremiumFraction;
     }
 
     // function _getMarginRatioByCalcOption(
