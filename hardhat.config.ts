@@ -66,7 +66,8 @@ const config = {
       url: "https://rinkeby.arbitrum.io/rpc",
     },
     arbitrum: {
-      url: "https://rpc.ankr.com/arbitrum",
+      url: "https://arb-mainnet.g.alchemy.com/v2/XY2OuQR0tqpTi-WY_yljupj20HFlfVok",
+      accounts: [PRIVATE_KEY],
     },
     goerli: {
       url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,

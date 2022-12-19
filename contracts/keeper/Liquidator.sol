@@ -26,6 +26,10 @@ contract Liquidator is Ownable {
         mmRatio = _mmRatio;
     }
 
+    function setClearingHouse(address _addrCH) external onlyOwner {
+        clearingHouse = IClearingHouse(_addrCH);
+    }
+
     function withdrawERC20(IERC20 _token) external onlyOwner {
         _token.safeTransfer(msg.sender, _token.balanceOf(address(this)));
     }
