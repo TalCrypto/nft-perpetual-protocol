@@ -965,6 +965,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             positionResp.fundingPayment
         );
 
+        _formulaicRepegAmm(_amm);
+
         return (positionResp.exchangedQuoteAssetAmount, isPartialClose);
     }
 
