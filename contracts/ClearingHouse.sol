@@ -127,17 +127,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
-    // amm => balance of vault
+    // vamm => balance of vault
     mapping(address => uint256) public vaults;
 
-    // amm => total fees allocated to market
-    // the cumulative fees collected from traders, not decrease
-    mapping(address => uint256) public totalFees;
+    // amm => budget allocated to adjust market
+    mapping(address => uint256) public adjustmentBudgets;
 
-    // totalMinusFees = totalFees - system funding payment - adjust costs
-    mapping(address => uint256) public totalMinusFees;
-
-    // amm => revenue since last funding
+    // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(address => int256) public netRevenuesSinceLastFunding;
 
     // the address of bot that controls market
@@ -635,18 +631,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         _formulaicRepegAmm(_amm);
-        uint256 cap = getAdjustmentPoolAmount(address(_amm));
+        uint256 cap = adjustmentBudgets[address(_amm)];
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
-        // funding payment is positive means profit
-        if (fundingPayment < 0) {
-            totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] - fundingPayment.abs();
-            _withdrawFromInsuranceFund(_amm, fundingPayment.abs());
-        } else {
-            totalMinusFees[address(_amm)] = totalMinusFees[address(_amm)] + fundingPayment.abs();
-            _transferToInsuranceFund(_amm, fundingPayment.abs());
-        }
+        // positive funding payment means profit so reverse it to pass into apply cost function
+        require(_applyAdjustmentCost(_amm, -1 * fundingPayment), "failed to apply cost");
         _formulaicUpdateK(_amm, fundingImbalanceCost);
+        // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
     }
 
@@ -672,9 +663,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             newQuoteAssetReserve,
             newBaseAssetReserve
         );
-        uint256 budget = getAdjustmentPoolAmount(address(_amm));
-        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
-        require(_applyCost(_amm, cost), "failed to apply cost");
+        require(_applyAdjustmentCost(_amm, cost), "failed to apply cost");
         _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
         emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
@@ -702,26 +691,15 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             newQuoteAssetReserve,
             newBaseAssetReserve
         );
-        uint256 budget = getAdjustmentPoolAmount(address(_amm));
-        require(cost <= 0 || cost.abs() <= budget, "insufficient fee pool");
-        require(_applyCost(_amm, cost), "failed to apply cost");
+        require(_applyAdjustmentCost(_amm, cost), "failed to apply cost");
         _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
         emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
 
-    function deposit2FeePool(IAmm _amm, uint256 _amount) external {
+    function depositForAdjustmentBudget(IAmm _amm, uint256 _amount) external nonReentrant {
+        adjustmentBudgets[address(_amm)] = adjustmentBudgets[address(_amm)] + _amount;
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
-        totalFees[address(_amm)] += _amount;
-        totalMinusFees[address(_amm)] += _amount;
-    }
-
-    function withdrawFromFeePool(IAmm _amm, uint256 _amount) external onlyOwner {
-        totalFees[address(_amm)] -= _amount;
-        totalMinusFees[address(_amm)] -= _amount;
-        IERC20 quoteAsset = _amm.quoteAsset();
-        insuranceFund.withdraw(quoteAsset, _amount);
-        quoteAsset.safeTransfer(_msgSender(), _amount);
     }
 
     //
@@ -806,18 +784,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
     //     return _getMarginRatio(_amm, position, pnl, positionNotional);
     // }
-
-    /**
-     * @notice Only a portion of the protocol fees are allocated to adjustment and funding payment
-     * @dev half of total fee is allocated to market loss, the remain to adjustment
-     * @param _amm the address of vamm
-     * @return amount the fee amount allocated to adjustmnet and funding payment
-     */
-    function getAdjustmentPoolAmount(address _amm) public view returns (uint256 amount) {
-        uint256 totalFee = totalFees[_amm];
-        uint256 totalMinusFee = totalMinusFees[_amm];
-        amount = totalMinusFee > totalFee / 2 ? totalMinusFee - totalFee / 2 : 0;
-    }
 
     //
     // INTERNAL FUNCTIONS
@@ -1254,8 +1220,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
             quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            totalFees[address(_amm)] += _spreadFee;
-            totalMinusFees[address(_amm)] += _spreadFee;
+            // 50% of fees are allocated to adjustment
+            adjustmentBudgets[address(_amm)] += _spreadFee / 2;
+            // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
         }
 
@@ -1462,13 +1429,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     }
 
     function _formulaicRepegAmm(IAmm _amm) private {
-        uint256 budget = getAdjustmentPoolAmount(address(_amm));
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
-            budget,
+            adjustmentBudgets[address(_amm)],
             true
         );
-        if (isAdjustable && _applyCost(_amm, cost)) {
+        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            // consider repeg cost in k-adjustment
+            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }
@@ -1491,31 +1459,30 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
             budget
         );
-        if (isAdjustable && _applyCost(_amm, cost)) {
+        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
     }
 
     /**
-     * @notice apply cost for repeg and adjustment
+     * @notice apply cost for funding payment, repeg and k-adjustment
      * @dev negative cost is revenue, otherwise is expense of insurance fund
      */
-    function _applyCost(IAmm _amm, int256 _cost) private returns (bool) {
-        uint256 totalMinusFee = totalMinusFees[address(_amm)];
+    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private returns (bool) {
+        uint256 adjustmentBudget = adjustmentBudgets[address(_amm)];
         uint256 costAbs = _cost.abs();
         if (_cost > 0) {
-            if (costAbs <= totalMinusFee) {
-                totalMinusFees[address(_amm)] = totalMinusFee - costAbs;
+            if (costAbs <= adjustmentBudget) {
+                adjustmentBudgets[address(_amm)] = adjustmentBudget - costAbs;
                 _withdrawFromInsuranceFund(_amm, costAbs);
             } else {
                 return false;
             }
         } else {
-            totalMinusFees[address(_amm)] = totalMinusFee + costAbs;
+            adjustmentBudgets[address(_amm)] = adjustmentBudget + costAbs;
             _transferToInsuranceFund(_amm, costAbs);
         }
-        netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - _cost;
         return true;
     }
 }
