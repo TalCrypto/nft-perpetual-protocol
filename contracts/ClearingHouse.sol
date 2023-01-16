@@ -696,8 +696,13 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
 
-    function depositForAdjustmentBudget(IAmm _amm, uint256 _amount) external nonReentrant {
-        adjustmentBudgets[address(_amm)] = adjustmentBudgets[address(_amm)] + _amount;
+    /**
+     *@notice inject WETH to the insurance fund half of which is used for the adjustment
+     *@param _amm the target vamm to inject WETH
+     *@param _amount the amount to be injected
+     */
+    function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
+        adjustmentBudgets[address(_amm)] = adjustmentBudgets[address(_amm)] + _amount / 2;
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
     }
