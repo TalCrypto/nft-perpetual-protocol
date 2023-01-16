@@ -65,32 +65,30 @@ describe("ClearingHouse Fee Pool Test", () => {
     amm = fixture.amm;
   });
 
-  it("deposit to fee pool", async () => {
+  it("inject into fee pool", async () => {
     await approve(alice, clearingHouse.address, 100);
-    expect(await clearingHouse.totalFees(amm.address)).eql(toFullDigitBN(0));
-    expect(await clearingHouse.totalMinusFees(amm.address)).eql(toFullDigitBN(0));
-    await clearingHouse.connect(alice).deposit2FeePool(amm.address, toFullDigitBN(100));
-    expect(await clearingHouse.totalFees(amm.address)).eql(toFullDigitBN(100));
-    expect(await clearingHouse.totalMinusFees(amm.address)).eql(toFullDigitBN(100));
+    expect(await clearingHouse.adjustmentBudgets(amm.address)).eql(toFullDigitBN(0));
+    await clearingHouse.connect(alice).inject2InsuranceFund(amm.address, toFullDigitBN(100));
+    expect(await clearingHouse.adjustmentBudgets(amm.address)).eql(toFullDigitBN(50));
   });
 
-  describe("withdraw from fee pool", () => {
-    beforeEach(async () => {
-      await approve(alice, clearingHouse.address, 100);
-      await clearingHouse.connect(alice).deposit2FeePool(amm.address, toFullDigitBN(100));
-    });
-    it("should be failed of withdrawal from not owner", async () => {
-      await expect(clearingHouse.connect(alice).withdrawFromFeePool(amm.address, toFullDigitBN(10))).revertedWith(
-        "Ownable: caller is not the owner"
-      );
-    });
-    it("should be success of withdrawal from owner", async () => {
-      await clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(10));
-      expect(await clearingHouse.totalFees(amm.address)).eql(toFullDigitBN(90));
-      expect(await clearingHouse.totalMinusFees(amm.address)).eql(toFullDigitBN(90));
-    });
-    it("should be failed of withdrawal exceeding the balance of fee pool", async () => {
-      await expect(clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(101))).reverted;
-    });
-  });
+  // describe("withdraw from fee pool", () => {
+  //   beforeEach(async () => {
+  //     await approve(alice, clearingHouse.address, 100);
+  //     await clearingHouse.connect(alice).deposit2FeePool(amm.address, toFullDigitBN(100));
+  //   });
+  //   it("should be failed of withdrawal from not owner", async () => {
+  //     await expect(clearingHouse.connect(alice).withdrawFromFeePool(amm.address, toFullDigitBN(10))).revertedWith(
+  //       "Ownable: caller is not the owner"
+  //     );
+  //   });
+  //   it("should be success of withdrawal from owner", async () => {
+  //     await clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(10));
+  //     expect(await clearingHouse.totalFees(amm.address)).eql(toFullDigitBN(90));
+  //     expect(await clearingHouse.totalMinusFees(amm.address)).eql(toFullDigitBN(90));
+  //   });
+  //   it("should be failed of withdrawal exceeding the balance of fee pool", async () => {
+  //     await expect(clearingHouse.withdrawFromFeePool(amm.address, toFullDigitBN(101))).reverted;
+  //   });
+  // });
 });
