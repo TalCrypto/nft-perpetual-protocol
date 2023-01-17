@@ -218,7 +218,8 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     );
 
     modifier onlyOperator() {
-        require(operator == _msgSender(), "caller is not operator");
+        // not operator
+        require(operator == _msgSender(), "CH_NO");
         _;
     }
 
@@ -232,8 +233,10 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         uint256 _liquidationFeeRatio,
         IInsuranceFund _insuranceFund
     ) public initializer {
-        //require(address(_insuranceFund) != address(0), "Invalid IInsuranceFund");
-
+        require(address(_insuranceFund) != address(0), "CH_ZAIF"); //zero addres of IF
+        _requireNonZeroInput(_initMarginRatio);
+        _requireNonZeroInput(_maintenanceMarginRatio);
+        _requireNonZeroInput(_liquidationFeeRatio);
         __OwnerPausable_init();
 
         //comment these out for reducing bytecode size
@@ -302,8 +305,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
      * @dev only owner can call
      */
     function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
-        //require(_ratio.cmp(Decimal.one()) <= 0, "invalid partial liquidation ratio");
-        require(_ratio <= 1 ether, "invalid partial liquidation ratio");
+        require(_ratio <= 1 ether, "CH_IPLR"); //invalid partial liquidation ratio
         partialLiquidationRatio = _ratio;
     }
 
@@ -354,14 +356,14 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
         ) = _calcRemainMarginWithFundingPayment(_amm, position, marginDelta);
-        require(badDebt == 0, "margin is not enough");
+        require(badDebt == 0, "CH_MNE"); // margin is not enough
         position.margin = remainMargin;
         position.lastUpdatedCumulativePremiumFraction = latestCumulativePremiumFraction;
 
         // check enough margin (same as the way Curie calculates the free collateral)
         // Use a more conservative way to restrict traders to remove their margin
         // We don't allow unrealized PnL to support their margin removal
-        require(_calcFreeCollateral(_amm, trader, remainMargin) >= 0, "free collateral is not enough");
+        require(_calcFreeCollateral(_amm, trader, remainMargin) >= 0, "CH_FCNE"); //free collateral is not enough
 
         _setPosition(_amm, trader, position);
 
@@ -502,7 +504,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             }
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
-            require(positionResp.badDebt == 0, "bad debt");
+            require(positionResp.badDebt == 0, "CH_BDP"); //bad debt position
 
             // transfer the actual token between trader and vault
             if (positionResp.marginToVault > 0) {
@@ -563,7 +565,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             );
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
-            require(positionResp.badDebt == 0, "bad debt");
+            require(positionResp.badDebt == 0, "CH_BDP"); //bad debt position
 
             _setPosition(_amm, trader, positionResp.position);
 
@@ -605,11 +607,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         uint256 quoteAssetAmountLimit = isPartialClose ? _quoteAssetAmountLimit.mulD(partialLiquidationRatio) : _quoteAssetAmountLimit;
 
-        if (position.size > 0) {
-            require(quoteAssetAmount >= quoteAssetAmountLimit, "Less than minimal quote token");
-        } else if (position.size < 0 && quoteAssetAmountLimit != 0) {
-            require(quoteAssetAmount <= quoteAssetAmountLimit, "More than maximal quote token");
-        }
+        _checkSlippage(position.size > 0 ? Side.SELL : Side.BUY, quoteAssetAmount, 0, quoteAssetAmountLimit, false);
 
         return (quoteAssetAmount, isPartialClose);
     }
@@ -635,7 +633,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
-        require(_applyAdjustmentCost(_amm, -1 * fundingPayment), "failed to apply cost");
+        require(_applyAdjustmentCost(_amm, -1 * fundingPayment), "CH_IAB"); //insufficient adjustment budget
         _formulaicUpdateK(_amm, fundingImbalanceCost);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
@@ -663,7 +661,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             newQuoteAssetReserve,
             newBaseAssetReserve
         );
-        require(_applyAdjustmentCost(_amm, cost), "failed to apply cost");
+        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
         _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
         emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
@@ -691,7 +689,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             newQuoteAssetReserve,
             newBaseAssetReserve
         );
-        require(_applyAdjustmentCost(_amm, cost), "failed to apply cost");
+        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
         _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
         emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     }
@@ -891,7 +889,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
                 // transfer the actual token between trader and vault
                 if (totalBadDebt > 0) {
-                    require(backstopLiquidityProviderMap[_msgSender()], "not backstop LP");
+                    require(backstopLiquidityProviderMap[_msgSender()], "CH_NBLP"); //not backstop LP
                     _realizeBadDebt(_amm, totalBadDebt);
                 }
                 if (remainMargin > 0) {
@@ -965,7 +963,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             uint256 maxHoldingBaseAsset = _amm.getMaxHoldingBaseAsset();
             if (maxHoldingBaseAsset > 0) {
                 // total position size should be less than `positionUpperBound`
-                require(newSize.abs() <= maxHoldingBaseAsset, "hit position size upper bound"); //hit position size upper bound
+                require(newSize.abs() <= maxHoldingBaseAsset, "CH_OPUB"); //over position size upper bound
             }
         }
 
@@ -1042,7 +1040,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             int256 remainOpenNotional = oldPosition.size > 0
                 ? oldPositionNotional.toInt() - positionResp.exchangedQuoteAssetAmount.toInt() - positionResp.unrealizedPnlAfter
                 : positionResp.unrealizedPnlAfter + oldPositionNotional.toInt() - positionResp.exchangedQuoteAssetAmount.toInt();
-            require(remainOpenNotional > 0, "value of openNotional <= 0");
+            require(remainOpenNotional > 0, "CH_ONNP"); // open notional value is not positive
 
             positionResp.position = Position(
                 oldPosition.size + positionResp.exchangedPositionSize,
@@ -1070,7 +1068,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         PositionResp memory closePositionResp = _closePosition(_amm, _trader, false);
 
         // the old position is underwater. trader should close a position first
-        require(closePositionResp.badDebt == 0, "reduce an underwater position");
+        require(closePositionResp.badDebt == 0, "CH_BDP"); // bad debt position
 
         // update open notional after closing position
         uint256 amount = _isQuote
@@ -1233,7 +1231,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
         // transfer toll to tollPool
         if (_tollFee > 0) {
-            require(address(tollPool) != address(0), "Invalid"); //Invalid tollPool
+            require(address(tollPool) != address(0), "CH_ZATP"); // zero address of toll pool
             quoteAsset.safeTransferFrom(_from, address(tollPool), _tollFee);
         }
     }
@@ -1314,7 +1312,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
             }
             if (_amount > 0) {
                 // whitelist won't be restrict by open interest cap
-                require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "over limit");
+                require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "CH_ONOL"); // open notional is over limit
             }
             openInterestNotionalMap[ammAddr] = updatedOpenInterestNotional.abs();
         }
@@ -1405,22 +1403,22 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     // REQUIRE FUNCTIONS
     //
     function _requireAmm(IAmm _amm, bool _open) private view {
-        require(insuranceFund.isExistedAmm(_amm), "amm not found");
-        require(_open == _amm.open(), _open ? "amm was closed" : "amm is open");
+        require(insuranceFund.isExistedAmm(_amm), "CH_ANF"); //vAMM not found
+        require(_open == _amm.open(), _open ? "CH_AC" : "CH_AO"); //vAmm is closed, vAmm is opened
     }
 
     function _requireNonZeroInput(uint256 _input) private pure {
-        require(_input != 0, "input is 0");
+        require(_input != 0, "CH_ZI"); //zero input
     }
 
     function _requirePositionSize(int256 _size) private pure {
-        require(_size != 0, "positionSize is 0");
+        require(_size != 0, "CH_ZP"); //zero position size
     }
 
     function _requireNotRestrictionMode(IAmm _amm) private view {
         uint256 currentBlock = _blockNumber();
         if (currentBlock == ammMap[address(_amm)].lastRestrictionBlock) {
-            require(getPosition(_amm, _msgSender()).blockNumber != currentBlock, "only one action allowed");
+            require(getPosition(_amm, _msgSender()).blockNumber != currentBlock, "CH_RM"); //restriction mode, only one action allowed
         }
     }
 
@@ -1430,7 +1428,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         bool _largerThanOrEqualTo
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
-        require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "Margin ratio not meet criteria");
+        require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
     }
 
     function _formulaicRepegAmm(IAmm _amm) private {

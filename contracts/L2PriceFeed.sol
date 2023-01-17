@@ -43,7 +43,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp, uint256 roundId);
 
     modifier onlyBridge() {
-        require(_msgSender() == ambBridge, "!ambBridge");
+        require(_msgSender() == ambBridge, "L2P_NAB"); //not ambBridge
         _;
     }
 
@@ -77,7 +77,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     }
 
     function setRootBridge(address _rootBridge) external onlyOwner {
-        require(_rootBridge != address(0), "addr is empty");
+        require(_rootBridge != address(0), "L2P_ZA"); //zero address
         rootBridge = _rootBridge;
     }
 
@@ -93,7 +93,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     ) external override onlyBridge {
         //require(IAMB(ambBridge).messageSender() == rootBridge, "sender not RootBridge");
         requireKeyExisted(_priceFeedKey, true);
-        require(_timestamp > getLatestTimestamp(_priceFeedKey), "incorrect timestamp");
+        require(_timestamp > getLatestTimestamp(_priceFeedKey), "L2P_IT"); //incorrect timestamp
 
         PriceData memory data = PriceData({ price: _price, timestamp: _timestamp, roundId: _roundId });
         priceFeedMap[_priceFeedKey].priceData.push(data);
@@ -102,15 +102,15 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     }
 
     function getPrice(bytes32 _priceFeedKey) external view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
+        require(isExistedKey(_priceFeedKey), "L2P_KNE"); //key not existed
         uint256 len = getPriceFeedLength(_priceFeedKey);
-        require(len > 0, "no price data");
+        require(len > 0, "L2P_NPD"); //no price data
         return priceFeedMap[_priceFeedKey].priceData[len - 1].price;
     }
 
     function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
-        require(_interval != 0, "interval can't be 0");
+        require(isExistedKey(_priceFeedKey), "L2P_KNE"); //key not existed
+        require(_interval != 0, "L2P_ZI"); //zero interval
 
         // ** We assume L1 and L2 timestamp will be very similar here **
         // 3 different timestamps, `previous`, `current`, `target`
@@ -128,7 +128,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         //         base           current previous now
 
         uint256 len = getPriceFeedLength(_priceFeedKey);
-        require(len > 0, "Not enough history");
+        require(len > 0, "L2P_NEH"); //Not enough history
         uint256 round = len - 1;
         PriceData memory priceRecord = priceFeedMap[_priceFeedKey].priceData[round];
         uint256 latestTimestamp = priceRecord.timestamp;
@@ -173,7 +173,7 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     }
 
     function getLatestTimestamp(bytes32 _priceFeedKey) public view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
+        require(isExistedKey(_priceFeedKey), "L2P_KNE"); //key not existed
         uint256 len = getPriceFeedLength(_priceFeedKey);
         if (len == 0) {
             return 0;
@@ -182,18 +182,18 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     }
 
     function getPreviousPrice(bytes32 _priceFeedKey, uint256 _numOfRoundBack) public view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
+        require(isExistedKey(_priceFeedKey), "L2P_KNE"); //key not existed
 
         uint256 len = getPriceFeedLength(_priceFeedKey);
-        require(len > 0 && _numOfRoundBack < len, "Not enough history");
+        require(len > 0 && _numOfRoundBack < len, "L2P_NEH"); //Not enough history
         return priceFeedMap[_priceFeedKey].priceData[len - _numOfRoundBack - 1].price;
     }
 
     function getPreviousTimestamp(bytes32 _priceFeedKey, uint256 _numOfRoundBack) public view override returns (uint256) {
-        require(isExistedKey(_priceFeedKey), "key not existed");
+        require(isExistedKey(_priceFeedKey), "L2P_KNE"); //key not existed
 
         uint256 len = getPriceFeedLength(_priceFeedKey);
-        require(len > 0 && _numOfRoundBack < len, "Not enough history");
+        require(len > 0 && _numOfRoundBack < len, "L2P_NEH"); //Not enough history
         return priceFeedMap[_priceFeedKey].priceData[len - _numOfRoundBack - 1].timestamp;
     }
 
@@ -224,9 +224,9 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
 
     function requireKeyExisted(bytes32 _key, bool _existed) private view {
         if (_existed) {
-            require(isExistedKey(_key), "key not existed");
+            require(isExistedKey(_key), "L2P_KNE"); //key not existed
         } else {
-            require(!isExistedKey(_key), "key existed");
+            require(!isExistedKey(_key), "L2P_KE"); //key existed
         }
     }
 }

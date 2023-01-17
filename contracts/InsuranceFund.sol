@@ -60,7 +60,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
      * @param _amm IAmm address
      */
     function addAmm(IAmm _amm) public onlyOwner {
-        require(!isExistedAmm(_amm), "amm already added");
+        require(!isExistedAmm(_amm), "IF_AAA"); //amm already added
         ammMap[address(_amm)] = true;
         amms.push(_amm);
         emit AmmAdded(address(_amm));
@@ -79,7 +79,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
      * @param _amm IAmm address
      */
     function removeAmm(IAmm _amm) external onlyOwner {
-        require(isExistedAmm(_amm), "amm not existed");
+        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
         ammMap[address(_amm)] = false;
         uint256 ammLength = amms.length;
         for (uint256 i = 0; i < ammLength; i++) {
@@ -104,7 +104,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
     }
 
     function removeToken(IERC20 _token) external onlyOwner {
-        require(isQuoteTokenExisted(_token), "token not existed");
+        require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
 
         quoteTokenMap[address(_token)] = false;
         uint256 quoteTokensLength = getQuoteTokenLength();
@@ -131,12 +131,12 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
      * @param _amount the amount of quoteToken caller want to withdraw
      */
     function withdraw(IERC20 _quoteToken, uint256 _amount) external override {
-        require(beneficiary == _msgSender(), "caller is not beneficiary");
-        require(isQuoteTokenExisted(_quoteToken), "Asset is not supported");
+        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
+        require(isQuoteTokenExisted(_quoteToken), "IF_ANS"); //asset not supported
 
         uint256 quoteBalance = balanceOf(_quoteToken);
 
-        require(quoteBalance >= _amount, "Fund not enough");
+        require(quoteBalance >= _amount, "IF_FNE"); //Fund not enough
 
         _quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);

@@ -136,12 +136,12 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // MODIFIERS
     //
     modifier onlyOpen() {
-        require(open, "amm was closed");
+        require(open, "AMM_C"); //amm was closed
         _;
     }
 
     modifier onlyCounterParty() {
-        require(counterParty == _msgSender(), "caller is not counterParty");
+        require(counterParty == _msgSender(), "AMM_NCP"); //not counterParty
         _;
     }
 
@@ -167,8 +167,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 _fundingPeriod != 0 &&
                 address(_priceFeed) != address(0) &&
                 _quoteAsset != address(0),
-            "invalid input"
-        );
+            "AMM_III"
+        ); //initial with invalid input
         __Ownable_init();
 
         quoteAssetReserve = _quoteAssetReserve;
@@ -219,7 +219,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         )
     {
         if (_dirOfQuote == Dir.REMOVE_FROM_AMM) {
-            require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "over trading limit");
+            require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "AMM_OTL"); //over trading limit
         }
 
         uint256 baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
@@ -263,7 +263,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         )
     {
         if (_dirOfBase == Dir.REMOVE_FROM_AMM) {
-            require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "over trading limit");
+            require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "AMM_OTL"); //over trading limit
         }
 
         uint256 quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
@@ -307,9 +307,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             int256 uncappedFundingPayment
         )
     {
-        require(_blockTimestamp() >= nextFundingTime, "settle funding too early");
+        require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
         uint256 latestPricetimestamp = priceFeed.getLatestTimestamp(priceFeedKey);
-        require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "oracle price is expired");
+        require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "AMM_OPE"); //oracle price is expired
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(1 hour) / 1 day
@@ -355,8 +355,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * Repeg both reserves in case of repegging and k-adjustment
      */
     function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
-        require(_quoteAssetReserve != 0, "quote asset reserve cannot be 0");
-        require(_baseAssetReserve != 0, "base asset reserve cannot be 0");
+        require(_quoteAssetReserve != 0, "AMM_ZQ"); //quote asset reserve cannot be 0
+        require(_baseAssetReserve != 0, "AMM_ZB"); //base asset reserve cannot be 0
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         _addReserveSnapshot();
@@ -402,7 +402,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * The price calculation is in `globalShutdown`.
      */
     function shutdown() external override {
-        require(_msgSender() == owner() || _msgSender() == globalShutdown, "not owner nor globalShutdown");
+        require(_msgSender() == owner() || _msgSender() == globalShutdown, "AMM_NONG"); //not owner nor globalShutdown
         _implShutdown();
     }
 
@@ -439,7 +439,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _interval time interval in seconds
      */
     function setSpotPriceTwapInterval(uint256 _interval) external onlyOwner {
-        require(_interval != 0, "can not set interval to 0");
+        require(_interval != 0, "AMM_ZI"); //zero interval
         spotPriceTwapInterval = _interval;
     }
 
@@ -513,7 +513,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _priceFeed new price feed for this AMM
      */
     function setPriceFeed(IPriceFeed _priceFeed) external onlyOwner {
-        require(address(_priceFeed) != address(0), "invalid PriceFeed address");
+        require(address(_priceFeed) != address(0), "AMM_ZAPF"); //zero address of price feed
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
     }
@@ -747,7 +747,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     function getLiquidityChangedSnapshots(uint256 i) public view override returns (LiquidityChangedSnapshot memory) {
-        require(i < liquidityChangedSnapshots.length, "incorrect index");
+        require(i < liquidityChangedSnapshots.length, "AMM_II"); //incorrect index
         return liquidityChangedSnapshots[i];
     }
 
@@ -774,7 +774,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     function isOverSpreadLimit() public view override returns (bool) {
         uint256 oraclePrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        require(oraclePrice > 0, "underlying price is 0");
+        require(oraclePrice > 0, "AMM_ZOP"); //zero oracle price
         uint256 marketPrice = getSpotPrice();
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
 
@@ -827,7 +827,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         } else {
             quoteAssetAfter = _quoteAssetPoolAmount - _quoteAssetAmount;
         }
-        require(quoteAssetAfter != 0, "quote asset after is 0");
+        require(quoteAssetAfter != 0, "AMM_ZQAA"); //zero quote asset after
 
         baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
@@ -864,7 +864,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         } else {
             baseAssetAfter = _baseAssetPoolAmount - _baseAssetAmount;
         }
-        require(baseAssetAfter != 0, "base asset after is 0");
+        require(baseAssetAfter != 0, "AMM_ZBAA"); //zero base asset after
 
         quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter);
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
@@ -1030,7 +1030,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     );
             }
         }
-        revert("not supported option");
+        revert("AMM_NOMP"); //not supported option for market price for a specific snapshot
     }
 
     function _getPriceBoundariesOfLastBlock() internal view returns (uint256, uint256) {
@@ -1080,25 +1080,25 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         (uint256 upperLimit, uint256 lowerLimit) = _getPriceBoundariesOfLastBlock();
 
         uint256 price = quoteAssetReserve.divD(baseAssetReserve);
-        require(price <= upperLimit && price >= lowerLimit, "price is already over fluctuation limit");
+        require(price <= upperLimit && price >= lowerLimit, "AMM_POFL"); //price is already over fluctuation limit
 
         if (!_canOverFluctuationLimit) {
             price = (_dirOfQuote == Dir.ADD_TO_AMM)
                 ? (quoteAssetReserve + _quoteAssetAmount).divD(baseAssetReserve - _baseAssetAmount)
                 : (quoteAssetReserve - _quoteAssetAmount).divD(baseAssetReserve + _baseAssetAmount);
-            require(price <= upperLimit && price >= lowerLimit, "price is over fluctuation limit");
+            require(price <= upperLimit && price >= lowerLimit, "AMM_POFL"); //price is over fluctuation limit
         }
     }
 
-    function _checkLiquidityMultiplierLimit(int256 _positionSize, uint256 _liquidityMultiplier) internal view {
-        // have lower bound when position size is long
-        if (_positionSize > 0) {
-            uint256 liquidityMultiplierLowerBound = (_positionSize + MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING.toInt())
-                .divD(baseAssetReserve.toInt())
-                .abs();
-            require(_liquidityMultiplier >= liquidityMultiplierLowerBound, "illegal liquidity multiplier");
-        }
-    }
+    // function _checkLiquidityMultiplierLimit(int256 _positionSize, uint256 _liquidityMultiplier) internal view {
+    //     // have lower bound when position size is long
+    //     if (_positionSize > 0) {
+    //         uint256 liquidityMultiplierLowerBound = (_positionSize + MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING.toInt())
+    //             .divD(baseAssetReserve.toInt())
+    //             .abs();
+    //         require(_liquidityMultiplier >= liquidityMultiplierLowerBound, "illegal liquidity multiplier");
+    //     }
+    // }
 
     function _implShutdown() internal {
         LiquidityChangedSnapshot memory latestLiquiditySnapshot = getLatestLiquidityChangedSnapshots();

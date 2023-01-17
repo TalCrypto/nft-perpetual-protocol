@@ -43,7 +43,7 @@ contract TollPool is OwnableUpgradeable {
     // MODIFIERS
     //
     modifier onlyClearingHouse() {
-        require(_msgSender() == address(clearingHouse), "only clearingHouse");
+        require(_msgSender() == address(clearingHouse), "TP_NCH"); //not clearinghouse
         _;
     }
 
@@ -51,14 +51,14 @@ contract TollPool is OwnableUpgradeable {
     // FUNCTIONS
     //
     function initialize(address _clearingHouse) external initializer {
-        require(address(_clearingHouse) != address(0), "invalid input");
+        require(address(_clearingHouse) != address(0), "TP_NCH"); //not clearinghouse
         __Ownable_init();
         clearingHouse = _clearingHouse;
     }
 
     function transferToFeeTokenPoolDispatcher() external {
-        require(address(feeTokenPoolDispatcher) != address(0), "feeTokenPoolDispatcher not yet set");
-        require(feeTokens.length != 0, "feeTokens not set yet");
+        require(address(feeTokenPoolDispatcher) != address(0), "TP_FDNS"); //feeTokenPoolDispatcher not yet set
+        require(feeTokens.length != 0, "TP_FTNS"); //feeTokens not set yet
 
         bool hasToll;
         for (uint256 i; i < feeTokens.length; i++) {
@@ -66,27 +66,28 @@ contract TollPool is OwnableUpgradeable {
             hasToll = transferToDispatcher(IERC20(token)) || hasToll;
         }
         // revert if total fee of all tokens is zero
-        require(hasToll, "fee is now zero");
+        require(hasToll, "TP_ZF"); //zero fee
     }
 
     function setFeeTokenPoolDispatcher(address _feeTokenPoolDispatcher) external onlyOwner {
-        require(_feeTokenPoolDispatcher != address(0), "invalid input");
-        require(_feeTokenPoolDispatcher != feeTokenPoolDispatcher, "input is the same as the current one");
+        require(_feeTokenPoolDispatcher != address(0), "TP_II"); //invalid input
+        require(_feeTokenPoolDispatcher != feeTokenPoolDispatcher, "TP_ISC"); //input is the same as the current one
         feeTokenPoolDispatcher = _feeTokenPoolDispatcher;
         emit FeeTokenPoolDispatcherSet(_feeTokenPoolDispatcher);
     }
 
     function addFeeToken(IERC20 _token) external onlyOwner {
-        require(feeTokens.length < TOKEN_AMOUNT_LIMIT, "exceed token amount limit");
-        require(feeTokens.add(address(_token)), "invalid input");
+        require(feeTokens.length < TOKEN_AMOUNT_LIMIT, "TP_ETAL"); //exceed token amount limit
+        require(feeTokens.add(address(_token)), "TP_II"); //invalid input
 
         emit FeeTokenAdded(address(_token));
     }
 
     function removeFeeToken(IERC20 _token) external onlyOwner {
         address removedAddr = feeTokens.remove(address(_token));
-        require(removedAddr != address(0), "token does not exist");
-        require(removedAddr == address(_token), "remove wrong token");
+        require(address(feeTokenPoolDispatcher) != address(0), "TP_FDNS"); //feeTokenPoolDispatcher not yet set
+        require(removedAddr != address(0), "TP_TNE"); //token does not exist
+        require(removedAddr == address(_token), "TP_RWT"); //remove wrong token
 
         if (_token.balanceOf(address(this)) > 0) {
             transferToDispatcher(_token);

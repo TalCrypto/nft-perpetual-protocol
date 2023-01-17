@@ -36,7 +36,7 @@ contract Liquidator is Ownable {
 
     function withdrawETH() external onlyOwner {
         (bool success, ) = msg.sender.call{ value: address(this).balance }(new bytes(0));
-        require(success, "failed eth transfer");
+        require(success, "L_ETF"); //eth transfer failed
     }
 
     function singleLiquidate(IAmm _amm, address _trader) external {
