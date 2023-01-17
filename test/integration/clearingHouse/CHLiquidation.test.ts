@@ -217,7 +217,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // if quoteAssetAmountLimit == 273.85 > 68.455 * 4 = 273.82, quote asset gets is less than expected, thus tx reverts
       await expect(
         clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.85))
-      ).to.be.revertedWith("Less than minimal quote token");
+      ).to.be.revertedWith("CH_TLRS");
 
       // if quoteAssetAmountLimit == 273.8 < 68.455 * 4 = 273.82, quote asset gets is more than expected
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.8));
@@ -320,7 +320,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // if quoteAssetAmountLimit == 177 > 44.258 * 4 = 177.032, quote asset pays is more than expected, thus tx reverts
 
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(177))).to.be.revertedWith(
-        "More than maximal quote token"
+        "CH_TMRL"
       );
 
       // if quoteAssetAmountLimit == 177.1 < 44.258 * 4 = 177.032, quote asset pays is less than expected
@@ -401,7 +401,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // liquidatedPositionNotional = 224.089635855963718818
 
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(224.1))).to.be.revertedWith(
-        "Less than minimal quote token"
+        "CH_TLRS"
       );
 
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(224));
@@ -633,7 +633,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await syncAmmPriceToOracle();
 
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0))).to.be.revertedWith(
-        "Margin ratio not meet criteria"
+        "CH_MRNC"
       );
     });
 
@@ -664,13 +664,13 @@ describe("ClearingHouse Liquidation Test", () => {
       // then anyone (eg. carol) calling liquidate() would get an exception
       await syncAmmPriceToOracle();
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0))).to.be.revertedWith(
-        "Margin ratio not meet criteria"
+        "CH_MRNC"
       );
     });
 
     it("force error, can't liquidate an empty position", async () => {
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0))).to.be.revertedWith(
-        "positionSize is 0"
+        "CH_ZP"
       );
     });
   });
@@ -922,7 +922,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(44), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("price is over fluctuation limit");
+      ).to.be.revertedWith("AMM_POFL");
 
       await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
       await syncAmmPriceToOracle();
@@ -972,9 +972,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // half of carol's base asset: 3.95256917 / 2 = 1.976284585
       // AMM after: 1055.9999998134 : 94.6969697137, price: 11.1513599961
       // fluctuation: (11.63 - 11.15) / 11.63 = 0.04127257094
-      await expect(traderWallet1.connect(admin).twoLiquidations(amm.address, alice.address, carol.address)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(traderWallet1.connect(admin).twoLiquidations(amm.address, alice.address, carol.address)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, liquidate two complete positions while exceeding the fluctuation limit", async () => {
@@ -1016,9 +1014,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // fluctuation: (12.1 - 10.31005917) / 12.1 = 0.1479
       await syncAmmPriceToOracle();
 
-      await expect(traderWallet1.connect(admin).twoLiquidations(amm.address, alice.address, carol.address)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(traderWallet1.connect(admin).twoLiquidations(amm.address, alice.address, carol.address)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, liquidate three positions while exceeding the fluctuation limit", async () => {
@@ -1064,7 +1060,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await expect(
         traderWallet1.connect(admin).threeLiquidations(amm.address, alice.address, carol.address, relayer.address)
-      ).to.be.revertedWith("price is already over fluctuation limit");
+      ).to.be.revertedWith("AMM_POFL");
     });
   });
 
@@ -1125,7 +1121,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.connect(carol).openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
       await syncAmmPriceToOracle();
 
-      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("only one action allowed");
+      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_RM");
     });
 
     it("can open position (long) and liquidate, but can't do anything more action in the same block", async () => {
@@ -1136,7 +1132,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.connect(carol).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(0), true);
       await syncAmmPriceToOracle();
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0));
-      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("only one action allowed");
+      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_RM");
     });
 
     it("can open position and liquidate, but can't do anything more action in the same block", async () => {
@@ -1146,7 +1142,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.connect(carol).openPosition(amm.address, Side.BUY, toFullDigitBN(10), toFullDigitBN(1), toFullDigitBN(0), true);
       await syncAmmPriceToOracle();
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0));
-      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("only one action allowed");
+      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_RM");
     });
 
     it("can open position (even the same side, short), but can't do anything more action in the same block", async () => {
@@ -1157,7 +1153,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.connect(carol).openPosition(amm.address, Side.SELL, toFullDigitBN(10), toFullDigitBN(1), toFullDigitBN(0), true);
       await syncAmmPriceToOracle();
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0));
-      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("only one action allowed");
+      await expect(clearingHouse.connect(carol).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_RM");
     });
 
     it("liquidator can't open and liquidate position in the same block, even from different msg.sender", async () => {
@@ -1180,7 +1176,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await traderWallet1.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
       await syncAmmPriceToOracle();
       await traderWallet2.connect(bob).liquidate(amm.address, alice.address, toFullDigitBN(0));
-      await expect(traderWallet1.connect(bob).closePosition(amm.address)).to.be.revertedWith("only one action allowed");
+      await expect(traderWallet1.connect(bob).closePosition(amm.address)).to.be.revertedWith("CH_RM");
     });
 
     it("liquidator can't open and liquidate position in the same block, even from different tx.origin", async () => {
@@ -1203,7 +1199,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await traderWallet1.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(20), toFullDigitBN(5), toFullDigitBN(0));
       await syncAmmPriceToOracle();
       await traderWallet2.connect(carol).liquidate(amm.address, alice.address, toFullDigitBN(0));
-      await expect(traderWallet1.connect(admin).closePosition(amm.address)).to.be.revertedWith("only one action allowed");
+      await expect(traderWallet1.connect(admin).closePosition(amm.address)).to.be.revertedWith("CH_RM");
     });
   });
 
@@ -1271,7 +1267,7 @@ describe("ClearingHouse Liquidation Test", () => {
           toFullDigitBN(0),
           alice.address
         )
-      ).to.be.revertedWith("only one action allowed");
+      ).to.be.revertedWith("CH_RM");
     });
 
     it("open then open", async () => {
@@ -1287,7 +1283,7 @@ describe("ClearingHouse Liquidation Test", () => {
           toFullDigitBN(0),
           alice.address
         )
-      ).to.be.revertedWith("only one action allowed");
+      ).to.be.revertedWith("CH_RM");
     });
 
     it("open then liquidate", async () => {
@@ -1331,7 +1327,7 @@ describe("ClearingHouse Liquidation Test", () => {
           toFullDigitBN(0),
           alice.address
         )
-      ).to.be.revertedWith("only one action allowed");
+      ).to.be.revertedWith("CH_RM");
     });
 
     it("liquidate then liquidate", async () => {
@@ -1351,7 +1347,7 @@ describe("ClearingHouse Liquidation Test", () => {
           toFullDigitBN(0),
           alice.address
         )
-      ).to.be.revertedWith("positionSize is 0");
+      ).to.be.revertedWith("CH_ZP");
     });
 
     it("close then liquidate", async () => {
@@ -1389,7 +1385,7 @@ describe("ClearingHouse Liquidation Test", () => {
           toFullDigitBN(0),
           alice.address
         )
-      ).to.be.revertedWith("only one action allowed");
+      ).to.be.revertedWith("CH_RM");
     });
   });
 
@@ -1411,7 +1407,7 @@ describe("ClearingHouse Liquidation Test", () => {
         .connect(bob)
         .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(7.58), true);
       // alice is not able to be liquidated after closing bob's position
-      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("Margin ratio not meet criteria");
+      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
       // carol is able to be liquidated after closing bob's position
       await clearingHouse.liquidate(amm.address, carol.address);
       // alice is able to be liquidated after liquidating carol's position

@@ -226,7 +226,7 @@ describe("ClearingHouse Test", () => {
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("over limit");
+      ).to.be.revertedWith("CH_ONOL");
     });
 
     it("won't be limited by the open interest cap if the trader is the whitelist", async () => {
@@ -453,7 +453,7 @@ describe("ClearingHouse Test", () => {
       // then bob will get 2000% of her position size as fundingPayment
       // funding payment: -187.5 x 2000% = -3750, margin is 1200 so bad debt = -3750 + 1200 = 2550
       // margin can't removed
-      await expect(clearingHouse.connect(bob).removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith("margin is not enough");
+      await expect(clearingHouse.connect(bob).removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith("CH_MNE");
     });
 
     it("reduce bad debt after adding margin to a underwater position", async () => {
@@ -804,7 +804,7 @@ describe("ClearingHouse Test", () => {
       // AMM after: 1100 : 90.9090909, price: 12.1000000012
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9), true)
-      ).to.be.revertedWith("price is over fluctuation limit");
+      ).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, reduce position exceeds the fluctuation limit", async () => {
@@ -820,7 +820,7 @@ describe("ClearingHouse Test", () => {
       // price fluctuation: (15.625 - 14.4) / 15.625 = 0.0784
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("price is over fluctuation limit");
+      ).to.be.revertedWith("AMM_POFL");
     });
   });
 
@@ -848,9 +848,7 @@ describe("ClearingHouse Test", () => {
       // after alice closes her position partially, price: 13.767109
       // price fluctuation: (14.4000000058 - 13.767109) / 14.4000000058 = 0.0524
       // so it must be reverted
-      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
-        "price is over fluctuation limit"
-      );
+      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("AMM_POFL");
       // await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
 
       // // after bob closes his position partially, price: 13.0612

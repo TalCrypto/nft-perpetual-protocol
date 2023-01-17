@@ -134,7 +134,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35));
     });
     it("fail to repeg because of not a operator", async () => {
-      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("caller is not operator");
+      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("CH_NO");
     });
     it("success to increase mark price with revenue", async () => {
       await clearingHouse.setOperator(admin.address);
@@ -155,7 +155,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     });
     it("fail to decrease mark price with expense more than half of fee pool", async () => {
       await clearingHouse.setOperator(admin.address);
-      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(3))).to.revertedWith("failed to apply cost");
+      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(3))).to.revertedWith("CH_IAB");
     });
   });
 
@@ -181,7 +181,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35));
     });
     it("fail to repeg because of not a operator", async () => {
-      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1), toFullDigitBN(1))).to.revertedWith("caller is not operator");
+      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1), toFullDigitBN(1))).to.revertedWith("CH_NO");
     });
     it("success to increase k by 0.1 with expense", async () => {
       await clearingHouse.setOperator(admin.address);
@@ -207,7 +207,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     });
     it("fail to increase k with expense more than half of fee pool", async () => {
       await clearingHouse.setOperator(admin.address);
-      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(100), toFullDigitBN(10))).to.revertedWith("failed to apply cost");
+      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(100), toFullDigitBN(10))).to.revertedWith("CH_IAB");
     });
   });
 

@@ -132,7 +132,7 @@ describe("Liquidator Test", () => {
     it("single liquidation of underwater position", async () => {
       // expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[4].address])).eq(ethers.BigNumber.from("303421"));
       const tx = await liquidator.liquidate(amm.address, [accounts[4].address]);
-      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
+      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("CH_ZP");
       await expect(tx).to.emit(liquidator, "PositionLiquidated").withArgs(amm.address, [accounts[4].address], [true], [""]);
     });
     it("multi liquidations of underwater positions", async () => {
@@ -140,7 +140,7 @@ describe("Liquidator Test", () => {
       //   ethers.BigNumber.from("438206")
       // );
       const tx = await liquidator.liquidate(amm.address, [accounts[4].address, accounts[5].address]);
-      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("positionSize is 0");
+      await expect(clearingHouse.getMarginRatio(amm.address, accounts[4].address)).revertedWith("CH_ZP");
       await expect(tx)
         .to.emit(liquidator, "PositionLiquidated")
         .withArgs(amm.address, [accounts[4].address, accounts[5].address], [true, true], ["", ""]);
@@ -148,9 +148,7 @@ describe("Liquidator Test", () => {
     it("single liquidation of position that is under maintenance margin ratio", async () => {
       // expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address])).eq(ethers.BigNumber.from("83665"));
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address]);
-      await expect(tx)
-        .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(amm.address, [accounts[2].address], [false], ["Margin ratio not meet criteria"]);
+      await expect(tx).to.emit(liquidator, "PositionLiquidated").withArgs(amm.address, [accounts[2].address], [false], ["CH_MRNC"]);
     });
     it("multi liquidations of underwater position and not", async () => {
       // expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[5].address])).eq(
@@ -159,7 +157,7 @@ describe("Liquidator Test", () => {
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[5].address]);
       await expect(tx)
         .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(amm.address, [accounts[2].address, accounts[5].address], [false, true], ["Margin ratio not meet criteria", ""]);
+        .withArgs(amm.address, [accounts[2].address, accounts[5].address], [false, true], ["CH_MRNC", ""]);
     });
     it("multi liquidations that are under maintenance margin ratio", async () => {
       // expect(await liquidator.estimateGas.liquidate(amm.address, [accounts[2].address, accounts[3].address])).eq(
@@ -168,12 +166,7 @@ describe("Liquidator Test", () => {
       const tx = await liquidator.liquidate(amm.address, [accounts[2].address, accounts[3].address]);
       await expect(tx)
         .to.emit(liquidator, "PositionLiquidated")
-        .withArgs(
-          amm.address,
-          [accounts[2].address, accounts[3].address],
-          [false, false],
-          ["Margin ratio not meet criteria", "Margin ratio not meet criteria"]
-        );
+        .withArgs(amm.address, [accounts[2].address, accounts[3].address], [false, false], ["CH_MRNC", "CH_MRNC"]);
     });
   });
   describe("Withdrawal Test", () => {

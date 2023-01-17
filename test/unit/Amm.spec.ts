@@ -99,7 +99,7 @@ describe("Amm Unit Test", () => {
     });
 
     it("can't do almost everything when it's beginning", async () => {
-      const error = "amm was closed";
+      const error = "AMM_C";
       await expect(amm.connect(admin).settleFunding(toFullDigitBN(0))).to.be.revertedWith(error);
       await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(600), false)).to.be.revertedWith(error);
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(600), true)).to.be.revertedWith(error);
@@ -108,7 +108,7 @@ describe("Amm Unit Test", () => {
     it("can't do almost everything when it's closed", async () => {
       await amm.setOpen(true);
       await amm.setOpen(false);
-      const error = "amm was closed";
+      const error = "AMM_C";
       await expect(amm.settleFunding(toFullDigitBN(0), { from: admin.address })).to.be.revertedWith(error);
       await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(600), false)).to.be.revertedWith(error);
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(600), true)).to.be.revertedWith(error);
@@ -514,13 +514,13 @@ describe("Amm Unit Test", () => {
     it("force error, swapInput, price goes up but cannot over the fluctuation limit", async () => {
       // fluctuation is 5%, price is between 9.5 ~ 10.5
       // BUY 25, reserve will be 1025 : 97.56, price is 1025 / 97.56 = 10.51
-      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(25), false)).to.be.revertedWith("price is over fluctuation limit");
+      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(25), false)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapInput, price goes down but cannot over the fluctuation limit", async () => {
       // fluctuation is 5%, price is between 9.5 ~ 10.5
       // SELL 26, reserve will be 974 : 102.67, price is 974 / 102.67 = 9.49
-      await expect(amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(26), false)).to.be.revertedWith("price is over fluctuation limit");
+      await expect(amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(26), false)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapInput long can exceed the fluctuation limit once, but the rest will fail during that block", async () => {
@@ -530,7 +530,7 @@ describe("Amm Unit Test", () => {
       const receipt = await amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(25), true);
       // expectEvent(receipt, "SwapInput")
       await expect(receipt).to.emit(amm, "SwapInput");
-      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(1), true)).to.be.revertedWith("price is already over fluctuation limit");
+      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(1), true)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapInput short can exceed the fluctuation limit once, but the rest will fail during that block", async () => {
@@ -540,9 +540,7 @@ describe("Amm Unit Test", () => {
       const receipt = await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(30), true);
       // expectEvent(receipt, "SwapInput")
       await expect(receipt).to.emit(amm, "SwapInput");
-      await expect(amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(1), true)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(1), true)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapOutput(close long) can exceed the fluctuation limit once, but the rest txs in that block will fail", async () => {
@@ -550,9 +548,7 @@ describe("Amm Unit Test", () => {
       // BUY 2.5 base, reserve will be 1025.6 : 97.5, price is 1025.6 / 97.5 = 10.52
       // expectEvent(await amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(2.5), toFullDigitBN(0)), "SwapOutput")
       await expect(amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(2.5), true)).to.emit(amm, "SwapOutput");
-      await expect(amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(0.1), true)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(0.1), true)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapOutput(close short) can only exceed fluctuation limit once, but the rest txs in that block will fail", async () => {
@@ -561,7 +557,7 @@ describe("Amm Unit Test", () => {
       // expectEvent(await amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), toFullDigitBN(0)), "SwapOutput")
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), true)).to.emit(amm, "SwapOutput");
       // SELL 3 base again, reserve will be 943.396 : 106, price is 970.873 / 106 = 8.899
-      await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), true)).to.be.revertedWith("price is already over fluctuation limit");
+      await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), true)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swapOutput(close short) can only exceed fluctuation limit once, but the rest txs in that block will fail, including the price comes inside the range", async () => {
@@ -570,9 +566,7 @@ describe("Amm Unit Test", () => {
       // expectEvent(await amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), toFullDigitBN(0)), "SwapOutput")
       await expect(amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(3), true)).to.emit(amm, "SwapOutput");
       // BUY 5 base again, reserve will be 1020.4081632653 : 98, price is 10.4123281966
-      await expect(amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(5), true)).to.be.revertedWith(
-        "price is already over fluctuation limit"
-      );
+      await expect(amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(5), true)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, swap many times and the price is over the fluctuation limit in a single block", async () => {
@@ -581,7 +575,7 @@ describe("Amm Unit Test", () => {
       await moveToNextBlocks(1);
       await amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(10), false);
       await amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(10), false);
-      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(10), false)).to.be.revertedWith("price is over fluctuation limit");
+      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(10), false)).to.be.revertedWith("AMM_POFL");
     });
 
     it("force error, compare price fluctuation with previous blocks in a block", async () => {
@@ -591,7 +585,7 @@ describe("Amm Unit Test", () => {
       await moveToNextBlocks(1);
 
       // SELL 26, reserve will be 984 : 101.63, price is 984 / 101.63 = 9.68
-      const error = "price is over fluctuation limit";
+      const error = "AMM_POFL";
       await expect(amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(26), false)).to.be.revertedWith(error);
 
       // BUY 30, reserve will be 1040 : 96.15, price is 1040 / 96.15 = 10.82
@@ -608,7 +602,7 @@ describe("Amm Unit Test", () => {
       await moveToNextBlocks(3);
 
       // BUY 25, reserve will be 1035 : 96.62, price is 1035 / 96.62 = 10.712
-      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(25), false)).to.be.revertedWith("price is over fluctuation limit");
+      await expect(amm.swapInput(Dir.ADD_TO_AMM, toFullDigitBN(25), false)).to.be.revertedWith("AMM_POFL");
     });
   });
 
@@ -875,7 +869,7 @@ describe("Amm Unit Test", () => {
 
     it("will fail if price feed return 0", async () => {
       await priceFeed.setTwapPrice(0);
-      await expect(amm.isOverSpreadLimit()).to.be.revertedWith("underlying price is 0");
+      await expect(amm.isOverSpreadLimit()).to.be.revertedWith("AMM_ZOP");
     });
 
     it("is true if abs((marketPrice-oraclePrice)/oraclePrice) >= 10%", async () => {
@@ -959,7 +953,7 @@ describe("Amm Unit Test", () => {
       it("force error, value of quote asset is 0", async () => {
         await expect(
           amm.getInputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
-        ).to.be.revertedWith("quote asset after is 0");
+        ).to.be.revertedWith("AMM_ZQAA");
       });
     });
 
@@ -1013,7 +1007,7 @@ describe("Amm Unit Test", () => {
       it("force error, value of base asset is 0", async () => {
         await expect(
           amm.getOutputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
-        ).to.be.revertedWith("base asset after is 0");
+        ).to.be.revertedWith("AMM_ZBAA");
       });
     });
 
@@ -1152,14 +1146,14 @@ describe("Amm Unit Test", () => {
       await priceFeed.setLatestTimestamp(settleFundingTimestamp);
       await amm.mock_setBlockTimestamp(settleFundingTimestamp);
       await amm.settleFunding(toFullDigitBN(0));
-      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("settle funding too early");
+      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("AMM_SFTE");
     });
 
     it("can't settleFunding when the timestamp of latest price is more than 30 minutes old", async () => {
       const originalNextFundingTime = await amm.nextFundingTime();
       await priceFeed.setLatestTimestamp(originalNextFundingTime.sub(BigNumber.from(30 * 60)));
       await amm.mock_setBlockTimestamp(originalNextFundingTime);
-      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("oracle price is expired");
+      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("AMM_OPE");
     });
 
     describe("capped funding test", () => {
