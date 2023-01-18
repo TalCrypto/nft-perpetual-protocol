@@ -73,7 +73,9 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
         int256 marginToVault;
         // unrealized pnl after open position
         int256 unrealizedPnlAfter;
+        // fee to the insurance fund
         uint256 spreadFee;
+        // fee to the toll pool which provides rewards to the token stakers
         uint256 tollFee;
     }
 
