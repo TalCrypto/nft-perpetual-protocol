@@ -159,13 +159,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
     event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
     event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
-    event PositionAdjusted(
-        address indexed amm,
-        address indexed trader,
-        int256 newPositionSize,
-        uint256 oldLiquidityIndex,
-        uint256 newLiquidityIndex
-    );
     event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
     event RestrictionModeEntered(address amm, uint256 blockNumber);
     event Repeg(address amm, uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 cost);
