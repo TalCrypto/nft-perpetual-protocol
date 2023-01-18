@@ -49,7 +49,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         uint256,
         uint256,
         uint256
-    ) external override {
+    ) external pure override {
         revert("CL_NS"); //not supported
     }
 
