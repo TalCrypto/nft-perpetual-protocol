@@ -124,7 +124,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     event SwapInput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
-    event FundingRateUpdated(int256 rate, uint256 underlyingPrice);
+    event FundingRateUpdated(int256 rate, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
     event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
@@ -333,7 +333,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         // update funding rate = premiumFraction / twapIndexPrice
-        _updateFundingRate(premiumFraction, underlyingPrice);
+        fundingRate = premiumFraction.divD(underlyingPrice.toInt());
+        // positive fundingPayment is revenue to system, otherwise cost to system
+        emit FundingRateUpdated(fundingRate, underlyingPrice, fundingPayment);
 
         // in order to prevent multiple funding settlement during very short time after network congestion
         uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
@@ -879,15 +881,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         return quoteAssetSold;
-    }
-
-    //
-    // INTERNAL FUNCTIONS
-    //
-    // update funding rate = premiumFraction / twapIndexPrice
-    function _updateFundingRate(int256 _premiumFraction, uint256 _underlyingPrice) internal {
-        fundingRate = _premiumFraction.divD(_underlyingPrice.toInt());
-        emit FundingRateUpdated(fundingRate, _underlyingPrice);
     }
 
     function _addReserveSnapshot() internal {
