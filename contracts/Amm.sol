@@ -56,7 +56,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // because position decimal rounding error,
     // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
-    uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 100;
+    uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 1e9;
 
     // 10%
     uint256 public constant MAX_ORACLE_SPREAD_RATIO = 1e17;
@@ -88,9 +88,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     uint256 public spreadRatio;
     uint256 private maxHoldingBaseAsset;
     uint256 private openInterestNotionalCap;
-
-    // snapshot of amm reserve when change liquidity's invariant
-    LiquidityChangedSnapshot[] private liquidityChangedSnapshots;
 
     uint256 public spotPriceTwapInterval;
     uint256 public fundingPeriod;
@@ -181,14 +178,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         priceFeedKey = _priceFeedKey;
         quoteAsset = IERC20(_quoteAsset);
         priceFeed = _priceFeed;
-        liquidityChangedSnapshots.push(
-            LiquidityChangedSnapshot({
-                cumulativeNotional: 0,
-                baseAssetReserve: baseAssetReserve,
-                quoteAssetReserve: quoteAssetReserve,
-                totalPositionSize: 0
-            })
-        );
         reserveSnapshots.push(ReserveSnapshot(quoteAssetReserve, baseAssetReserve, _blockTimestamp(), _blockNumber()));
         emit ReserveSnapshotted(quoteAssetReserve, baseAssetReserve, _blockTimestamp());
     }
@@ -328,14 +317,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         _addReserveSnapshot();
-        liquidityChangedSnapshots.push(
-            LiquidityChangedSnapshot({
-                cumulativeNotional: cumulativeNotional,
-                baseAssetReserve: _baseAssetReserve,
-                quoteAssetReserve: _quoteAssetReserve,
-                totalPositionSize: totalPositionSize
-            })
-        );
         emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve);
     }
 
@@ -677,21 +658,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return reserveSnapshots.length;
     }
 
-    function getLiquidityHistoryLength() public view override returns (uint256) {
-        return liquidityChangedSnapshots.length;
-    }
-
     function getCumulativeNotional() public view override returns (int256) {
         return cumulativeNotional;
-    }
-
-    function getLatestLiquidityChangedSnapshots() public view returns (LiquidityChangedSnapshot memory) {
-        return liquidityChangedSnapshots[liquidityChangedSnapshots.length - 1];
-    }
-
-    function getLiquidityChangedSnapshots(uint256 i) public view override returns (LiquidityChangedSnapshot memory) {
-        require(i < liquidityChangedSnapshots.length, "AMM_II"); //incorrect index
-        return liquidityChangedSnapshots[i];
     }
 
     function getSettlementPrice() public view override returns (uint256) {
@@ -1025,23 +993,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     function _implShutdown() internal {
-        LiquidityChangedSnapshot memory latestLiquiditySnapshot = getLatestLiquidityChangedSnapshots();
-
-        // get last liquidity changed history to calc new quote/base reserve
-        uint256 previousK = latestLiquiditySnapshot.baseAssetReserve.mulD(latestLiquiditySnapshot.quoteAssetReserve);
-        int256 lastInitBaseReserveInNewCurve = latestLiquiditySnapshot.totalPositionSize + latestLiquiditySnapshot.baseAssetReserve.toInt();
-        int256 lastInitQuoteReserveInNewCurve = previousK.toInt().divD(lastInitBaseReserveInNewCurve);
-
-        // settlementPrice = SUM(Open Position Notional Value) / SUM(Position Size)
-        // `Open Position Notional Value` = init quote reserve - current quote reserve
-        // `Position Size` = init base reserve - current base reserve
-        int256 positionNotionalValue = lastInitQuoteReserveInNewCurve - quoteAssetReserve.toInt();
-
-        // if total position size less than IGNORABLE_DIGIT_FOR_SHUTDOWN, treat it as 0 positions due to rounding error
-        if (totalPositionSize.toUint() > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
-            settlementPrice = positionNotionalValue.abs().divD(totalPositionSize.abs());
+        uint256 _quoteAssetReserve = quoteAssetReserve;
+        uint256 _baseAssetReserve = baseAssetReserve;
+        int256 _totalPositionSize = totalPositionSize;
+        uint256 initBaseReserve = (_totalPositionSize + _baseAssetReserve.toInt()).abs();
+        if (initBaseReserve > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
+            uint256 initQuoteReserve = Math.mulDiv(_quoteAssetReserve, _baseAssetReserve, initBaseReserve);
+            int256 positionNotionalValue = initQuoteReserve.toInt() - _quoteAssetReserve.toInt();
+            // if total position size less than IGNORABLE_DIGIT_FOR_SHUTDOWN, treat it as 0 positions due to rounding error
+            if (_totalPositionSize.toUint() > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
+                settlementPrice = positionNotionalValue.abs().divD(_totalPositionSize.abs());
+            }
         }
-
         open = false;
         emit Shutdown(settlementPrice);
     }
