@@ -199,15 +199,17 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     /// @param amm IAmm address
     /// @param positionNotional liquidated position value minus liquidationFee
     /// @param positionSize liquidated position size
-    /// @param liquidationFee liquidation fee to the liquidator
+    /// @param feeToLiquidator liquidation fee to the liquidator
+    /// @param feeToInsuranceFund liquidation fee to the insurance fund
     /// @param liquidator the address which execute this transaction
-    /// @param badDebt liquidation fee amount cleared by insurance funds
+    /// @param badDebt liquidation bad debt cleared by insurance funds
     event PositionLiquidated(
         address indexed trader,
         address indexed amm,
         uint256 positionNotional,
         uint256 positionSize,
-        uint256 liquidationFee,
+        uint256 feeToLiquidator,
+        uint256 feeToInsuranceFund,
         address liquidator,
         uint256 badDebt
     );
@@ -871,26 +873,21 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund
-                uint256 totalBadDebt = positionResp.badDebt;
+                liquidationBadDebt = positionResp.badDebt;
                 if (feeToLiquidator > remainMargin) {
                     liquidationPenalty = feeToLiquidator;
-                    liquidationBadDebt = feeToLiquidator - remainMargin;
-                    totalBadDebt = totalBadDebt + liquidationBadDebt;
+                    liquidationBadDebt = liquidationBadDebt + feeToLiquidator - remainMargin;
                     remainMargin = 0;
                 } else {
                     liquidationPenalty = remainMargin;
                     remainMargin = remainMargin - feeToLiquidator;
                 }
-
                 // transfer the actual token between trader and vault
-                if (totalBadDebt > 0) {
+                if (liquidationBadDebt > 0) {
                     require(backstopLiquidityProviderMap[_msgSender()], "CH_NBLP"); //not backstop LP
-                    _realizeBadDebt(_amm, totalBadDebt);
+                    _realizeBadDebt(_amm, liquidationBadDebt);
                 }
-                if (remainMargin > 0) {
-                    feeToInsuranceFund = remainMargin;
-                }
-
+                feeToInsuranceFund = remainMargin;
                 _setPosition(_amm, _trader, positionResp.position);
             }
 
@@ -906,6 +903,7 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
                 positionResp.exchangedQuoteAssetAmount,
                 positionResp.exchangedPositionSize.toUint(),
                 feeToLiquidator,
+                feeToInsuranceFund,
                 _msgSender(),
                 liquidationBadDebt
             );
