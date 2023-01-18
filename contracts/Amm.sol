@@ -125,7 +125,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
-    event ReservesAdjusted(uint256 quoteAssetReserve, uint256 baseAssetReserve);
+    event ReservesAdjusted(uint256 quoteAssetReserve, uint256 baseAssetReserve, int256 totalPositionSize, int256 cumulativeNotional);
 
     //
     // MODIFIERS
@@ -317,7 +317,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         _addReserveSnapshot();
-        emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve);
+        emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve, totalPositionSize, cumulativeNotional);
     }
 
     /**
