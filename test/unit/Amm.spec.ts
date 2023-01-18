@@ -1177,7 +1177,7 @@ describe("Amm Unit Test", () => {
         const tx = await amm.settleFunding(toFullDigitBN(0));
         await expect(tx)
           .to.emit(amm, "FundingRateUpdated")
-          .withArgs(toFullDigitBN((15.625 - 10) / 24 / 10), toFullDigitBN(10));
+          .withArgs(toFullDigitBN((15.625 - 10) / 24 / 10), toFullDigitBN(10), toFullDigitBN(((15.625 - 10) / 24) * 20));
       });
       it("funding payment is uncapped when the cost is negative and its absolute value is smaller than cap", async () => {
         await gotoNextFundingTimestamp();
@@ -1187,7 +1187,7 @@ describe("Amm Unit Test", () => {
         // funding payment = (15.625 - 20) / 24 * 20 = -3.645833333333333
         // funding rate = -0.009114583333333333
         const tx = await amm.settleFunding(toFullDigitBN(4));
-        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs("-9114583333333333", toFullDigitBN(20));
+        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs("-9114583333333333", toFullDigitBN(20), "-3645833333333333320");
       });
       it("funding payment is capped when the cost is negative and its absolute value is greater than cap", async () => {
         await gotoNextFundingTimestamp();
@@ -1198,7 +1198,9 @@ describe("Amm Unit Test", () => {
         const tx = await amm.settleFunding(toFullDigitBN(2));
         // capped fraction = -(2 / 20) = -0.1
         // funding rate = -(0.1 / 20) = -0.005
-        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs(toFullDigitBN(-0.005), toFullDigitBN(20));
+        await expect(tx)
+          .to.emit(amm, "FundingRateUpdated")
+          .withArgs(toFullDigitBN(-0.005), toFullDigitBN(20), toFullDigitBN(-0.1 * 20));
       });
     });
   });
