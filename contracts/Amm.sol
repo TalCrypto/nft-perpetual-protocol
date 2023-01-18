@@ -58,9 +58,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
     uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 100;
 
-    // a margin to prevent from rounding when calc liquidity multiplier limit
-    uint256 private constant MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING = 1e9;
-
     // 10%
     uint256 public constant MAX_ORACLE_SPREAD_RATIO = 1e17;
 
@@ -75,7 +72,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // update during every swap and used when shutting amm down. it's trader's total base asset size
     int256 public totalPositionSize;
 
-    // latest funding rate = ((twap market price - twap oracle price) / twap oracle price) / 24
+    // latest funding rate
     int256 public fundingRate;
 
     int256 private cumulativeNotional;
@@ -109,6 +106,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     bool public override open;
     bool public override adjustable;
     bool public canLowerK;
+
     uint256[50] private __gap;
 
     //**********************************************************//
@@ -126,7 +124,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event FundingRateUpdated(int256 rate, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
-    event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
+    // event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
@@ -223,17 +221,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         uint256 baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
-        // // If LONG, exchanged base amount should be more than _baseAssetAmountLimit,
-        // // otherwise(SHORT), exchanged base amount should be less than _baseAssetAmountLimit.
-        // // In SHORT case, more position means more debt so should not be larger than _baseAssetAmountLimit
-        // if (_baseAssetAmountLimit != 0) {
-        //     if (_dirOfQuote == Dir.ADD_TO_AMM) {
-        //         require(baseAssetAmount >= _baseAssetAmountLimit, "Less than minimal base token");
-        //     } else {
-        //         require(baseAssetAmount <= _baseAssetAmountLimit, "More than maximal base token");
-        //     }
-        // }
-
         _updateReserve(_dirOfQuote, _quoteAssetAmount, baseAssetAmount, _canOverFluctuationLimit);
         emit SwapInput(_dirOfQuote, _quoteAssetAmount, baseAssetAmount);
         return (baseAssetAmount, _quoteAssetAmount.mulD(spreadRatio), _quoteAssetAmount.mulD(tollRatio));
@@ -268,21 +255,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         uint256 quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
         Dir dirOfQuote = _dirOfBase == Dir.ADD_TO_AMM ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM;
-        // // If SHORT, exchanged quote amount should be less than _quoteAssetAmountLimit,
-        // // otherwise(LONG), exchanged base amount should be more than _quoteAssetAmountLimit.
-        // // In the SHORT case, more quote assets means more payment so should not be more than _quoteAssetAmountLimit
-        // if (_quoteAssetAmountLimit != 0) {
-        //     if (dirOfQuote == Dir.REMOVE_FROM_AMM) {
-        //         // SHORT
-        //         require(quoteAssetAmount >= _quoteAssetAmountLimit, "Less than minimal quote token");
-        //     } else {
-        //         // LONG
-        //         require(quoteAssetAmount <= _quoteAssetAmountLimit, "More than maximal quote token");
-        //     }
-        // }
-
-        // as mentioned in swapOutput(), it always allows going over fluctuation limit because
-        // it is only used by close/liquidate positions
         _updateReserve(dirOfQuote, quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
         emit SwapOutput(_dirOfBase, quoteAssetAmount, _baseAssetAmount);
         return (quoteAssetAmount, quoteAssetAmount.mulD(spreadRatio), quoteAssetAmount.mulD(tollRatio));
@@ -345,12 +317,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         // max(nextFundingTimeOnHourStart, minNextValidFundingTime)
         nextFundingTime = nextFundingTimeOnHourStart > minNextValidFundingTime ? nextFundingTimeOnHourStart : minNextValidFundingTime;
-
-        // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-        // // reset funding related states
-        // baseAssetDeltaThisFundingPeriod = 0;
-
-        // return premiumFraction;
     }
 
     /**
@@ -372,31 +338,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         );
         emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve);
     }
-
-    // function calcBaseAssetAfterLiquidityMigration(
-    //     int256 _baseAssetAmount,
-    //     uint256 _fromQuoteReserve,
-    //     uint256 _fromBaseReserve
-    // ) public view override returns (int256) {
-    //     if (_baseAssetAmount == 0) {
-    //         return _baseAssetAmount;
-    //     }
-
-    //     bool isPositiveValue = _baseAssetAmount > 0 ? true : false;
-
-    //     // measure the trader position's notional value on the old curve
-    //     // (by simulating closing the position)
-    //     uint256 posNotional = getOutputPriceWithReserves(
-    //         isPositiveValue ? Dir.ADD_TO_AMM : Dir.REMOVE_FROM_AMM,
-    //         _baseAssetAmount.abs(),
-    //         _fromQuoteReserve,
-    //         _fromBaseReserve
-    //     );
-
-    //     // calculate and apply the required size on the new curve
-    //     int256 newBaseAsset = getInputPrice(isPositiveValue ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM, posNotional).toInt();
-    //     return newBaseAsset * (isPositiveValue ? int256(1) : int256(-1));
-    // }
 
     /**
      * @notice shutdown amm,
@@ -1082,16 +1023,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             require(price <= upperLimit && price >= lowerLimit, "AMM_POFL"); //price is over fluctuation limit
         }
     }
-
-    // function _checkLiquidityMultiplierLimit(int256 _positionSize, uint256 _liquidityMultiplier) internal view {
-    //     // have lower bound when position size is long
-    //     if (_positionSize > 0) {
-    //         uint256 liquidityMultiplierLowerBound = (_positionSize + MARGIN_FOR_LIQUIDITY_MIGRATION_ROUNDING.toInt())
-    //             .divD(baseAssetReserve.toInt())
-    //             .abs();
-    //         require(_liquidityMultiplier >= liquidityMultiplierLowerBound, "illegal liquidity multiplier");
-    //     }
-    // }
 
     function _implShutdown() internal {
         LiquidityChangedSnapshot memory latestLiquiditySnapshot = getLatestLiquidityChangedSnapshots();
