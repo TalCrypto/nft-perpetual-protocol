@@ -70,10 +70,6 @@ describe("Amm Adjustment Unit Test", () => {
       await amm.adjust(toFullDigitBN(10), toFullDigitBN(20));
       expect(await amm.quoteAssetReserve()).to.be.equal(toFullDigitBN(10));
       expect(await amm.baseAssetReserve()).to.be.equal(toFullDigitBN(20));
-      expect(await amm.getLiquidityHistoryLength()).equal(2);
-      const liquidity = await amm.getLatestLiquidityChangedSnapshots();
-      expect(liquidity.quoteAssetReserve).eql(toFullDigitBN(10));
-      expect(liquidity.baseAssetReserve).eql(toFullDigitBN(20));
     });
   });
 

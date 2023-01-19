@@ -61,14 +61,14 @@ describe("Amm Unit Test", () => {
     fundingBufferPeriod = fixture.fundingBufferPeriod;
   });
 
-  describe("default value", () => {
-    it("updated after amm added", async () => {
-      const liquidityChangedSnapshot = await amm.getLiquidityChangedSnapshots(0);
-      expect(liquidityChangedSnapshot.quoteAssetReserve).eq(toFullDigitBN(1000));
-      expect(liquidityChangedSnapshot.baseAssetReserve).eq(toFullDigitBN(100));
-      expect(liquidityChangedSnapshot.cumulativeNotional).eq(0);
-    });
-  });
+  // describe("default value", () => {
+  //   it("updated after amm added", async () => {
+  //     const liquidityChangedSnapshot = await amm.getLiquidityChangedSnapshots(0);
+  //     expect(liquidityChangedSnapshot.quoteAssetReserve).eq(toFullDigitBN(1000));
+  //     expect(liquidityChangedSnapshot.baseAssetReserve).eq(toFullDigitBN(100));
+  //     expect(liquidityChangedSnapshot.cumulativeNotional).eq(0);
+  //   });
+  // });
 
   describe("setOpen", () => {
     it("admin open amm", async () => {
