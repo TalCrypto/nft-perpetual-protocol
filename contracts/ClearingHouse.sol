@@ -1321,7 +1321,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // calculate remain margin
         remainMargin = _marginDelta - fundingPayment + _oldPosition.margin;
 
-        // if remain margin is negative, set to zero and leave the rest to bad debt
+        // if remain margin is negative, consider it as bad debt
         if (remainMargin < 0) {
             badDebt = remainMargin.abs();
         }
