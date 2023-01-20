@@ -17,7 +17,7 @@ interface IClearingHouse {
     /// @param blockNumber the block number of the last position
     struct Position {
         int256 size;
-        uint256 margin;
+        int256 margin;
         uint256 openNotional;
         int256 lastUpdatedCumulativePremiumFraction;
         uint256 blockNumber;

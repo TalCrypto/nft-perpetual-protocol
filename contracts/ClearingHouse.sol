@@ -13,8 +13,9 @@ import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
+import { IClearingHouse } from "./interfaces/IClearingHouse.sol";
 
-contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
+contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
     using TransferHelper for IERC20;
@@ -23,10 +24,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     // Struct and Enum
     //
 
-    enum Side {
-        BUY,
-        SELL
-    }
     enum PnlCalcOption {
         SPOT_PRICE,
         TWAP,
@@ -38,20 +35,6 @@ contract ClearingHouse is OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, 
     enum PnlPreferenceOption {
         MAX_PNL,
         MIN_PNL
-    }
-
-    /// @notice This struct records personal position information
-    /// @param size denominated in amm.baseAsset
-    /// @param margin isolated margin
-    /// @param openNotional the quoteAsset value of position when opening position. the cost of the position
-    /// @param lastUpdatedCumulativePremiumFraction for calculating funding payment, record at the moment every time when trader open/reduce/close position
-    /// @param blockNumber the block number of the last position
-    struct Position {
-        int256 size;
-        int256 margin;
-        uint256 openNotional;
-        int256 lastUpdatedCumulativePremiumFraction;
-        uint256 blockNumber;
     }
 
     /// @notice This struct is used for avoiding stack too deep error when passing too many var between functions
