@@ -166,7 +166,8 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "68455640744970299585", // positionNotional
           toFullDigitBN(5), // positionSize
-          "855695509312128744", // liquidationFee
+          "855695509312128744", // feeToLiquidator
+          "855695509312128745", //feeToIF
           carol.address, // liquidator
           "0" // badDebt
         )
@@ -265,6 +266,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "44258754381889405651", // positionNotional
           toFullDigitBN(6.25), // positionSize
           "553234429773617570", // liquidationFee
+          "553234429773617571", // feeToIF
           carol.address, // liquidator
           "0" // badDebt
         )
@@ -352,9 +354,10 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "224089635855963718818", // positionNotional 224.08
           "20000000000000000000", // positionSize
-          "2801120448199546485", // liquidationFee
+          "2801120448199546485", // feeToLiquidator
+          "0", //feeToIF
           carol.address, // liquidator
-          "2801120448199546485" // badDebt
+          "3711484592235827667" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -435,7 +438,8 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "228937728772189349135", // positionNotional
           "20000000000000000000", // positionSize
-          "5723443219304733728", // liquidationFee
+          "5723443219304733728", // feeToLiquidator
+          "0", //feeToIF
           carol.address, // liquidator
           "1785714447115384593" // badDebt
         )
@@ -491,8 +495,9 @@ describe("ClearingHouse Liquidation Test", () => {
           "223493652777982118604", // positionNotional
           toFullDigitBN(25), // positionSize
           "2793670659724776482", // liquidationFee
+          "0", //
           carol.address, // liquidator
-          "2793670659724776482" // badDebt
+          "6287323437706895086" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -567,7 +572,8 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "219298245415512465429", // positionNotional
           toFullDigitBN(25), // positionSize
-          "5482456135387811635", // liquidationFee
+          "5482456135387811635", // feeToLiquidator,
+          "0", // feeToIF
           carol.address, // liquidator
           "4780701550900277064" // badDebt
         )

@@ -965,7 +965,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       });
 
       expect(event?.args?.[4]).to.eq("8030973451327433628");
-      expect(event?.args?.[6]).to.eq("8030973451327433628");
+      expect(event?.args?.[7]).to.eq("136792035398230088496");
     });
 
     // it("alice's long position margin ratio is underwater, but oracle price kicked in, thus won't get liquidated", async () => {
