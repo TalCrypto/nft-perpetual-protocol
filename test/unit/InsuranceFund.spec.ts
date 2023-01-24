@@ -56,7 +56,7 @@ describe("InsuranceFund Spec", () => {
 
     it("force error, amm already added", async () => {
       await insuranceFund.addAmm(amm1.address);
-      await expect(insuranceFund.addAmm(amm1.address)).to.be.revertedWith("amm already added");
+      await expect(insuranceFund.addAmm(amm1.address)).to.be.revertedWith("IF_AAA");
     });
 
     it("removeAmm", async () => {
@@ -80,7 +80,7 @@ describe("InsuranceFund Spec", () => {
     });
 
     it("force error, remove non existed amm", async () => {
-      await expect(insuranceFund.removeAmm(amm1.address)).to.be.revertedWith("amm not existed");
+      await expect(insuranceFund.removeAmm(amm1.address)).to.be.revertedWith("IF_ANE");
     });
 
     // it("isExistedAmm")

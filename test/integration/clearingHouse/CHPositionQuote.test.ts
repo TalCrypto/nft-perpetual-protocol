@@ -552,11 +552,11 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
        * positionValue of 20 quoteAsset is 166.67 now
        * marginRatio = (margin(25) + unrealizedPnl(166.67-250)) / openNotionalSize(250) = -23%
        */
-      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
+      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_BDP");
     });
 
     it("close an empty position", async () => {
-      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("positionSize is 0");
+      await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_ZP");
     });
 
     it("open/close position to check the fee is charged", async () => {
@@ -827,7 +827,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
     it("Force error, open position - exceed margin ratio", async () => {
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(1260), toFullDigitBN(21), toFullDigitBN(37.5), true)
-      ).to.be.revertedWith("Margin ratio not meet criteria");
+      ).to.be.revertedWith("CH_MRNC");
     });
 
     it("alice take profit from bob's unrealized under-collateral position, then bob close", async () => {
@@ -927,9 +927,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // remainMargin: 300 - 278.77 = 21.23
       // liquidationFee: 321.23 * 5% = 16.06
       // margin ratio: = (margin + unrealizedPnl) / positionNotional = 21.23 / 321.23 = 6.608971765%
-      await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, 0)).to.be.revertedWith(
-        "Margin ratio not meet criteria"
-      );
+      await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, 0)).to.be.revertedWith("CH_MRNC");
     });
 
     it("alice's position got liquidated and not enough margin left for paying liquidation fee", async () => {
@@ -967,7 +965,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       });
 
       expect(event?.args?.[4]).to.eq("8030973451327433628");
-      expect(event?.args?.[6]).to.eq("8030973451327433628");
+      expect(event?.args?.[7]).to.eq("136792035398230088496");
     });
 
     // it("alice's long position margin ratio is underwater, but oracle price kicked in, thus won't get liquidated", async () => {
@@ -1124,11 +1122,11 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
        */
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("Margin ratio not meet criteria");
+      ).to.be.revertedWith("CH_MRNC");
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("Margin ratio not meet criteria");
+      ).to.be.revertedWith("CH_MRNC");
     });
 
     it("force error, cannot open position if position(short) is underwater and will still be after the action", async () => {
@@ -1146,7 +1144,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // Now Alice's position is underwater, cant increase position
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("Margin ratio not meet criteria");
+      ).to.be.revertedWith("CH_MRNC");
     });
 
     describe("close partial position", () => {
@@ -1241,9 +1239,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
         await amm.setFluctuationLimitRatio(toFullDigitBN(0.359));
         // await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
-        await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith(
-          "price is over fluctuation limit"
-        );
+        await expect(clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("AMM_POFL");
         // const receipt = await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
         // const pos = await clearingHouse.getPosition(amm.address, alice.address);
         // expect(pos.size).eq(toFullDigitBN(0));
@@ -1365,7 +1361,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // position size is 10.7
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     it("force error, open long positions and over the limit", async () => {
@@ -1374,14 +1370,14 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     it("force error, open a short position and over the limit", async () => {
       // position size is -10.5
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(95), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     it("force error, open short positions and over the limit", async () => {
@@ -1390,7 +1386,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     it("force error, open a long and a larger reverse short and over the limit", async () => {
@@ -1400,7 +1396,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // position size would be -10.2, revert
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     it("force error, open a short and a larger reverse long and over the limit", async () => {
@@ -1410,7 +1406,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // position size would be 10.7, revert
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(210), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.be.revertedWith("hit position size upper bound");
+      ).to.be.revertedWith("CH_OPUB");
     });
 
     describe("whitelisting", () => {
@@ -1447,7 +1443,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
         // position size would be -14.9, revert
         await expect(
           clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.be.revertedWith("hit position size upper bound");
+        ).to.be.revertedWith("CH_OPUB");
       });
 
       it("remove from whitelist and add back", async () => {
@@ -1461,7 +1457,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
         // position size would be -14.9, revert
         await expect(
           clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.be.revertedWith("hit position size upper bound");
+        ).to.be.revertedWith("CH_OPUB");
 
         await clearingHouse.setWhitelist(alice.address);
         await expect(

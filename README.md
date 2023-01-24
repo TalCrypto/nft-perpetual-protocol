@@ -7,29 +7,18 @@
 [![NPM Version](https://img.shields.io/npm/v/@mattstam/solidity-template/latest.svg)](https://www.npmjs.com/package/@mattstam/solidity-template/v/latest) -->
 # Tribe3 Smart Contract
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
-
-Try running some of the following tasks:
-
-```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node scripts/sample-script.js
-npx hardhat help
-```
-
 # Prequisites:
 1. Run `yarn` or `npm install` to install the dependencies
 2. Run `yarn graph-codegen` or `npm run graph-codegen`
-
+3. Run `forge install` to install the forge dependencies
 # Run matchstick test:
 1. Just run `yarn graph-test` or `npm run graph-test`
 
 # Run hardhat tests:
 1. Just run `npx hardhat test`
+
+# Run forge tests:
+1. Just run `forge test`
 
 # How to index the contract on localhost network:
 1. You will need 3 terminal windows/tabs open

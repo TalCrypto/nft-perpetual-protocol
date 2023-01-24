@@ -15,16 +15,6 @@ interface IAmm {
         REMOVE_FROM_AMM
     }
 
-    struct LiquidityChangedSnapshot {
-        int256 cumulativeNotional;
-        // the base/quote reserve of amm right before liquidity changed
-        uint256 quoteAssetReserve;
-        uint256 baseAssetReserve;
-        // total position size owned by amm after last snapshot taken
-        // `totalPositionSize` = currentBaseAssetReserve - lastLiquidityChangedHistoryItem.baseAssetReserve + prevTotalPositionSize
-        int256 totalPositionSize;
-    }
-
     function swapInput(
         Dir _dir,
         uint256 _quoteAssetAmount,
@@ -119,8 +109,6 @@ interface IAmm {
 
     function getSpotPrice() external view returns (uint256);
 
-    function getLiquidityHistoryLength() external view returns (uint256);
-
     // overridden by state variable
     function quoteAsset() external view returns (IERC20);
 
@@ -148,8 +136,6 @@ interface IAmm {
     function getMaxHoldingBaseAsset() external view returns (uint256);
 
     function getOpenInterestNotionalCap() external view returns (uint256);
-
-    function getLiquidityChangedSnapshots(uint256 i) external view returns (LiquidityChangedSnapshot memory);
 
     function getBaseAssetDelta() external view returns (int256);
 

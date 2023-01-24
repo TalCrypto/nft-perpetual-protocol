@@ -202,9 +202,7 @@ describe("ClearingHouse add/remove margin Test", () => {
     it("force error, remove margin - no enough margin", async () => {
       // margin is 60, try to remove more than 60
       const removedMargin = 61;
-      await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(removedMargin))).to.be.revertedWith(
-        "margin is not enough"
-      );
+      await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(removedMargin))).to.be.revertedWith("CH_MNE");
     });
 
     it("force error, remove margin - no enough margin ratio (4%)", async () => {
@@ -215,13 +213,11 @@ describe("ClearingHouse add/remove margin Test", () => {
       // remove margin 36
       // remain margin -> 60 - 36 = 24
       // margin ratio -> 24 / 600 = 4%
-      await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(removedMargin))).to.be.revertedWith(
-        "free collateral is not enough"
-      );
+      await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(removedMargin))).to.be.revertedWith("CH_FCNE");
     });
 
     it("force error, remove margin - no position opened yet and neither is there any margin", async () => {
-      await expect(clearingHouse.connect(bob).removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith("margin is not enough");
+      await expect(clearingHouse.connect(bob).removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith("CH_MNE");
     });
   });
 
@@ -249,9 +245,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(60, 60 + 131.5026875438) - 300 * 0.05 = 42
         // can not remove margin > 45
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(45.01))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(45.01))).to.be.revertedWith("CH_FCNE");
         const freeCollateral = await clearingHouseViewer.getFreeCollateral(amm.address, alice.address);
         expect(freeCollateral).to.eq(toFullDigitBN(45));
         await clearingHouse.connect(alice).removeMargin(amm.address, freeCollateral);
@@ -273,9 +267,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(60, 60 + (-20.12)) - 300 * 0.05 = 24.88
         // can not remove margin > 24.88
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(24.9))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(24.9))).to.be.revertedWith("CH_FCNE");
         const freeCollateral = await clearingHouseViewer.getFreeCollateral(amm.address, alice.address);
         expect(freeCollateral).to.eq("24850746268656716414");
         await clearingHouse.connect(alice).removeMargin(amm.address, freeCollateral);
@@ -296,9 +288,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(20, 20 + 21.96) - 78.04 * 0.05 = 16.098
         // can not remove margin > 16.098
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(16.5))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(16.5))).to.be.revertedWith("CH_FCNE");
         const freeCollateral = await clearingHouseViewer.getFreeCollateral(amm.address, alice.address);
         expect(freeCollateral).to.eq("16097560975609756098");
         await clearingHouse.connect(alice).removeMargin(amm.address, freeCollateral);
@@ -318,9 +308,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(20, 20 + (-12.1)) - 112.1 * 0.05 = 2.295
         // can not remove margin > 2.295
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(2.5))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(2.5))).to.be.revertedWith("CH_FCNE");
         const freeCollateral = await clearingHouseViewer.getFreeCollateral(amm.address, alice.address);
         expect(freeCollateral).to.eq("2282608695652173905");
         await clearingHouse.connect(alice).removeMargin(amm.address, freeCollateral);
@@ -347,9 +335,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(60, 60 + 65.75) - 300 * 0.05 = 45
         // can not remove margin > 45
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(45.01))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(45.01))).to.be.revertedWith("CH_FCNE");
         await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(45));
       });
 
@@ -373,9 +359,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(60, 60 + (-10.075)) - 300 * 0.05 = 34.925
         // can not remove margin > 34.925
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(34.93))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(34.93))).to.be.revertedWith("CH_FCNE");
         const freeCollateral = await clearingHouseViewer.getFreeCollateral(amm.address, alice.address);
         await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(34.92));
       });
@@ -397,9 +381,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(20, 20 + 10.98) - 89.02 * 0.05 = 15.549
         // can not remove margin > 15.549
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(15.6))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(15.6))).to.be.revertedWith("CH_FCNE");
         await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(15.5));
       });
 
@@ -422,9 +404,7 @@ describe("ClearingHouse add/remove margin Test", () => {
         // min(margin + funding, margin + funding + unrealized PnL) - position value * 5%
         // min(20, 20 + (-6.05)) - 106.05 * 0.05 = 8.6475
         // can not remove margin > 8.6475
-        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(8.7))).to.be.revertedWith(
-          "free collateral is not enough"
-        );
+        await expect(clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(8.7))).to.be.revertedWith("CH_FCNE");
         await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(8.6));
       });
     });

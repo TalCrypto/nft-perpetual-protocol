@@ -53,7 +53,7 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, addAggregator with zero address", async () => {
-      await expect(priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), EMPTY_ADDRESS)).revertedWith("empty address");
+      await expect(priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), EMPTY_ADDRESS)).revertedWith("CL_ZA");
     });
   });
 
@@ -139,7 +139,7 @@ describe("ChainlinkPriceFeed Spec", () => {
       expect(price).to.eq(toFullDigitBN(405));
     });
 
-    it("if there is a negative price in the middle, ignore that price", async () => {
+    it("if there is a CL_NPP in the middle, ignore that price", async () => {
       const currentTime = await priceFeed.mock_getCurrentTimestamp();
       await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-100), currentTime.add(20), currentTime.add(20), 3);
       await chainlinkMock1.mockAddAnswer(4, toFullDigitBN(420), currentTime.add(30), currentTime.add(30), 4);
@@ -151,7 +151,7 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, interval is zero", async () => {
-      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("interval can't be 0");
+      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_ZIT");
     });
   });
 
@@ -203,8 +203,8 @@ describe("ChainlinkPriceFeed Spec", () => {
     it("force error, getPreviousPrice/getPreviousTimestamp fail if the price at that time < 0", async () => {
       await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-10), 250, 250, 3);
 
-      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
-      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_NPP");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_NPP");
 
       const price = await priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 2);
       expect(price).to.eq(toFullDigitBN(405));
@@ -213,8 +213,8 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, getPreviousPrice/getPreviousTimestamp more than current history", async () => {
-      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("Not enough history");
-      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("Not enough history");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("CL_NEH");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 10)).revertedWith("CL_NEH");
     });
   });
 
@@ -227,20 +227,20 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
 
     it("force error, getTwapPrice", async () => {
-      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 40)).revertedWith("Not enough history");
+      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 40)).revertedWith("CL_NEH");
     });
 
     it("force error, getprice/getLatestTimestamp", async () => {
-      await expect(priceFeed.getPrice(ethers.utils.formatBytes32String("ETH"))).revertedWith("Not enough history");
-      await expect(priceFeed.getLatestTimestamp(ethers.utils.formatBytes32String("ETH"))).revertedWith("Not enough history");
+      await expect(priceFeed.getPrice(ethers.utils.formatBytes32String("ETH"))).revertedWith("CL_NEH");
+      await expect(priceFeed.getLatestTimestamp(ethers.utils.formatBytes32String("ETH"))).revertedWith("CL_NEH");
     });
 
-    it("force error, getPreviousPrice/getPreviousTimestamp still get the 'Negative price' error, as these two functions do not traverse back to a valid one", async () => {
-      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
-      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("Negative price");
+    it("force error, getPreviousPrice/getPreviousTimestamp still get the 'CL_NPP' error, as these two functions do not traverse back to a valid one", async () => {
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_NPP");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_NPP");
 
-      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("Negative price");
-      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("Negative price");
+      await expect(priceFeed.getPreviousPrice(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("CL_NPP");
+      await expect(priceFeed.getPreviousTimestamp(ethers.utils.formatBytes32String("ETH"), 1)).revertedWith("CL_NPP");
     });
   });
 });

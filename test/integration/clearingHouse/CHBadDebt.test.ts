@@ -95,7 +95,7 @@ describe("Bad Debt Test", () => {
     // increase position should fail since margin is not enough
     await expect(
       clearingHouse.connect(shrimp).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true)
-    ).to.be.revertedWith("Margin ratio not meet criteria");
+    ).to.be.revertedWith("CH_MRNC");
 
     // pump spot price
     await clearingHouse.connect(whale).closePosition(amm.address, toFullDigitBN(0));
@@ -108,7 +108,7 @@ describe("Bad Debt Test", () => {
     // reduce position should fail since margin is not enough
     await expect(
       clearingHouse.connect(shrimp).openPosition(amm.address, Side.SELL, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-    ).to.be.revertedWith("Margin ratio not meet criteria");
+    ).to.be.revertedWith("CH_MRNC");
 
     // pump spot price
     await clearingHouse.connect(whale).closePosition(amm.address, toFullDigitBN(0));
@@ -123,7 +123,7 @@ describe("Bad Debt Test", () => {
     // estimated realized PnL (partial close) = 7.4 * 3.36 - 80 = -55.136
     // estimated remaining margin = 10 + (-55.136) = -45.136
     // real bad debt: 46.10795455
-    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
+    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_BDP");
 
     // pump spot price
     await clearingHouse.connect(whale).closePosition(amm.address, toFullDigitBN(0));
@@ -170,7 +170,7 @@ describe("Bad Debt Test", () => {
     // estimated realized PnL (partial close) = 7.4 * 3.36 - 80 = -55.136
     // estimated remaining margin = 10 + (-55.136) = -45.136
     // real bad debt: 46.10795455
-    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
+    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_BDP");
 
     // no need to manipulate TWAP because the spot price movement is large enough
     // that getMarginRatio() returns negative value already
@@ -186,13 +186,13 @@ describe("Bad Debt Test", () => {
     // estimated realized PnL (partial close) = 7.4 * 3.36 - 80 = -55.136
     // estimated remaining margin = 10 + (-55.136) = -45.136
     // real bad debt: 46.10795455
-    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("bad debt");
+    await expect(clearingHouse.connect(shrimp).closePosition(amm.address, toFullDigitBN(0))).to.be.revertedWith("CH_BDP");
 
     // no need to manipulate TWAP because the spot price movement is large enough
     // that getMarginRatio() returns negative value already
     await syncAmmPriceToOracle();
 
     // can liquidate bad debt position
-    await expect(clearingHouse.connect(whale).liquidate(amm.address, shrimp.address)).to.be.revertedWith("not backstop LP");
+    await expect(clearingHouse.connect(whale).liquidate(amm.address, shrimp.address)).to.be.revertedWith("CH_NBLP");
   });
 });

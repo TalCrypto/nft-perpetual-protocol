@@ -14,14 +14,12 @@ interface IClearingHouse {
     /// @param margin isolated margin
     /// @param openNotional the quoteAsset value of position when opening position. the cost of the position
     /// @param lastUpdatedCumulativePremiumFraction for calculating funding payment, record at the moment every time when trader open/reduce/close position
-    /// @param liquidityHistoryIndex
     /// @param blockNumber the block number of the last position
     struct Position {
         int256 size;
-        uint256 margin;
+        int256 margin;
         uint256 openNotional;
         int256 lastUpdatedCumulativePremiumFraction;
-        uint256 liquidityHistoryIndex;
         uint256 blockNumber;
     }
 

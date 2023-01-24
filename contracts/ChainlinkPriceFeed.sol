@@ -49,8 +49,8 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         uint256,
         uint256,
         uint256
-    ) external override {
-        revert("not support");
+    ) external pure override {
+        revert("CL_NS"); //not supported
     }
 
     function getPrice(bytes32 _priceFeedKey) external view override returns (uint256) {
@@ -72,7 +72,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view override returns (uint256) {
         AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
         _requireNonEmptyAddress(address(aggregator));
-        require(_interval != 0, "interval can't be 0");
+        require(_interval != 0, "CL_ZIT"); //zero interval for twap
 
         // 3 different timestamps, `previous`, `current`, `target`
         // `base` = now - _interval
@@ -131,7 +131,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         _requireNonEmptyAddress(address(aggregator));
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
-        require(round > 0 && round >= _numOfRoundBack, "Not enough history");
+        require(round > 0 && round >= _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , , ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return uint256(previousPrice);
@@ -142,7 +142,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         _requireNonEmptyAddress(address(aggregator));
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
-        require(round > 0 && round >= _numOfRoundBack, "Not enough history");
+        require(round > 0 && round >= _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , uint256 previousTimestamp, ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return previousTimestamp;
@@ -193,15 +193,15 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     //
 
     function _requireNonEmptyAddress(address _addr) internal pure {
-        require(_addr != address(0), "empty address");
+        require(_addr != address(0), "CL_ZA"); //zero address
     }
 
     function _requireEnoughHistory(uint80 _round) internal pure {
-        require(_round > 0, "Not enough history");
+        require(_round > 0, "CL_NEH"); //not enough history
     }
 
     function _requirePositivePrice(int256 _price) internal pure {
         // a negative price should be reverted to prevent an extremely large/small premiumFraction
-        require(_price > 0, "Negative price");
+        require(_price > 0, "CL_NPP"); //not positive price
     }
 }

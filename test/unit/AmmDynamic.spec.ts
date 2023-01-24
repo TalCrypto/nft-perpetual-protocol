@@ -63,17 +63,13 @@ describe("Amm Adjustment Unit Test", () => {
 
   describe("adjust function test", () => {
     it("should fail with 0 reserves", async () => {
-      await expect(amm.adjust(toFullDigitBN(0), toFullDigitBN(10))).to.be.revertedWith("quote asset reserve cannot be 0");
-      await expect(amm.adjust(toFullDigitBN(10), toFullDigitBN(0))).to.be.revertedWith("base asset reserve cannot be 0");
+      await expect(amm.adjust(toFullDigitBN(0), toFullDigitBN(10))).to.be.revertedWith("AMM_ZQ");
+      await expect(amm.adjust(toFullDigitBN(10), toFullDigitBN(0))).to.be.revertedWith("AMM_ZB");
     });
     it("should success with valid reserve", async () => {
       await amm.adjust(toFullDigitBN(10), toFullDigitBN(20));
       expect(await amm.quoteAssetReserve()).to.be.equal(toFullDigitBN(10));
       expect(await amm.baseAssetReserve()).to.be.equal(toFullDigitBN(20));
-      expect(await amm.getLiquidityHistoryLength()).equal(2);
-      const liquidity = await amm.getLatestLiquidityChangedSnapshots();
-      expect(liquidity.quoteAssetReserve).eql(toFullDigitBN(10));
-      expect(liquidity.baseAssetReserve).eql(toFullDigitBN(20));
     });
   });
 
