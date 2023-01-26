@@ -613,7 +613,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
-        require(_applyAdjustmentCost(_amm, -1 * fundingPayment), "CH_IAB"); //insufficient adjustment budget
+        _applyAdjustmentCost(_amm, -1 * fundingPayment);
         _formulaicUpdateK(_amm, fundingImbalanceCost);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
@@ -1255,21 +1255,25 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        IERC20 quoteToken = _amm.quoteAsset();
+        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
+        if (insuranceBudget < _amount) {
+            _amount = insuranceBudget;
+        }
+        insuranceBudgets[address(_amm)] = insuranceBudget - _amount;
         vaults[address(_amm)] += _amount;
+        IERC20 quoteToken = _amm.quoteAsset();
         insuranceFund.withdraw(quoteToken, _amount);
     }
 
     function _transferToInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        IERC20 quoteToken = _amm.quoteAsset();
         uint256 vault = vaults[address(_amm)];
-        if (vault > _amount) {
-            vaults[address(_amm)] = vault - _amount;
-            quoteToken.safeTransfer(address(insuranceFund), _amount);
-        } else {
-            vaults[address(_amm)] = 0;
-            quoteToken.safeTransfer(address(insuranceFund), vault);
+        if (vault < _amount) {
+            _amount = vault;
         }
+        vaults[address(_amm)] = vault - _amount;
+        insuranceBudgets[address(_amm)] += _amount;
+        IERC20 quoteToken = _amm.quoteAsset();
+        quoteToken.safeTransfer(address(insuranceFund), _amount);
     }
 
     /**
@@ -1411,7 +1415,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             insuranceBudgets[address(_amm)],
             true
         );
-        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             // consider repeg cost in k-adjustment
             // negative cost means revenue
@@ -1438,7 +1443,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
             budget
         );
-        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
@@ -1448,20 +1454,11 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @notice apply cost for funding payment, repeg and k-adjustment
      * @dev negative cost is revenue, otherwise is expense of insurance fund
      */
-    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private returns (bool) {
-        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
-        uint256 costAbs = _cost.abs();
+    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private {
         if (_cost > 0) {
-            if (costAbs <= insuranceBudget) {
-                insuranceBudgets[address(_amm)] = insuranceBudget - costAbs;
-                _withdrawFromInsuranceFund(_amm, costAbs);
-            } else {
-                return false;
-            }
+            _withdrawFromInsuranceFund(_amm, _cost.abs());
         } else {
-            insuranceBudgets[address(_amm)] = insuranceBudget + costAbs;
-            _transferToInsuranceFund(_amm, costAbs);
+            _transferToInsuranceFund(_amm, _cost.abs());
         }
-        return true;
     }
 }
