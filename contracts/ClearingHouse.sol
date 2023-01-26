@@ -700,7 +700,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         Position memory position = getPosition(_amm, _trader);
         _requirePositionSize(position.size);
         (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
+        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, position, unrealizedPnl);
+        return remainMargin.divD(positionNotional.toInt());
     }
 
     /**
@@ -771,16 +772,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     //
     // INTERNAL FUNCTIONS
     //
-
-    function _getMarginRatio(
-        IAmm _amm,
-        Position memory _position,
-        int256 _unrealizedPnl,
-        uint256 _positionNotional
-    ) internal view returns (int256) {
-        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
-        return remainMargin.divD(_positionNotional.toInt());
-    }
 
     function _enterRestrictionMode(IAmm _amm) internal {
         uint256 blockNumber = _blockNumber();
@@ -1297,6 +1288,58 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
+    function _formulaicRepegAmm(IAmm _amm) private {
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
+            insuranceBudgets[address(_amm)],
+            true
+        );
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            // consider repeg cost in k-adjustment
+            // negative cost means revenue
+            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
+            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+    }
+
+    // if fundingImbalance is positive, clearing house receives funds
+    function _formulaicUpdateK(IAmm _amm, int256 _fundingImbalance) private {
+        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
+        int256 budget;
+        if (_fundingImbalance > 0) {
+            // positive cost is period revenue, give back half in k increase
+            budget = _fundingImbalance / 2;
+        } else if (netRevenue < -_fundingImbalance) {
+            // cost exceeded period revenue, take back half in k decrease
+            if (netRevenue < 0) {
+                budget = _fundingImbalance / 2;
+            } else {
+                budget = (netRevenue + _fundingImbalance) / 2;
+            }
+        }
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
+            budget
+        );
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+    }
+
+    /**
+     * @notice apply cost for funding payment, repeg and k-adjustment
+     * @dev negative cost is revenue, otherwise is expense of insurance fund
+     */
+    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private {
+        if (_cost > 0) {
+            _withdrawFromInsuranceFund(_amm, _cost.abs());
+        } else {
+            _transferToInsuranceFund(_amm, _cost.abs());
+        }
+    }
+
     //
     // INTERNAL VIEW FUNCTIONS
     //
@@ -1408,57 +1451,5 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
-    }
-
-    function _formulaicRepegAmm(IAmm _amm) private {
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
-            insuranceBudgets[address(_amm)],
-            true
-        );
-        if (isAdjustable) {
-            _applyAdjustmentCost(_amm, cost);
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            // consider repeg cost in k-adjustment
-            // negative cost means revenue
-            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
-            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }
-    }
-
-    // if fundingImbalance is positive, clearing house receives funds
-    function _formulaicUpdateK(IAmm _amm, int256 _fundingImbalance) private {
-        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-        int256 budget;
-        if (_fundingImbalance > 0) {
-            // positive cost is period revenue, give back half in k increase
-            budget = _fundingImbalance / 2;
-        } else if (netRevenue < -_fundingImbalance) {
-            // cost exceeded period revenue, take back half in k decrease
-            if (netRevenue < 0) {
-                budget = _fundingImbalance / 2;
-            } else {
-                budget = (netRevenue + _fundingImbalance) / 2;
-            }
-        }
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
-            budget
-        );
-        if (isAdjustable) {
-            _applyAdjustmentCost(_amm, cost);
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }
-    }
-
-    /**
-     * @notice apply cost for funding payment, repeg and k-adjustment
-     * @dev negative cost is revenue, otherwise is expense of insurance fund
-     */
-    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private {
-        if (_cost > 0) {
-            _withdrawFromInsuranceFund(_amm, _cost.abs());
-        } else {
-            _transferToInsuranceFund(_amm, _cost.abs());
-        }
     }
 }
