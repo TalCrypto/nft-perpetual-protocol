@@ -121,8 +121,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(address => int256) public netRevenuesSinceLastFunding;
 
-    // the address of bot that controls market
-    address public operator;
+    // // the address of bot that controls market
+    // address public operator;
 
     uint256[50] private __gap;
 
@@ -197,11 +197,11 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         uint256 badDebt
     );
 
-    modifier onlyOperator() {
-        // not operator
-        require(operator == _msgSender(), "CH_NO");
-        _;
-    }
+    // modifier onlyOperator() {
+    //     // not operator
+    //     require(operator == _msgSender(), "CH_NO");
+    //     _;
+    // }
 
     // FUNCTIONS
     //
@@ -289,9 +289,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         partialLiquidationRatio = _ratio;
     }
 
-    function setOperator(address _operator) external onlyOwner {
-        operator = _operator;
-    }
+    // function setOperator(address _operator) external onlyOwner {
+    //     operator = _operator;
+    // }
 
     /**
      * @notice add margin to increase margin ratio
@@ -619,60 +619,60 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         netRevenuesSinceLastFunding[address(_amm)] = 0;
     }
 
-    /**
-     * @notice repeg amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _targetPrice target price to be repegged
-     */
-    function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
-            quoteAssetReserve,
-            baseAssetReserve,
-            _targetPrice,
-            positionSize
-        );
-        int256 cost = AmmMath.calcCostForAdjustReserves(
-            quoteAssetReserve,
-            baseAssetReserve,
-            positionSize,
-            newQuoteAssetReserve,
-            newBaseAssetReserve
-        );
-        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-        emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    }
+    // /**
+    //  * @notice repeg amm according to off-chain calculation for the healthy of market
+    //  * @dev only the operator can call this function
+    //  * @param _amm IAmm address
+    //  * @param _targetPrice target price to be repegged
+    //  */
+    // function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
+    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+    //     int256 positionSize = _amm.getBaseAssetDelta();
+    //     (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         _targetPrice,
+    //         positionSize
+    //     );
+    //     int256 cost = AmmMath.calcCostForAdjustReserves(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         positionSize,
+    //         newQuoteAssetReserve,
+    //         newBaseAssetReserve
+    //     );
+    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
+    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+    //     emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    // }
 
-    /**
-     * @notice adjust K of amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _scaleNum the numerator of K scale to be adjusted
-     * @param _scaleDenom the denominator of K scale to be adjusted
-     */
-    function adjustK(
-        IAmm _amm,
-        uint256 _scaleNum,
-        uint256 _scaleDenom
-    ) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
-        uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
-        int256 cost = AmmMath.calcCostForAdjustReserves(
-            quoteAssetReserve,
-            baseAssetReserve,
-            positionSize,
-            newQuoteAssetReserve,
-            newBaseAssetReserve
-        );
-        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-        emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    }
+    // /**
+    //  * @notice adjust K of amm according to off-chain calculation for the healthy of market
+    //  * @dev only the operator can call this function
+    //  * @param _amm IAmm address
+    //  * @param _scaleNum the numerator of K scale to be adjusted
+    //  * @param _scaleDenom the denominator of K scale to be adjusted
+    //  */
+    // function adjustK(
+    //     IAmm _amm,
+    //     uint256 _scaleNum,
+    //     uint256 _scaleDenom
+    // ) external onlyOperator {
+    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+    //     int256 positionSize = _amm.getBaseAssetDelta();
+    //     uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
+    //     uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
+    //     int256 cost = AmmMath.calcCostForAdjustReserves(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         positionSize,
+    //         newQuoteAssetReserve,
+    //         newBaseAssetReserve
+    //     );
+    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
+    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+    //     emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    // }
 
     /**
      *@notice inject WETH to the insurance fund half of which is used for the adjustment
