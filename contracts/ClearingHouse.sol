@@ -115,8 +115,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // vamm => balance of vault
     mapping(address => uint256) public vaults;
 
-    // amm => budget allocated to adjust market
-    mapping(address => uint256) public adjustmentBudgets;
+    // amm => budget of the insurance fund, allocated to each market
+    mapping(address => uint256) public insuranceBudgets;
 
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(address => int256) public netRevenuesSinceLastFunding;
@@ -609,7 +609,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         _formulaicRepegAmm(_amm);
-        uint256 cap = adjustmentBudgets[address(_amm)];
+        uint256 cap = insuranceBudgets[address(_amm)];
         (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
         ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
@@ -680,7 +680,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      *@param _amount the amount to be injected
      */
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        adjustmentBudgets[address(_amm)] = adjustmentBudgets[address(_amm)] + _amount / 2;
+        insuranceBudgets[address(_amm)] = insuranceBudgets[address(_amm)] + _amount;
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
     }
@@ -1199,8 +1199,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
             quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            // 50% of fees are allocated to adjustment
-            adjustmentBudgets[address(_amm)] += _spreadFee / 2;
+            insuranceBudgets[address(_amm)] += _spreadFee;
             // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
         }
@@ -1409,7 +1408,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
     function _formulaicRepegAmm(IAmm _amm) private {
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
-            adjustmentBudgets[address(_amm)],
+            insuranceBudgets[address(_amm)],
             true
         );
         if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
@@ -1449,17 +1448,17 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @dev negative cost is revenue, otherwise is expense of insurance fund
      */
     function _applyAdjustmentCost(IAmm _amm, int256 _cost) private returns (bool) {
-        uint256 adjustmentBudget = adjustmentBudgets[address(_amm)];
+        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
         uint256 costAbs = _cost.abs();
         if (_cost > 0) {
-            if (costAbs <= adjustmentBudget) {
-                adjustmentBudgets[address(_amm)] = adjustmentBudget - costAbs;
+            if (costAbs <= insuranceBudget) {
+                insuranceBudgets[address(_amm)] = insuranceBudget - costAbs;
                 _withdrawFromInsuranceFund(_amm, costAbs);
             } else {
                 return false;
             }
         } else {
-            adjustmentBudgets[address(_amm)] = adjustmentBudget + costAbs;
+            insuranceBudgets[address(_amm)] = insuranceBudget + costAbs;
             _transferToInsuranceFund(_amm, costAbs);
         }
         return true;
