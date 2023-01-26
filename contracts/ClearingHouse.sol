@@ -1248,9 +1248,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
         uint256 insuranceBudget = insuranceBudgets[address(_amm)];
-        if (insuranceBudget < _amount) {
-            _amount = insuranceBudget;
-        }
+        require(insuranceBudget >= _amount, "CH_IIB"); // insufficient insurance budget
         insuranceBudgets[address(_amm)] = insuranceBudget - _amount;
         vaults[address(_amm)] += _amount;
         IERC20 quoteToken = _amm.quoteAsset();
