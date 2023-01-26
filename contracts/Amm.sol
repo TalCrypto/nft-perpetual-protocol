@@ -331,16 +331,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
+        uint256 _repegFlag = repegFlag;
         (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
         if (result) {
-            repegFlag += 1;
+            _repegFlag += 1;
         } else {
-            if (repegFlag > 0) {
-                repegFlag = 0;
+            if (_repegFlag > 0) {
+                _repegFlag = 0;
             }
         }
 
-        if (open && adjustable && repegFlag >= MIN_NUM_REPEG_FLAG) {
+        if (open && adjustable && _repegFlag >= MIN_NUM_REPEG_FLAG) {
             uint256 targetPrice = oraclePrice > marketPrice
                 ? oraclePrice.mulD(1 ether - REPEG_PRICE_GAP_RATIO)
                 : oraclePrice.mulD(1 ether + REPEG_PRICE_GAP_RATIO);
@@ -382,6 +383,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 isAdjustable = true;
             }
         }
+
+        repegFlag = uint8(_repegFlag);
     }
 
     /**
