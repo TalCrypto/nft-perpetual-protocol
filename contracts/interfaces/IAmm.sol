@@ -39,6 +39,15 @@ interface IAmm {
             uint256
         );
 
+    function repegCheck(uint256 budget, bool adjustK)
+        external
+        returns (
+            bool,
+            int256,
+            uint256,
+            uint256
+        );
+
     function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external;
 
     function shutdown() external;
@@ -56,16 +65,6 @@ interface IAmm {
     //
     // VIEW
     //
-
-    function getFormulaicRepegResult(uint256 budget, bool adjustK)
-        external
-        view
-        returns (
-            bool,
-            int256,
-            uint256,
-            uint256
-        );
 
     function getFormulaicUpdateKResult(int256 budget)
         external

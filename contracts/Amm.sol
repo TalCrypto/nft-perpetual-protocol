@@ -61,6 +61,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // 10%
     uint256 public constant MAX_ORACLE_SPREAD_RATIO = 1e17;
 
+    uint8 public constant MIN_NUM_REPEG_FLAG = 3;
+
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -103,6 +105,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     bool public override open;
     bool public override adjustable;
     bool public canLowerK;
+    uint8 public repegFlag;
 
     uint256[50] private __gap;
 
@@ -309,6 +312,75 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     /**
+     * @notice check if repeg can be done and get the cost and reserves of formulaic repeg
+     * @param _budget the budget available for repeg
+     * @param _adjustK if true, repeg curve with adjusting K
+     * @return isAdjustable if true, curve can be adjustable by repeg
+     * @return cost the amount of cost of repeg
+     * @return newQuoteAssetReserve the new quote asset reserve by repeg
+     * @return newBaseAssetReserve the new base asset reserve by repeg
+     */
+    function repegCheck(uint256 _budget, bool _adjustK)
+        external
+        override
+        returns (
+            bool isAdjustable,
+            int256 cost,
+            uint256 newQuoteAssetReserve,
+            uint256 newBaseAssetReserve
+        )
+    {
+        if (isOverSpreadLimit()) {
+            repegFlag += 1;
+        } else {
+            if (repegFlag > 0) {
+                repegFlag = 0;
+            }
+        }
+
+        if (open && adjustable && repegFlag >= MIN_NUM_REPEG_FLAG) {
+            uint256 targetPrice = getUnderlyingPrice();
+            uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
+            uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
+            int256 _positionSize = totalPositionSize; //to optimize gas cost
+            (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
+                _quoteAssetReserve,
+                _baseAssetReserve,
+                targetPrice,
+                _positionSize
+            );
+            cost = AmmMath.calcCostForAdjustReserves(
+                _quoteAssetReserve,
+                _baseAssetReserve,
+                _positionSize,
+                newQuoteAssetReserve,
+                newBaseAssetReserve
+            );
+            if (cost > 0 && uint256(cost) > _budget) {
+                if (_adjustK && canLowerK) {
+                    // scale down K by 0.1% that returns a profit of clearing house
+                    newQuoteAssetReserve = (_quoteAssetReserve * 999) / 1000;
+                    newBaseAssetReserve = (_baseAssetReserve * 999) / 1000;
+                    cost = AmmMath.calcCostForAdjustReserves(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        newQuoteAssetReserve,
+                        newBaseAssetReserve
+                    );
+                    isAdjustable = true;
+                } else {
+                    isAdjustable = false;
+                    // newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
+                    // cost = _budget.toInt();
+                }
+            } else {
+                isAdjustable = true;
+            }
+        }
+    }
+
+    /**
      * Repeg both reserves in case of repegging and k-adjustment
      */
     function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
@@ -445,68 +517,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // VIEW FUNCTIONS
     //
-
-    /**
-     * @notice get the cost and reserves of formulaic repeg
-     * @param _budget the budget available for repeg
-     * @param _adjustK if true, repeg curve with adjusting K
-     * @return isAdjustable if true, curve can be adjustable by repeg
-     * @return cost the amount of cost of repeg
-     * @return newQuoteAssetReserve the new quote asset reserve by repeg
-     * @return newBaseAssetReserve the new base asset reserve by repeg
-     */
-    function getFormulaicRepegResult(uint256 _budget, bool _adjustK)
-        external
-        view
-        override
-        returns (
-            bool isAdjustable,
-            int256 cost,
-            uint256 newQuoteAssetReserve,
-            uint256 newBaseAssetReserve
-        )
-    {
-        if (open && adjustable && isOverSpreadLimit()) {
-            uint256 targetPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-            uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
-            uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
-            int256 _positionSize = totalPositionSize; //to optimize gas cost
-            (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
-                _quoteAssetReserve,
-                _baseAssetReserve,
-                targetPrice,
-                _positionSize
-            );
-            cost = AmmMath.calcCostForAdjustReserves(
-                _quoteAssetReserve,
-                _baseAssetReserve,
-                _positionSize,
-                newQuoteAssetReserve,
-                newBaseAssetReserve
-            );
-            if (cost > 0 && uint256(cost) > _budget) {
-                if (_adjustK && canLowerK) {
-                    // scale down K by 0.1% that returns a profit of clearing house
-                    newQuoteAssetReserve = (_quoteAssetReserve * 999) / 1000;
-                    newBaseAssetReserve = (_baseAssetReserve * 999) / 1000;
-                    cost = AmmMath.calcCostForAdjustReserves(
-                        _quoteAssetReserve,
-                        _baseAssetReserve,
-                        _positionSize,
-                        newQuoteAssetReserve,
-                        newBaseAssetReserve
-                    );
-                    isAdjustable = true;
-                } else {
-                    isAdjustable = false;
-                    // newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
-                    // cost = _budget.toInt();
-                }
-            } else {
-                isAdjustable = newQuoteAssetReserve != _quoteAssetReserve;
-            }
-        }
-    }
 
     /**
      * @notice get the cost and reserves when adjust k
@@ -684,7 +694,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     function isOverSpreadLimit() public view override returns (bool) {
-        uint256 oraclePrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
+        uint256 oraclePrice = getUnderlyingPrice();
         require(oraclePrice > 0, "AMM_ZOP"); //zero oracle price
         uint256 marketPrice = getSpotPrice();
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();

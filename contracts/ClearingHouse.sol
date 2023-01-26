@@ -1407,13 +1407,14 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     function _formulaicRepegAmm(IAmm _amm) private {
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
             insuranceBudgets[address(_amm)],
             true
         );
         if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             // consider repeg cost in k-adjustment
+            // negative cost means revenue
             netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         }
