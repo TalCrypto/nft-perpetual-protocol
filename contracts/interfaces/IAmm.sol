@@ -140,5 +140,12 @@ interface IAmm {
 
     function getUnderlyingPrice() external view returns (uint256);
 
-    function isOverSpreadLimit() external view returns (bool);
+    function isOverSpreadLimit()
+        external
+        view
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        );
 }

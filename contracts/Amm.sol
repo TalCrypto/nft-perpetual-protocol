@@ -58,10 +58,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
     uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 1e9;
 
-    // 10%
-    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 1e17;
+    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 0.1 ether; // 10%
 
     uint8 public constant MIN_NUM_REPEG_FLAG = 3;
+
+    uint256 public constant REPEG_PRICE_GAP_RATIO = 0.05 ether; // 5%
 
     //**********************************************************//
     //    The below state variables can not change the order    //
@@ -330,7 +331,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        if (isOverSpreadLimit()) {
+        (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
+        if (result) {
             repegFlag += 1;
         } else {
             if (repegFlag > 0) {
@@ -339,7 +341,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
 
         if (open && adjustable && repegFlag >= MIN_NUM_REPEG_FLAG) {
-            uint256 targetPrice = getUnderlyingPrice();
+            uint256 targetPrice = oraclePrice > marketPrice
+                ? oraclePrice.mulD(1 ether - REPEG_PRICE_GAP_RATIO)
+                : oraclePrice.mulD(1 ether + REPEG_PRICE_GAP_RATIO);
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = totalPositionSize; //to optimize gas cost
@@ -693,13 +697,22 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return totalPositionSize;
     }
 
-    function isOverSpreadLimit() public view override returns (bool) {
-        uint256 oraclePrice = getUnderlyingPrice();
+    function isOverSpreadLimit()
+        public
+        view
+        override
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        )
+    {
+        oraclePrice = getUnderlyingPrice();
         require(oraclePrice > 0, "AMM_ZOP"); //zero oracle price
-        uint256 marketPrice = getSpotPrice();
+        marketPrice = getSpotPrice();
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
 
-        return oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
+        result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
     // /**
