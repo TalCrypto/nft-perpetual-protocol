@@ -1245,6 +1245,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
+    // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
         uint256 insuranceBudget = insuranceBudgets[address(_amm)];
         if (insuranceBudget < _amount) {
@@ -1256,6 +1257,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         insuranceFund.withdraw(quoteToken, _amount);
     }
 
+    // transfer fund from vault to insurance fund
     function _transferToInsuranceFund(IAmm _amm, uint256 _amount) internal {
         uint256 vault = vaults[address(_amm)];
         if (vault < _amount) {
