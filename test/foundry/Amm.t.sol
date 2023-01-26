@@ -90,14 +90,14 @@ contract AmmTest is Test {
 
     function testRepeg(
         int96 _totalPositionSize,
-        uint40 _targetPrice,
+        uint40 _oraclePrice,
         bool budgetIsEnough
     ) public {
-        uint256 targetPrice = uint256(_targetPrice) * PRECISION;
-        priceFeed.setTwapPrice(targetPrice);
+        uint256 oraclePrice = uint256(_oraclePrice) * PRECISION;
+        priceFeed.setPrice(oraclePrice);
         int256 totalPositionSize = int256(_totalPositionSize);
         vm.assume(totalPositionSize.abs() < 90 ether);
-        vm.assume(targetPrice > 1e15);
+        vm.assume(oraclePrice > 1e15);
         uint256 budget = budgetIsEnough ? type(uint256).max : 0;
         if (totalPositionSize > 0) {
             amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), true);
@@ -106,53 +106,57 @@ contract AmmTest is Test {
         }
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         uint256 spotPrice = amm.getSpotPrice();
-        (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.getFormulaicRepegResult(budget, false);
+        (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.repegCheck(budget, false);
+        assertFalse(isAdjustable);
+        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
+        assertFalse(isAdjustable);
+        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
         if (totalPositionSize > 0) {
             // #long > #short
-            if (targetPrice * 900 > spotPrice * 1000) {
-                // target price is bigger than spot price and exceeds spread limit 10%
+            if (oraclePrice * 900 > spotPrice * 1000) {
+                // oracle price is bigger than spot price and exceeds spread limit 10%
                 assertGt(cost, 0, "cost is not positive"); // there is a cost to system
                 if (budget == 0) {
                     assertFalse(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertTrue(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 }
-            } else if (targetPrice * 11 < spotPrice * 10) {
-                // target price is smaller than spot price and exceeds spread limit 10%
+            } else if (oraclePrice * 11 < spotPrice * 10) {
+                // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertLt(cost, 0); // there is a revenue to system
                 assertTrue(isAdjustable);
-                assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
             } else {
                 assertFalse(isAdjustable);
             }
         } else if (totalPositionSize < 0) {
             // #long < #short
-            if (targetPrice * 900 > spotPrice * 1000) {
-                // target price is more than spot price and exceeds spread limit 10%
+            if (oraclePrice * 900 > spotPrice * 1000) {
+                // oracle price is more than spot price and exceeds spread limit 10%
                 assertLt(cost, 0, "cost is not negative"); // there is a revenue to system
                 assertTrue(isAdjustable);
-                assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
                 if (newBReserve != oldBReserve) {
                     // in case new base asset reserve is bigger than totalPositionSize.abs()
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertGt(newQReserve * newBReserve, oldQReserve * oldBReserve, "decrease K");
                 }
-            } else if (targetPrice * 11 < spotPrice * 10) {
-                // target price is smaller than spot price and exceeds spread limit 10%
+            } else if (oraclePrice * 11 < spotPrice * 10) {
+                // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertGt(cost, 0); // there is a cost to system
                 if (budget == 0) {
                     assertFalse(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertTrue(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 }
             } else {
@@ -160,17 +164,17 @@ contract AmmTest is Test {
             }
         } else {
             // #long == #short
-            if (targetPrice * 900 > spotPrice * 1000) {
-                // target price is bigger than spot price and exceeds spread limit 10%
+            if (oraclePrice * 900 > spotPrice * 1000) {
+                // oracle price is bigger than spot price and exceeds spread limit 10%
                 assertEq(cost, 0, "cost is not zero"); // there is no cost
                 assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
-            } else if (targetPrice * 11 < spotPrice * 10) {
-                // target price is smaller than spot price and exceeds spread limit 10%
+            } else if (oraclePrice * 11 < spotPrice * 10) {
+                // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertEq(cost, 0, "cost is not zero"); // there is no cost
                 assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(targetPrice), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
             } else {
                 assertFalse(isAdjustable);
@@ -178,8 +182,24 @@ contract AmmTest is Test {
         }
     }
 
-    function testSpecific() public {
-        testRepeg(-30157829746910143156, 1099511627775, false);
+    function testRepegFlag() public {
+        uint256 spotPrice = amm.getSpotPrice();
+        priceFeed.setPrice(spotPrice * 2);
+
+        (bool isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertFalse(isAdjustable);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertFalse(isAdjustable);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertTrue(isAdjustable);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertTrue(isAdjustable);
+
+        priceFeed.setPrice(spotPrice);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertFalse(isAdjustable);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        assertFalse(isAdjustable);
     }
 
     function stringToBytes32(string memory source) public pure returns (bytes32 result) {
