@@ -262,7 +262,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(450));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(900));
       expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
     });
 
