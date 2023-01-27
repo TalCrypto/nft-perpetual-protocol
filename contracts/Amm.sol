@@ -62,8 +62,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     uint8 public constant MIN_NUM_REPEG_FLAG = 3;
 
-    uint256 public constant REPEG_PRICE_GAP_RATIO = 0.05 ether; // 5%
-
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -110,13 +108,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     bool public override adjustable;
     bool public canLowerK;
     uint8 public repegFlag;
-
+    uint256 public repegPriceGapRatio;
     bool public isDynamicFundingForCost; // use dynamic funding rate when there is cost of system
-
     bool public isDynamicFundingForRevenue; // use normal funding rate when there is revenue of system
-
     int256 public fundingCostCoverRate; // system covers pct of normal funding payment when cost
-
     int256 public fundingRevenueTakeRate; // system takes ptc of normal funding payment when revenue
 
     uint256[50] private __gap;
@@ -181,12 +176,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         ); //initial with invalid input
         __Ownable_init();
 
+        repegPriceGapRatio = 0.05 ether; // 5%
         isDynamicFundingForCost = true; // use dynamic funding rate when there is cost of system
-
         isDynamicFundingForRevenue = false; // use normal funding rate when there is revenue of system
-
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
-
         fundingRevenueTakeRate = 0.75 ether; // system take 75% of normal funding payment when revenue
 
         quoteAssetReserve = _quoteAssetReserve;
@@ -426,8 +419,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         if (open && adjustable && _repegFlag >= MIN_NUM_REPEG_FLAG) {
             uint256 targetPrice = oraclePrice > marketPrice
-                ? oraclePrice.mulD(1 ether - REPEG_PRICE_GAP_RATIO)
-                : oraclePrice.mulD(1 ether + REPEG_PRICE_GAP_RATIO);
+                ? oraclePrice.mulD(1 ether - repegPriceGapRatio)
+                : oraclePrice.mulD(1 ether + repegPriceGapRatio);
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = getBaseAssetDelta(); //to optimize gas cost
@@ -602,6 +595,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         require(address(_priceFeed) != address(0), "AMM_ZAPF"); //zero address of price feed
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
+    }
+
+    function setRepegPriceGapRatio(uint256 _ratio) external onlyOwner {
+        repegPriceGapRatio = _ratio;
     }
 
     function setIsDynamicFundingForCost(bool _isDynamicFundingForCost) external onlyOwner {
