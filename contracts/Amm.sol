@@ -197,7 +197,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         fluctuationLimitRatio = _fluctuationLimitRatio;
         fundingPeriod = _fundingPeriod;
         fundingBufferPeriod = _fundingPeriod / 2;
-        spotPriceTwapInterval = 1 hours;
+        spotPriceTwapInterval = 3 hours;
         priceFeedKey = _priceFeedKey;
         quoteAsset = IERC20(_quoteAsset);
         priceFeed = _priceFeed;
