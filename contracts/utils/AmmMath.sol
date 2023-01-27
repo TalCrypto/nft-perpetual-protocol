@@ -67,8 +67,16 @@ library AmmMath {
                 (Math.mulDiv(_quoteAssetReserve, uint256(_positionSize), (_baseAssetReserve + uint256(_positionSize)))).toInt();
         } else {
             cost =
-                (Math.mulDiv(_quoteAssetReserve, uint256(-_positionSize), (_baseAssetReserve - uint256(-_positionSize)))).toInt() -
-                (Math.mulDiv(_newQuoteAssetReserve, uint256(-_positionSize), (_newBaseAssetReserve - uint256(-_positionSize)))).toInt();
+                (Math.mulDiv(_quoteAssetReserve, uint256(-_positionSize), (_baseAssetReserve - uint256(-_positionSize)), Math.Rounding.Up))
+                    .toInt() -
+                (
+                    Math.mulDiv(
+                        _newQuoteAssetReserve,
+                        uint256(-_positionSize),
+                        (_newBaseAssetReserve - uint256(-_positionSize)),
+                        Math.Rounding.Up
+                    )
+                ).toInt();
         }
     }
 

@@ -841,7 +841,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      *    -------      -------                   -------        -------
      *      ◥◤  ------->  ▲                         |  <--------  ◢◣
      *      ◥◤            |                         ▼             ◢◣
-     *   ＲＥＭＯＶＥ  (amount + 1)              (amount + 1)      ＡＤＤ
+     *   ＲＥＭＯＶＥ  (amount + 1)              (amount - 1)      ＡＤＤ
      **/
 
     function getInputPriceWithReserves(
@@ -865,17 +865,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(quoteAssetAfter != 0, "AMM_ZQAA"); //zero quote asset after
 
-        baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter);
+        baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter, Math.Rounding.Up);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
-        // if the amount is not dividable, return 1 wei less for trader
-        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != 0) {
-            if (isAddToAmm) {
-                baseAssetBought = baseAssetBought - 1;
-            } else {
-                baseAssetBought = baseAssetBought + 1;
-            }
-        }
+        // // if the amount is not dividable, return 1 wei less for trader
+        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != 0) {
+        //     if (isAddToAmm) {
+        //         baseAssetBought = baseAssetBought - 1;
+        //     } else {
+        //         baseAssetBought = baseAssetBought + 1;
+        //     }
+        // }
 
         return baseAssetBought;
     }
@@ -902,17 +902,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         require(baseAssetAfter != 0, "AMM_ZBAA"); //zero base asset after
 
-        quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter);
+        quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter, Math.Rounding.Up);
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
-        // if the amount is not dividable, return 1 wei less for trader
-        if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != 0) {
-            if (isAddToAmm) {
-                quoteAssetSold = quoteAssetSold - 1;
-            } else {
-                quoteAssetSold = quoteAssetSold + 1;
-            }
-        }
+        // // if the amount is not dividable, return 1 wei less for trader
+        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != 0) {
+        //     if (isAddToAmm) {
+        //         quoteAssetSold = quoteAssetSold - 1;
+        //     } else {
+        //         quoteAssetSold = quoteAssetSold + 1;
+        //     }
+        // }
 
         return quoteAssetSold;
     }
