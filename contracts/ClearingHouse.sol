@@ -609,8 +609,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         _formulaicRepegAmm(_amm);
-        uint256 cap = insuranceBudgets[address(_amm)];
-        (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
+        (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(insuranceBudgets[address(_amm)]);
         ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
         _applyAdjustmentCost(_amm, -1 * fundingPayment);
