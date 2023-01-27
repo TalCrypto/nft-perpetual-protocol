@@ -855,11 +855,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             uint256 feeToInsuranceFund;
 
             // int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+            uint256 _partialLiquidationRatio = partialLiquidationRatio;
+            uint256 _liquidationFeeRatio = liquidationFeeRatio;
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
                 // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatio > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
+                marginRatio > int256(_liquidationFeeRatio) && _partialLiquidationRatio < 1 ether && _partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
                 positionResp = _openReversePosition(
@@ -867,7 +869,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                         amm: _amm,
                         side: position.size > 0 ? Side.SELL : Side.BUY,
                         trader: _trader,
-                        amount: position.size.mulD(partialLiquidationRatio.toInt()).abs(),
+                        amount: position.size.mulD(_partialLiquidationRatio.toInt()).abs(),
                         leverage: 1 ether,
                         isQuote: false,
                         canOverFluctuationLimit: true
@@ -875,7 +877,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 );
 
                 // half of the liquidationFee goes to liquidator & another half goes to insurance fund
-                liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio);
+                liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio);
                 feeToLiquidator = liquidationPenalty / 2;
                 feeToInsuranceFund = liquidationPenalty - feeToLiquidator;
 
@@ -887,7 +889,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 // liquidationPenalty = getPosition(_amm, _trader).margin.abs();
                 positionResp = _closePosition(_amm, _trader, true);
                 uint256 remainMargin = positionResp.marginToVault < 0 ? positionResp.marginToVault.abs() : 0;
-                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio) / 2;
+                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio) / 2;
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund
