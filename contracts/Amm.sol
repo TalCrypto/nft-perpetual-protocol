@@ -64,14 +64,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     uint256 public constant REPEG_PRICE_GAP_RATIO = 0.05 ether; // 5%
 
-    bool public constant DYNAMIC_FUNDING_FOR_COST = true; // use dynamic funding rate when there is cost of system
-
-    bool public constant DYNAMIC_FUNDING_FOR_REVENUE = false; // use normal funding rate when there is revenue of system
-
-    int256 public constant SYSTEM_FUNDING_COVER_RATE_FOR_COST = 0.5 ether; // system covers 50% of normal funding payment when cost
-
-    int256 public constant SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE = 0.75 ether; // system take 75% of normal funding payment when revenue
-
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -118,6 +110,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     bool public override adjustable;
     bool public canLowerK;
     uint8 public repegFlag;
+
+    bool public isDynamicFundingForCost; // use dynamic funding rate when there is cost of system
+
+    bool public isDynamicFundingForRevenue; // use normal funding rate when there is revenue of system
+
+    int256 public fundingCostCoverRate; // system covers pct of normal funding payment when cost
+
+    int256 public fundingRevenueTakeRate; // system takes ptc of normal funding payment when revenue
 
     uint256[50] private __gap;
 
@@ -180,6 +180,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             "AMM_III"
         ); //initial with invalid input
         __Ownable_init();
+
+        isDynamicFundingForCost = true; // use dynamic funding rate when there is cost of system
+
+        isDynamicFundingForRevenue = false; // use normal funding rate when there is revenue of system
+
+        fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
+
+        fundingRevenueTakeRate = 0.75 ether; // system take 75% of normal funding payment when revenue
 
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
@@ -331,24 +339,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         int256 _longPositionSize = int256(longPositionSize);
         int256 _shortPositionSize = int256(shortPositionSize);
 
-        if (uncappedFundingPayment > 0 && DYNAMIC_FUNDING_FOR_REVENUE && _longPositionSize + _shortPositionSize != 0) {
+        if (uncappedFundingPayment > 0 && isDynamicFundingForRevenue && _longPositionSize + _shortPositionSize != 0) {
             // when the nomal funding payment is revenue and daynamic rate is available, system takes profit partially
-            fundingPayment = uncappedFundingPayment.mulD(SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE);
+            fundingPayment = uncappedFundingPayment.mulD(fundingRevenueTakeRate);
             premiumFractionLong = premiumFraction
-                .mulD(
-                    SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE.mulD(_longPositionSize) +
-                        (2 ether - SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE).mulD(_shortPositionSize)
-                )
+                .mulD(fundingRevenueTakeRate.mulD(_longPositionSize) + (2 ether - fundingRevenueTakeRate).mulD(_shortPositionSize))
                 .divD(_longPositionSize + _shortPositionSize);
             premiumFractionShort = premiumFraction
-                .mulD(
-                    (2 ether - SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE).mulD(_longPositionSize) +
-                        SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE.mulD(_shortPositionSize)
-                )
+                .mulD((2 ether - fundingRevenueTakeRate).mulD(_longPositionSize) + fundingRevenueTakeRate.mulD(_shortPositionSize))
                 .divD(_longPositionSize + _shortPositionSize);
-        } else if (uncappedFundingPayment < 0 && DYNAMIC_FUNDING_FOR_COST && _longPositionSize + _shortPositionSize != 0) {
+        } else if (uncappedFundingPayment < 0 && isDynamicFundingForCost && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
-            fundingPayment = uncappedFundingPayment.mulD(SYSTEM_FUNDING_COVER_RATE_FOR_COST);
+            fundingPayment = uncappedFundingPayment.mulD(fundingCostCoverRate);
             if (uint256(-fundingPayment) > _cap) {
                 // when the funding payment that system covers is greater than the cap, then cover nothing
                 fundingPayment = 0;
@@ -356,16 +358,10 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 premiumFractionShort = premiumFraction.mulD(2 * _longPositionSize).divD(_longPositionSize + _shortPositionSize);
             } else {
                 premiumFractionLong = premiumFraction
-                    .mulD(
-                        SYSTEM_FUNDING_COVER_RATE_FOR_COST.mulD(_longPositionSize) +
-                            (2 ether - SYSTEM_FUNDING_COVER_RATE_FOR_COST).mulD(_shortPositionSize)
-                    )
+                    .mulD(fundingCostCoverRate.mulD(_longPositionSize) + (2 ether - fundingCostCoverRate).mulD(_shortPositionSize))
                     .divD(_longPositionSize + _shortPositionSize);
                 premiumFractionShort = premiumFraction
-                    .mulD(
-                        (2 ether - SYSTEM_FUNDING_COVER_RATE_FOR_COST).mulD(_longPositionSize) +
-                            SYSTEM_FUNDING_COVER_RATE_FOR_COST.mulD(_shortPositionSize)
-                    )
+                    .mulD((2 ether - fundingCostCoverRate).mulD(_longPositionSize) + fundingCostCoverRate.mulD(_shortPositionSize))
                     .divD(_longPositionSize + _shortPositionSize);
             }
         } else {
@@ -606,6 +602,22 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         require(address(_priceFeed) != address(0), "AMM_ZAPF"); //zero address of price feed
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
+    }
+
+    function setIsDynamicFundingForCost(bool _isDynamicFundingForCost) external onlyOwner {
+        isDynamicFundingForCost = _isDynamicFundingForCost;
+    }
+
+    function setIsDynamicFundingForRevenue(bool _isDynamicFundingForRevenue) external onlyOwner {
+        isDynamicFundingForRevenue = _isDynamicFundingForRevenue;
+    }
+
+    function setFundingCostCoverRate(int256 _rate) external onlyOwner {
+        fundingCostCoverRate = _rate;
+    }
+
+    function setFundingRevenueTakeRate(int256 _rate) external onlyOwner {
+        fundingRevenueTakeRate = _rate;
     }
 
     //
