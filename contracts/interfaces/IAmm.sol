@@ -55,7 +55,8 @@ interface IAmm {
     function settleFunding(uint256 _cap)
         external
         returns (
-            int256 premiumFraction,
+            int256 premiumFractionLong,
+            int256 premiumFractionShort,
             int256 fundingPayment,
             int256 uncappedFundingPayment
         );

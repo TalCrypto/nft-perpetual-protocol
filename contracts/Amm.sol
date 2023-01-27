@@ -64,6 +64,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     uint256 public constant REPEG_PRICE_GAP_RATIO = 0.05 ether; // 5%
 
+    bool public constant DYNAMIC_FUNDING_FOR_COST = true; // use dynamic funding rate when there is cost of system
+
+    bool public constant DYNAMIC_FUNDING_FOR_REVENUE = false; // use normal funding rate when there is revenue of system
+
+    int256 public constant SYSTEM_FUNDING_COVER_RATE_FOR_COST = 0.5 ether; // system covers 50% of normal funding payment when cost
+
+    int256 public constant SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE = 0.75 ether; // system take 75% of normal funding payment when revenue
+
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -73,10 +81,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // int256 private baseAssetDeltaThisFundingPeriod;
 
     // update during every swap and used when shutting amm down. it's trader's total base asset size
-    int256 public totalPositionSize;
+    // int256 public totalPositionSize;
+    uint256 public longPositionSize;
+    uint256 public shortPositionSize;
 
     // latest funding rate
-    int256 public fundingRate;
+    int256 public fundingRateLong;
+    int256 public fundingRateShort;
 
     int256 private cumulativeNotional;
 
@@ -123,7 +134,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     event SwapInput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
-    event FundingRateUpdated(int256 rate, uint256 underlyingPrice, int256 fundingPayment);
+    event FundingRateUpdated(int256 rateLong, int256 rateShort, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
     // event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
@@ -209,11 +220,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256
         )
     {
-        if (_dirOfQuote == Dir.REMOVE_FROM_AMM) {
-            require(quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "AMM_OTL"); //over trading limit
-        }
-
         uint256 baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
+        // mainly this function is called when opening position, thus
+        if (_dirOfQuote == Dir.ADD_TO_AMM) {
+            // open long
+            longPositionSize += baseAssetAmount;
+        } else {
+            // open short
+            shortPositionSize += baseAssetAmount;
+        }
         _updateReserve(_dirOfQuote, _quoteAssetAmount, baseAssetAmount, _canOverFluctuationLimit);
         emit SwapInput(_dirOfQuote, _quoteAssetAmount, baseAssetAmount);
         return (baseAssetAmount, _quoteAssetAmount.mulD(spreadRatio), _quoteAssetAmount.mulD(tollRatio));
@@ -242,13 +257,31 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256
         )
     {
-        if (_dirOfBase == Dir.REMOVE_FROM_AMM) {
-            require(baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "AMM_OTL"); //over trading limit
-        }
-
         uint256 quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
-        Dir dirOfQuote = _dirOfBase == Dir.ADD_TO_AMM ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM;
-        _updateReserve(dirOfQuote, quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
+        // mainly this function is called when closing position, thus
+        if (_dirOfBase == Dir.ADD_TO_AMM) {
+            // close long
+            uint256 _longPositionSize = longPositionSize;
+            if (_longPositionSize > _baseAssetAmount) {
+                longPositionSize = _longPositionSize - _baseAssetAmount;
+            } else {
+                shortPositionSize += _baseAssetAmount;
+            }
+        } else {
+            // close short
+            uint256 _shortPositionSize = shortPositionSize;
+            if (_shortPositionSize > _baseAssetAmount) {
+                shortPositionSize = _shortPositionSize - _baseAssetAmount;
+            } else {
+                longPositionSize += _baseAssetAmount;
+            }
+        }
+        _updateReserve(
+            _dirOfBase == Dir.ADD_TO_AMM ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM,
+            quoteAssetAmount,
+            _baseAssetAmount,
+            _canOverFluctuationLimit
+        );
         emit SwapOutput(_dirOfBase, quoteAssetAmount, _baseAssetAmount);
         return (quoteAssetAmount, quoteAssetAmount.mulD(spreadRatio), quoteAssetAmount.mulD(tollRatio));
     }
@@ -257,7 +290,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @notice update funding rate
      * @dev only allow to update while reaching `nextFundingTime`
      * @param _cap the limit of expense of funding payment
-     * @return premiumFraction premium fraction of this period in 18 digits
+     * @return premiumFractionLong premium fraction for long of this period in 18 digits
+     * @return premiumFractionShort premium fraction for short of this period in 18 digits
      * @return fundingPayment profit of insurance fund in funding payment
      * @return uncappedFundingPayment imbalance cost of funding payment without cap
      */
@@ -267,7 +301,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         onlyOpen
         onlyCounterParty
         returns (
-            int256 premiumFraction,
+            int256 premiumFractionLong,
+            int256 premiumFractionShort,
             int256 fundingPayment,
             int256 uncappedFundingPayment
         )
@@ -277,30 +312,80 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "AMM_OPE"); //oracle price is expired
 
         // premium = twapMarketPrice - twapIndexPrice
-        // timeFraction = fundingPeriod(1 hour) / 1 day
+        // timeFraction = fundingPeriod(3 hour) / 1 day
         // premiumFraction = premium * timeFraction
         uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
         int256 premium = getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt();
-        premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
-        int256 positionSize = totalPositionSize; // to optimize gas
+        int256 premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
+        int256 positionSize = getBaseAssetDelta();
         // funding payment = premium fraction * position
         // eg. if alice takes 10 long position, totalPositionSize = 10
         // if premiumFraction is positive: long pay short, amm get positive funding payment
         // if premiumFraction is negative: short pay long, amm get negative funding payment
         // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
         uncappedFundingPayment = premiumFraction.mulD(positionSize);
-        // if expense of funding payment is greater than cap amount, then cap it
-        if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
-            premiumFraction = int256(_cap).divD(positionSize) * (-1);
-            fundingPayment = int256(_cap) * (-1);
+
+        // dynamic funding rate formula
+        // premiumFractionLong  = premiumFraction * (    a*longSize + (2-a)*shortSize) / (longSize + shortSize)
+        // premiumFractionShort = premiumFraction * ((2-a)*longSize +     a*shortSize) / (longSize + shortSize)
+        int256 _longPositionSize = int256(longPositionSize);
+        int256 _shortPositionSize = int256(shortPositionSize);
+
+        if (uncappedFundingPayment > 0 && DYNAMIC_FUNDING_FOR_REVENUE && _longPositionSize + _shortPositionSize != 0) {
+            // when the nomal funding payment is revenue and daynamic rate is available, system takes profit partially
+            fundingPayment = uncappedFundingPayment.mulD(SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE);
+            premiumFractionLong = premiumFraction
+                .mulD(
+                    SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE.mulD(_longPositionSize) +
+                        (2 ether - SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE).mulD(_shortPositionSize)
+                )
+                .divD(_longPositionSize + _shortPositionSize);
+            premiumFractionShort = premiumFraction
+                .mulD(
+                    (2 ether - SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE).mulD(_longPositionSize) +
+                        SYSTEM_FUNDING_TAKE_RATE_FOR_REVENUE.mulD(_shortPositionSize)
+                )
+                .divD(_longPositionSize + _shortPositionSize);
+        } else if (uncappedFundingPayment < 0 && DYNAMIC_FUNDING_FOR_COST && _longPositionSize + _shortPositionSize != 0) {
+            // when the normal funding payment is cost and daynamic rate is available, system covers partially
+            fundingPayment = uncappedFundingPayment.mulD(SYSTEM_FUNDING_COVER_RATE_FOR_COST);
+            if (uint256(-fundingPayment) > _cap) {
+                // when the funding payment that system covers is greater than the cap, then cover nothing
+                fundingPayment = 0;
+                premiumFractionLong = premiumFraction.mulD(2 * _shortPositionSize).divD(_longPositionSize + _shortPositionSize);
+                premiumFractionShort = premiumFraction.mulD(2 * _longPositionSize).divD(_longPositionSize + _shortPositionSize);
+            } else {
+                premiumFractionLong = premiumFraction
+                    .mulD(
+                        SYSTEM_FUNDING_COVER_RATE_FOR_COST.mulD(_longPositionSize) +
+                            (2 ether - SYSTEM_FUNDING_COVER_RATE_FOR_COST).mulD(_shortPositionSize)
+                    )
+                    .divD(_longPositionSize + _shortPositionSize);
+                premiumFractionShort = premiumFraction
+                    .mulD(
+                        (2 ether - SYSTEM_FUNDING_COVER_RATE_FOR_COST).mulD(_longPositionSize) +
+                            SYSTEM_FUNDING_COVER_RATE_FOR_COST.mulD(_shortPositionSize)
+                    )
+                    .divD(_longPositionSize + _shortPositionSize);
+            }
         } else {
-            fundingPayment = uncappedFundingPayment;
+            // if expense of funding payment is greater than cap amount, then cap it
+            if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
+                fundingPayment = int256(_cap) * (-1);
+                premiumFractionLong = fundingPayment.divD(positionSize);
+                premiumFractionShort = premiumFractionLong;
+            } else {
+                fundingPayment = uncappedFundingPayment;
+                premiumFractionLong = premiumFraction;
+                premiumFractionShort = premiumFraction;
+            }
         }
 
         // update funding rate = premiumFraction / twapIndexPrice
-        fundingRate = premiumFraction.divD(underlyingPrice.toInt());
+        fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
+        fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
         // positive fundingPayment is revenue to system, otherwise cost to system
-        emit FundingRateUpdated(fundingRate, underlyingPrice, fundingPayment);
+        emit FundingRateUpdated(fundingRateLong, fundingRateShort, underlyingPrice, fundingPayment);
 
         // in order to prevent multiple funding settlement during very short time after network congestion
         uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
@@ -347,7 +432,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 : oraclePrice.mulD(1 ether + REPEG_PRICE_GAP_RATIO);
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
-            int256 _positionSize = totalPositionSize; //to optimize gas cost
+            int256 _positionSize = getBaseAssetDelta(); //to optimize gas cost
             (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
                 _quoteAssetReserve,
                 _baseAssetReserve,
@@ -396,7 +481,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
         _addReserveSnapshot();
-        emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve, totalPositionSize, cumulativeNotional);
+        emit ReservesAdjusted(quoteAssetReserve, baseAssetReserve, getBaseAssetDelta(), cumulativeNotional);
     }
 
     /**
@@ -547,7 +632,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         if (open && adjustable && (_budget > 0 || (_budget < 0 && canLowerK))) {
             uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
-            int256 _positionSize = totalPositionSize; //to optimize gas cost
+            int256 _positionSize = getBaseAssetDelta(); //to optimize gas cost
             (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(
                 _quoteAssetReserve,
                 _baseAssetReserve,
@@ -697,7 +782,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     function getBaseAssetDelta() public view override returns (int256) {
-        return totalPositionSize;
+        return longPositionSize.toInt() - shortPositionSize.toInt();
     }
 
     function isOverSpreadLimit()
@@ -838,23 +923,21 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
     ) internal {
+        uint256 _baseAssetReserve = baseAssetReserve;
+        uint256 _quoteAssetReserve = quoteAssetReserve;
         // check if it's over fluctuationLimitRatio
         // this check should be before reserves being updated
         _checkIsOverBlockFluctuationLimit(_dirOfQuote, _quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
 
         if (_dirOfQuote == Dir.ADD_TO_AMM) {
-            quoteAssetReserve = quoteAssetReserve + _quoteAssetAmount;
-            baseAssetReserve = baseAssetReserve - _baseAssetAmount;
-            // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            // baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod - _baseAssetAmount.toInt();
-            totalPositionSize = totalPositionSize + _baseAssetAmount.toInt();
+            require(_baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "AMM_OTL"); //over trading limit
+            quoteAssetReserve = _quoteAssetReserve + _quoteAssetAmount;
+            baseAssetReserve = _baseAssetReserve - _baseAssetAmount;
             cumulativeNotional = cumulativeNotional + _quoteAssetAmount.toInt();
         } else {
-            quoteAssetReserve = quoteAssetReserve - _quoteAssetAmount;
-            baseAssetReserve = baseAssetReserve + _baseAssetAmount;
-            // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-            // baseAssetDeltaThisFundingPeriod = baseAssetDeltaThisFundingPeriod + _baseAssetAmount.toInt();
-            totalPositionSize = totalPositionSize - _baseAssetAmount.toInt();
+            require(_quoteAssetReserve.mulD(tradeLimitRatio) >= _quoteAssetAmount, "AMM_OTL"); //over trading limit
+            quoteAssetReserve = _quoteAssetReserve - _quoteAssetAmount;
+            baseAssetReserve = _baseAssetReserve + _baseAssetAmount;
             cumulativeNotional = cumulativeNotional - _quoteAssetAmount.toInt();
         }
 
@@ -1021,7 +1104,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     function _implShutdown() internal {
         uint256 _quoteAssetReserve = quoteAssetReserve;
         uint256 _baseAssetReserve = baseAssetReserve;
-        int256 _totalPositionSize = totalPositionSize;
+        int256 _totalPositionSize = getBaseAssetDelta();
         uint256 initBaseReserve = (_totalPositionSize + _baseAssetReserve.toInt()).abs();
         if (initBaseReserve > IGNORABLE_DIGIT_FOR_SHUTDOWN) {
             uint256 initQuoteReserve = Math.mulDiv(_quoteAssetReserve, _baseAssetReserve, initBaseReserve);

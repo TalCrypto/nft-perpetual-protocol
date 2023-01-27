@@ -73,7 +73,14 @@ contract ClearingHouseViewer {
         returns (ClearingHouse.Position memory position)
     {
         position = clearingHouse.getPosition(_amm, _trader);
-        position.margin = position.margin + getFundingPayment(position, clearingHouse.getLatestCumulativePremiumFraction(_amm));
+        position.margin =
+            position.margin +
+            getFundingPayment(
+                position,
+                position.size > 0
+                    ? clearingHouse.getLatestCumulativePremiumFractionLong(_amm)
+                    : clearingHouse.getLatestCumulativePremiumFractionShort(_amm)
+            );
         // position.margin = marginWithFundingPayment >= 0 ? marginWithFundingPayment.abs() : 0;
     }
 
