@@ -391,7 +391,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _budget the budget available for repeg
      * @param _adjustK if true, repeg curve with adjusting K
      * @return isAdjustable if true, curve can be adjustable by repeg
-     * @return cost the amount of cost of repeg
+     * @return cost the amount of cost of repeg, negative means profit of system
      * @return newQuoteAssetReserve the new quote asset reserve by repeg
      * @return newBaseAssetReserve the new base asset reserve by repeg
      */
@@ -412,61 +412,60 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         if (result) {
             _repegFlag += 1;
         } else {
-            if (_repegFlag > 0) {
-                _repegFlag = 0;
-            }
+            _repegFlag = 0;
         }
-
-        if (open && adjustable && _repegFlag >= MIN_NUM_REPEG_FLAG) {
-            uint256 targetPrice = oraclePrice > marketPrice
-                ? oraclePrice.mulD(1 ether - repegPriceGapRatio)
-                : oraclePrice.mulD(1 ether + repegPriceGapRatio);
-            uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
-            uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
-            int256 _positionSize = getBaseAssetDelta(); //to optimize gas cost
-            (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
-                _quoteAssetReserve,
-                _baseAssetReserve,
-                targetPrice,
-                _positionSize
-            );
-            cost = AmmMath.calcCostForAdjustReserves(
-                _quoteAssetReserve,
-                _baseAssetReserve,
-                _positionSize,
-                newQuoteAssetReserve,
-                newBaseAssetReserve
-            );
-            if (cost > 0 && uint256(cost) > _budget) {
-                if (_adjustK && canLowerK) {
-                    // scale down K by 0.1% that returns a profit of clearing house
-                    newQuoteAssetReserve = (_quoteAssetReserve * 999) / 1000;
-                    newBaseAssetReserve = (_baseAssetReserve * 999) / 1000;
-                    cost = AmmMath.calcCostForAdjustReserves(
-                        _quoteAssetReserve,
-                        _baseAssetReserve,
-                        _positionSize,
-                        newQuoteAssetReserve,
-                        newBaseAssetReserve
-                    );
-                    isAdjustable = true;
+        if (adjustable) {
+            int256 _positionSize = getBaseAssetDelta();
+            uint256 targetPrice;
+            if (_positionSize == 0) {
+                targetPrice = oraclePrice;
+            } else if (open && _repegFlag >= MIN_NUM_REPEG_FLAG) {
+                targetPrice = oraclePrice > marketPrice
+                    ? oraclePrice.mulD(1 ether - repegPriceGapRatio)
+                    : oraclePrice.mulD(1 ether + repegPriceGapRatio);
+            }
+            if (targetPrice != 0) {
+                uint256 _quoteAssetReserve = quoteAssetReserve; //to optimize gas cost
+                uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
+                (newQuoteAssetReserve, newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
+                    _quoteAssetReserve,
+                    _baseAssetReserve,
+                    targetPrice,
+                    _positionSize
+                );
+                cost = AmmMath.calcCostForAdjustReserves(
+                    _quoteAssetReserve,
+                    _baseAssetReserve,
+                    _positionSize,
+                    newQuoteAssetReserve,
+                    newBaseAssetReserve
+                );
+                if (cost > 0 && uint256(cost) > _budget) {
+                    if (_adjustK && canLowerK) {
+                        // scale down K by 1% that returns a profit of clearing house
+                        newQuoteAssetReserve = (_quoteAssetReserve * 99) / 100;
+                        newBaseAssetReserve = (_baseAssetReserve * 99) / 100;
+                        cost = AmmMath.calcCostForAdjustReserves(
+                            _quoteAssetReserve,
+                            _baseAssetReserve,
+                            _positionSize,
+                            newQuoteAssetReserve,
+                            newBaseAssetReserve
+                        );
+                        isAdjustable = true;
+                    }
                 } else {
-                    isAdjustable = false;
-                    // newQuoteAssetReserve = AmmMath.calcBudgetedQuoteReserve(_quoteAssetReserve, _baseAssetReserve, _positionSize, _budget);
-                    // cost = _budget.toInt();
+                    isAdjustable = true;
                 }
-            } else {
-                isAdjustable = true;
             }
         }
-
         repegFlag = uint8(_repegFlag);
     }
 
     /**
      * Repeg both reserves in case of repegging and k-adjustment
      */
-    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyOpen onlyCounterParty {
+    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
         require(_quoteAssetReserve != 0, "AMM_ZQ"); //quote asset reserve cannot be 0
         require(_baseAssetReserve != 0, "AMM_ZB"); //base asset reserve cannot be 0
         quoteAssetReserve = _quoteAssetReserve;
