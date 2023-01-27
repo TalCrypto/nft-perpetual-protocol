@@ -923,11 +923,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         uint256 _baseAssetAmount,
         bool _canOverFluctuationLimit
     ) internal {
-        uint256 _baseAssetReserve = baseAssetReserve;
         uint256 _quoteAssetReserve = quoteAssetReserve;
+        uint256 _baseAssetReserve = baseAssetReserve;
         // check if it's over fluctuationLimitRatio
         // this check should be before reserves being updated
-        _checkIsOverBlockFluctuationLimit(_dirOfQuote, _quoteAssetAmount, _baseAssetAmount, _canOverFluctuationLimit);
+        _checkIsOverBlockFluctuationLimit(
+            _dirOfQuote,
+            _quoteAssetAmount,
+            _baseAssetAmount,
+            _quoteAssetReserve,
+            _baseAssetReserve,
+            _canOverFluctuationLimit
+        );
 
         if (_dirOfQuote == Dir.ADD_TO_AMM) {
             require(_baseAssetReserve.mulD(tradeLimitRatio) >= _baseAssetAmount, "AMM_OTL"); //over trading limit
@@ -1067,6 +1074,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         Dir _dirOfQuote,
         uint256 _quoteAssetAmount,
         uint256 _baseAssetAmount,
+        uint256 _quoteAssetReserve,
+        uint256 _baseAssetReserve,
         bool _canOverFluctuationLimit
     ) internal view {
         // Skip the check if the limit is 0
@@ -1090,13 +1099,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         (uint256 upperLimit, uint256 lowerLimit) = _getPriceBoundariesOfLastBlock();
 
-        uint256 price = quoteAssetReserve.divD(baseAssetReserve);
+        uint256 price = _quoteAssetReserve.divD(_baseAssetReserve);
         require(price <= upperLimit && price >= lowerLimit, "AMM_POFL"); //price is already over fluctuation limit
 
         if (!_canOverFluctuationLimit) {
             price = (_dirOfQuote == Dir.ADD_TO_AMM)
-                ? (quoteAssetReserve + _quoteAssetAmount).divD(baseAssetReserve - _baseAssetAmount)
-                : (quoteAssetReserve - _quoteAssetAmount).divD(baseAssetReserve + _baseAssetAmount);
+                ? (_quoteAssetReserve + _quoteAssetAmount).divD(_baseAssetReserve - _baseAssetAmount)
+                : (_quoteAssetReserve - _quoteAssetAmount).divD(_baseAssetReserve + _baseAssetAmount);
             require(price <= upperLimit && price >= lowerLimit, "AMM_POFL"); //price is over fluctuation limit
         }
     }
