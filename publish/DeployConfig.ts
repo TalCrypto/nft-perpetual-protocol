@@ -2,10 +2,10 @@ import { utils, BigNumber } from "ethers";
 import { AmmInstanceName, PriceFeedKey } from "./Constants";
 
 const DEFAULT_AMM_TRADE_LIMIT_RATIO = utils.parseEther("0.9"); // 90% trading limit ratio
-const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(21600); // 6 hour
-const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.012"); // 1.2%
-const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0"); // 0.0%
-const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.005"); // 0.5%
+const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(10800); // 3 hour
+const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.02"); // 2%
+const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0.0006"); // 0.06%
+const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.0024"); // 0.24%
 
 // amm
 export interface AmmDeployArgs {
