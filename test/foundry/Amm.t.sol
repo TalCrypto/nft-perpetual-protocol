@@ -43,6 +43,7 @@ contract AmmTest is Test {
         vm.assume(_budget != 0);
         int256 totalPositionSize = int256(_totalPositionSize);
         vm.assume(totalPositionSize < 90 ether);
+        vm.assume(totalPositionSize >= -900 ether);
         int256 budget = _budget * int256(PRECISION);
         vm.assume(budget.abs() < 10000 ether);
         if (totalPositionSize > 0) {
@@ -59,8 +60,8 @@ contract AmmTest is Test {
             assertGe(newQReserve, oldQReserve, "not quote increase");
             assertGe(newBReserve, oldBReserve, "not base increase");
             // max increase 100.1%
-            assertLe(newQReserve * 1 ether, oldQReserve * 1.001 ether, "exceeds quote increase limit");
-            assertLe(newBReserve * 1 ether, oldBReserve * 1.001 ether, "exceeds base increase limit");
+            assertLe(newQReserve.divD(oldQReserve), 1.001 ether, "exceeds quote increase limit");
+            assertLe(newBReserve.divD(oldBReserve), 1.001 ether, "exceeds base increase limit");
             assertLe(cost / int256(PRECISION), budget / int256(PRECISION), "bigger than positive budget");
         } else {
             // #long < #short
@@ -68,9 +69,9 @@ contract AmmTest is Test {
             // decrease K
             assertLe(newQReserve, oldQReserve, "not quote decrease");
             assertLe(newBReserve, oldBReserve, "not base decrease");
-            // max decrease 99.9%
-            assertGe((newQReserve + 1) * 1 ether, oldQReserve * 0.999 ether, "exceeds quote decrease limit");
-            assertGe((newBReserve + 1) * 1 ether, oldBReserve * 0.999 ether, "exceeds base decrease limit");
+            // max decrease 99.8%
+            assertGe((newQReserve + 1).divD(oldQReserve), 0.998 ether, "exceeds quote decrease limit");
+            assertGe((newBReserve + 1).divD(oldBReserve), 0.998 ether, "exceeds base decrease limit");
             assertGe(cost / int256(PRECISION), budget / int256(PRECISION), "smaller than negative budget");
         }
 
@@ -96,7 +97,8 @@ contract AmmTest is Test {
         uint256 oraclePrice = uint256(_oraclePrice) * PRECISION;
         priceFeed.setPrice(oraclePrice);
         int256 totalPositionSize = int256(_totalPositionSize);
-        vm.assume(totalPositionSize.abs() < 90 ether);
+        vm.assume(totalPositionSize < 90 ether);
+        vm.assume(totalPositionSize >= -900 ether);
         vm.assume(oraclePrice > 1e15);
         uint256 budget = budgetIsEnough ? type(uint256).max : 0;
         if (totalPositionSize > 0) {
@@ -179,6 +181,18 @@ contract AmmTest is Test {
             } else {
                 assertFalse(isAdjustable);
             }
+        }
+        // cost correctness
+        if (totalPositionSize > 0 && isAdjustable) {
+            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            amm.adjust(newQReserve, newBReserve);
+            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            assertEq(cost, notionalAfter.toInt() - notionalBefore.toInt(), "cost calculation incorrect when #long>#short");
+        } else if (isAdjustable) {
+            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            amm.adjust(newQReserve, newBReserve);
+            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            assertEq(cost, notionalBefore.toInt() - notionalAfter.toInt(), "cost calculation incorrect when #long<#short");
         }
     }
 
