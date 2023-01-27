@@ -8,8 +8,8 @@ import { UIntMath } from "./UIntMath.sol";
 library AmmMath {
     using UIntMath for uint256;
     using IntMath for int256;
-    uint256 constant K_DECREASE_MAX = 0.999 ether; //99.9% decrease
-    uint256 constant K_INCREASE_MAX = 1.001 ether; //100.1% increase
+    uint256 constant K_DECREASE_MAX = 0.998 ether; // 99.8% decrease
+    uint256 constant K_INCREASE_MAX = 1.001 ether; // 100.1% increase
 
     /**
      * @notice calculate reserves after repegging with preserving K
