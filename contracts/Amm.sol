@@ -409,6 +409,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     function repegCheck(uint256 _budget, bool _adjustK)
         external
         override
+        onlyOpen
+        onlyCounterParty
         returns (
             bool isAdjustable,
             int256 cost,
@@ -475,7 +477,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * Repeg both reserves in case of repegging and k-adjustment
      */
-    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyCounterParty {
+    function adjust(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external onlyOpen onlyCounterParty {
         require(_quoteAssetReserve != 0, "AMM_ZQ"); //quote asset reserve cannot be 0
         require(_baseAssetReserve != 0, "AMM_ZB"); //base asset reserve cannot be 0
         quoteAssetReserve = _quoteAssetReserve;
