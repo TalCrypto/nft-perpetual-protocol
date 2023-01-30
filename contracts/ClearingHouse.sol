@@ -1365,7 +1365,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function _applyAdjustmentCost(IAmm _amm, int256 _cost) private {
         if (_cost > 0) {
             _withdrawFromInsuranceFund(_amm, _cost.abs());
-        } else {
+        } else if (_cost < 0) {
             _transferToInsuranceFund(_amm, _cost.abs());
         }
     }
