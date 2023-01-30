@@ -324,8 +324,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         int256 normalFundingPayment = premiumFraction.mulD(positionSize);
 
         // dynamic funding rate formula
-        // premiumFractionLong  = premiumFraction * (    a*longSize + (2-a)*shortSize) / (longSize + shortSize)
-        // premiumFractionShort = premiumFraction * ((2-a)*longSize +     a*shortSize) / (longSize + shortSize)
+        // premiumFractionLong  = premiumFraction * (2*shortSize + a*positionSize) / (longSize + shortSize)
+        // premiumFractionShort = premiumFraction * (2*longSize  - a*positionSize) / (longSize + shortSize)
         int256 _longPositionSize = int256(longPositionSize);
         int256 _shortPositionSize = int256(shortPositionSize);
         int256 _fundingRevenueTakeRate = int256(fundingRevenueTakeRate);
@@ -335,12 +335,12 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             // when the nomal funding payment is revenue and daynamic rate is available, system takes profit partially
             fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
             uncappedFundingPayment = fundingPayment;
-            premiumFractionLong = premiumFraction
-                .mulD(_fundingRevenueTakeRate.mulD(_longPositionSize) + (2 ether - _fundingRevenueTakeRate).mulD(_shortPositionSize))
-                .divD(_longPositionSize + _shortPositionSize);
-            premiumFractionShort = premiumFraction
-                .mulD((2 ether - _fundingRevenueTakeRate).mulD(_longPositionSize) + _fundingRevenueTakeRate.mulD(_shortPositionSize))
-                .divD(_longPositionSize + _shortPositionSize);
+            premiumFractionLong = premiumFraction.mulD(_shortPositionSize * 2 + positionSize.mulD(_fundingRevenueTakeRate)).divD(
+                _longPositionSize + _shortPositionSize
+            );
+            premiumFractionShort = premiumFraction.mulD(_longPositionSize * 2 - positionSize.mulD(_fundingRevenueTakeRate)).divD(
+                _longPositionSize + _shortPositionSize
+            );
         } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
             fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
@@ -348,15 +348,15 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             if (uint256(-fundingPayment) > _cap) {
                 // when the funding payment that system covers is greater than the cap, then cover nothing
                 fundingPayment = 0;
-                premiumFractionLong = premiumFraction.mulD(2 * _shortPositionSize).divD(_longPositionSize + _shortPositionSize);
-                premiumFractionShort = premiumFraction.mulD(2 * _longPositionSize).divD(_longPositionSize + _shortPositionSize);
+                premiumFractionLong = premiumFraction.mulD(_shortPositionSize * 2).divD(_longPositionSize + _shortPositionSize);
+                premiumFractionShort = premiumFraction.mulD(_longPositionSize * 2).divD(_longPositionSize + _shortPositionSize);
             } else {
-                premiumFractionLong = premiumFraction
-                    .mulD(_fundingCostCoverRate.mulD(_longPositionSize) + (2 ether - _fundingCostCoverRate).mulD(_shortPositionSize))
-                    .divD(_longPositionSize + _shortPositionSize);
-                premiumFractionShort = premiumFraction
-                    .mulD((2 ether - _fundingCostCoverRate).mulD(_longPositionSize) + _fundingCostCoverRate.mulD(_shortPositionSize))
-                    .divD(_longPositionSize + _shortPositionSize);
+                premiumFractionLong = premiumFraction.mulD(_shortPositionSize * 2 + positionSize.mulD(_fundingCostCoverRate)).divD(
+                    _longPositionSize + _shortPositionSize
+                );
+                premiumFractionShort = premiumFraction.mulD(_longPositionSize * 2 - positionSize.mulD(_fundingCostCoverRate)).divD(
+                    _longPositionSize + _shortPositionSize
+                );
             }
         } else {
             uncappedFundingPayment = normalFundingPayment;
