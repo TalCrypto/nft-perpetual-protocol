@@ -4362,6 +4362,411 @@
           }
         }
       }
+    },
+    "da9571a92914b44e99efdbb6e511e68e5b7336f0bda5d5f49199e1a4c6d6a66f": {
+      "address": "0xAec2ec36dF1074b131a9d09f9B3D4770Ce73393C",
+      "txHash": "0xca22356dc9e979ba8b76a96b03083a5b36c8a23d48d15b0e64e15445967c114b",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "longPositionSize",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:75"
+          },
+          {
+            "label": "shortPositionSize",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:76"
+          },
+          {
+            "label": "fundingRateLong",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:79"
+          },
+          {
+            "label": "fundingRateShort",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:80"
+          },
+          {
+            "label": "cumulativeNotional",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:82"
+          },
+          {
+            "label": "settlementPrice",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:84"
+          },
+          {
+            "label": "tradeLimitRatio",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:85"
+          },
+          {
+            "label": "quoteAssetReserve",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:86"
+          },
+          {
+            "label": "baseAssetReserve",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:87"
+          },
+          {
+            "label": "fluctuationLimitRatio",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:88"
+          },
+          {
+            "label": "tollRatio",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:91"
+          },
+          {
+            "label": "spreadRatio",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:92"
+          },
+          {
+            "label": "maxHoldingBaseAsset",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:93"
+          },
+          {
+            "label": "openInterestNotionalCap",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:94"
+          },
+          {
+            "label": "spotPriceTwapInterval",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:96"
+          },
+          {
+            "label": "fundingPeriod",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:97"
+          },
+          {
+            "label": "fundingBufferPeriod",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:98"
+          },
+          {
+            "label": "nextFundingTime",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:99"
+          },
+          {
+            "label": "priceFeedKey",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_bytes32",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:100"
+          },
+          {
+            "label": "reserveSnapshots",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_array(t_struct(ReserveSnapshot)4969_storage)dyn_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:101"
+          },
+          {
+            "label": "counterParty",
+            "offset": 0,
+            "slot": "171",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:103"
+          },
+          {
+            "label": "globalShutdown",
+            "offset": 0,
+            "slot": "172",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:104"
+          },
+          {
+            "label": "quoteAsset",
+            "offset": 0,
+            "slot": "173",
+            "type": "t_contract(IERC20)3472",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:105"
+          },
+          {
+            "label": "priceFeed",
+            "offset": 0,
+            "slot": "174",
+            "type": "t_contract(IPriceFeed)14769",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:106"
+          },
+          {
+            "label": "open",
+            "offset": 20,
+            "slot": "174",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:107"
+          },
+          {
+            "label": "adjustable",
+            "offset": 21,
+            "slot": "174",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:108"
+          },
+          {
+            "label": "canLowerK",
+            "offset": 22,
+            "slot": "174",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:109"
+          },
+          {
+            "label": "repegFlag",
+            "offset": 23,
+            "slot": "174",
+            "type": "t_uint8",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:110"
+          },
+          {
+            "label": "repegPriceGapRatio",
+            "offset": 0,
+            "slot": "175",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:111"
+          },
+          {
+            "label": "isDynamicFundingForCost",
+            "offset": 0,
+            "slot": "176",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:113"
+          },
+          {
+            "label": "isDynamicFundingForRevenue",
+            "offset": 1,
+            "slot": "176",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:114"
+          },
+          {
+            "label": "fundingCostCoverRate",
+            "offset": 0,
+            "slot": "177",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:117"
+          },
+          {
+            "label": "fundingRevenueTakeRate",
+            "offset": 0,
+            "slot": "178",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:118"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "179",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:120"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_struct(ReserveSnapshot)4969_storage)dyn_storage": {
+            "label": "struct Amm.ReserveSnapshot[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)3472": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPriceFeed)14769": {
+            "label": "contract IPriceFeed",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReserveSnapshot)4969_storage": {
+            "label": "struct Amm.ReserveSnapshot",
+            "members": [
+              {
+                "label": "quoteAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "baseAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
     }
   }
 }
