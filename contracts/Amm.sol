@@ -109,13 +109,9 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     bool public canLowerK;
     uint8 public repegFlag;
     uint256 public repegPriceGapRatio;
-    //------------- Deprecated ------------//
-    bool public isDynamicFundingForCost; // use dynamic funding rate when there is cost of system
-    bool public isDynamicFundingForRevenue; // use normal funding rate when there is revenue of system
-    //-------------------------------------//
 
-    int256 public fundingCostCoverRate; // system covers pct of normal funding payment when cost, 1 means normal funding rate
-    int256 public fundingRevenueTakeRate; // system takes ptc of normal funding payment when revenue, 1 means normal funding rate
+    uint256 public fundingCostCoverRate; // system covers pct of normal funding payment when cost, 1 means normal funding rate
+    uint256 public fundingRevenueTakeRate; // system takes ptc of normal funding payment when revenue, 1 means normal funding rate
 
     uint256[50] private __gap;
 
@@ -603,11 +599,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         repegPriceGapRatio = _ratio;
     }
 
-    function setFundingCostCoverRate(int256 _rate) external onlyOwner {
+    function setFundingCostCoverRate(uint256 _rate) external onlyOwner {
         fundingCostCoverRate = _rate;
     }
 
-    function setFundingRevenueTakeRate(int256 _rate) external onlyOwner {
+    function setFundingRevenueTakeRate(uint256 _rate) external onlyOwner {
         fundingRevenueTakeRate = _rate;
     }
 
