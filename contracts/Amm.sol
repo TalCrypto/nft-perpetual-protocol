@@ -321,28 +321,30 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         // if premiumFraction is positive: long pay short, amm get positive funding payment
         // if premiumFraction is negative: short pay long, amm get negative funding payment
         // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
-        uncappedFundingPayment = premiumFraction.mulD(positionSize);
+        int256 normalFundingPayment = premiumFraction.mulD(positionSize);
 
         // dynamic funding rate formula
         // premiumFractionLong  = premiumFraction * (    a*longSize + (2-a)*shortSize) / (longSize + shortSize)
         // premiumFractionShort = premiumFraction * ((2-a)*longSize +     a*shortSize) / (longSize + shortSize)
         int256 _longPositionSize = int256(longPositionSize);
         int256 _shortPositionSize = int256(shortPositionSize);
-        int256 _fundingRevenueTakeRate = fundingRevenueTakeRate;
-        int256 _fundingCostCoverRate = fundingCostCoverRate;
+        int256 _fundingRevenueTakeRate = int256(fundingRevenueTakeRate);
+        int256 _fundingCostCoverRate = int256(fundingCostCoverRate);
 
-        if (uncappedFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
+        if (normalFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the nomal funding payment is revenue and daynamic rate is available, system takes profit partially
-            fundingPayment = uncappedFundingPayment.mulD(_fundingRevenueTakeRate);
+            fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
+            uncappedFundingPayment = fundingPayment;
             premiumFractionLong = premiumFraction
                 .mulD(_fundingRevenueTakeRate.mulD(_longPositionSize) + (2 ether - _fundingRevenueTakeRate).mulD(_shortPositionSize))
                 .divD(_longPositionSize + _shortPositionSize);
             premiumFractionShort = premiumFraction
                 .mulD((2 ether - _fundingRevenueTakeRate).mulD(_longPositionSize) + _fundingRevenueTakeRate.mulD(_shortPositionSize))
                 .divD(_longPositionSize + _shortPositionSize);
-        } else if (uncappedFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
+        } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
-            fundingPayment = uncappedFundingPayment.mulD(_fundingCostCoverRate);
+            fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
+            uncappedFundingPayment = fundingPayment;
             if (uint256(-fundingPayment) > _cap) {
                 // when the funding payment that system covers is greater than the cap, then cover nothing
                 fundingPayment = 0;
@@ -357,13 +359,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     .divD(_longPositionSize + _shortPositionSize);
             }
         } else {
+            uncappedFundingPayment = normalFundingPayment;
             // if expense of funding payment is greater than cap amount, then cap it
-            if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
+            if (normalFundingPayment < 0 && uint256(-normalFundingPayment) > _cap) {
                 fundingPayment = int256(_cap) * (-1);
                 premiumFractionLong = fundingPayment.divD(positionSize);
                 premiumFractionShort = premiumFractionLong;
             } else {
-                fundingPayment = uncappedFundingPayment;
+                fundingPayment = normalFundingPayment;
                 premiumFractionLong = premiumFraction;
                 premiumFractionShort = premiumFraction;
             }
