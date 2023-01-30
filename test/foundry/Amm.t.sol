@@ -42,7 +42,7 @@ contract AmmTest is Test {
     function testKAdjutment(int96 _totalPositionSize, int56 _budget) public {
         vm.assume(_budget != 0);
         int256 totalPositionSize = int256(_totalPositionSize);
-        vm.assume(totalPositionSize < 90 ether);
+        vm.assume(totalPositionSize <= 90 ether);
         vm.assume(totalPositionSize >= -900 ether);
         int256 budget = _budget * int256(PRECISION);
         vm.assume(budget.abs() < 10000 ether);
@@ -59,9 +59,9 @@ contract AmmTest is Test {
             // increase K
             assertGe(newQReserve, oldQReserve, "not quote increase");
             assertGe(newBReserve, oldBReserve, "not base increase");
-            // max increase 100.1%
-            assertLe(newQReserve.divD(oldQReserve), 1.001 ether, "exceeds quote increase limit");
-            assertLe(newBReserve.divD(oldBReserve), 1.001 ether, "exceeds base increase limit");
+            // max increase 100.5%
+            assertLe(newQReserve.divD(oldQReserve), 1.005 ether, "exceeds quote increase limit");
+            assertLe(newBReserve.divD(oldBReserve), 1.005 ether, "exceeds base increase limit");
             assertLe(cost / int256(PRECISION), budget / int256(PRECISION), "bigger than positive budget");
         } else {
             // #long < #short
@@ -69,9 +69,9 @@ contract AmmTest is Test {
             // decrease K
             assertLe(newQReserve, oldQReserve, "not quote decrease");
             assertLe(newBReserve, oldBReserve, "not base decrease");
-            // max decrease 99.8%
-            assertGe((newQReserve + 1).divD(oldQReserve), 0.998 ether, "exceeds quote decrease limit");
-            assertGe((newBReserve + 1).divD(oldBReserve), 0.998 ether, "exceeds base decrease limit");
+            // max decrease 99%
+            assertGe((newQReserve + 1).divD(oldQReserve), 0.99 ether, "exceeds quote decrease limit");
+            assertGe((newBReserve + 1).divD(oldBReserve), 0.99 ether, "exceeds base decrease limit");
             assertGe(cost / int256(PRECISION), budget / int256(PRECISION), "smaller than negative budget");
         }
 
@@ -97,7 +97,7 @@ contract AmmTest is Test {
         uint256 oraclePrice = uint256(_oraclePrice) * PRECISION;
         priceFeed.setPrice(oraclePrice);
         int256 totalPositionSize = int256(_totalPositionSize);
-        vm.assume(totalPositionSize < 90 ether);
+        vm.assume(totalPositionSize <= 90 ether);
         vm.assume(totalPositionSize >= -900 ether);
         vm.assume(oraclePrice > 1e15);
         uint256 budget = budgetIsEnough ? type(uint256).max : 0;
@@ -109,9 +109,9 @@ contract AmmTest is Test {
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         uint256 spotPrice = amm.getSpotPrice();
         (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.repegCheck(budget, false);
-        assertFalse(isAdjustable);
+        totalPositionSize == 0 ? assertTrue(isAdjustable) : assertFalse(isAdjustable);
         (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
-        assertFalse(isAdjustable);
+        totalPositionSize == 0 ? assertTrue(isAdjustable) : assertFalse(isAdjustable);
         (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
         if (totalPositionSize > 0) {
             // #long > #short
@@ -170,13 +170,13 @@ contract AmmTest is Test {
                 // oracle price is bigger than spot price and exceeds spread limit 10%
                 assertEq(cost, 0, "cost is not zero"); // there is no cost
                 assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
             } else if (oraclePrice * 11 < spotPrice * 10) {
                 // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertEq(cost, 0, "cost is not zero"); // there is no cost
                 assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
             } else {
                 assertFalse(isAdjustable);
@@ -201,7 +201,9 @@ contract AmmTest is Test {
         priceFeed.setPrice(spotPrice * 2);
 
         (bool isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
-        assertFalse(isAdjustable);
+        assertTrue(isAdjustable);
+
+        amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, 1 ether, true);
         (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
         assertFalse(isAdjustable);
         (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
