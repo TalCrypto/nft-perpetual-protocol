@@ -166,21 +166,10 @@ contract AmmTest is Test {
             }
         } else {
             // #long == #short
-            if (oraclePrice * 900 > spotPrice * 1000) {
-                // oracle price is bigger than spot price and exceeds spread limit 10%
-                assertEq(cost, 0, "cost is not zero"); // there is no cost
-                assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
-                assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
-            } else if (oraclePrice * 11 < spotPrice * 10) {
-                // oracle price is smaller than spot price and exceeds spread limit 10%
-                assertEq(cost, 0, "cost is not zero"); // there is no cost
-                assertTrue(isAdjustable, "not adjustable");
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
-                assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
-            } else {
-                assertFalse(isAdjustable);
-            }
+            assertEq(cost, 0, "cost is not zero"); // there is no cost
+            assertTrue(isAdjustable, "not adjustable");
+            assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
+            assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
         }
         // cost correctness
         if (totalPositionSize > 0 && isAdjustable) {
