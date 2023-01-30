@@ -41,7 +41,7 @@ describe("Bad Debt Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function deployEnvFixture() {
@@ -66,7 +66,8 @@ describe("Bad Debt Test", () => {
     await quoteToken.transfer(shrimp.address, toFullDigitBN(15, +(await quoteToken.decimals())));
     await approve(shrimp, clearingHouse.address, 15);
 
-    await quoteToken.transfer(insuranceFund.address, toFullDigitBN(50000, +(await quoteToken.decimals())));
+    await approve(admin, clearingHouse.address, 5000);
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 

@@ -77,7 +77,7 @@ describe("ClearingHouse Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function deployEnvFixture() {
@@ -93,7 +93,8 @@ describe("ClearingHouse Test", () => {
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
+    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -134,9 +135,8 @@ describe("ClearingHouse Test", () => {
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
 
-      let a = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
-
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).to.eq(toFullDigitBN(-0.5));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).to.eq(toFullDigitBN(-0.5));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).to.eq(toFullDigitBN(-0.5));
 
       // then alice need to pay 150 * 0.5 = 75
       // {size: -150, margin: 60} => {size: -150, margin: -15}
@@ -149,8 +149,8 @@ describe("ClearingHouse Test", () => {
   describe("openInterestNotional", () => {
     beforeEach(async () => {
       await amm.setCap(toFullDigitBN(0), toFullDigitBN(600));
-      await approve(alice, clearingHouse.address, 600);
-      await approve(bob, clearingHouse.address, 600);
+      await approve(alice, clearingHouse.address, 1600);
+      await approve(bob, clearingHouse.address, 1600);
     });
 
     it("increase when increase position", async () => {
@@ -205,6 +205,7 @@ describe("ClearingHouse Test", () => {
     });
 
     it("is 0 when everyone close position, one of them is bankrupt position", async () => {
+      await amm.setSpreadRatio(toFullDigitBN(0.1));
       await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
       await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
@@ -262,7 +263,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(900));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(5900));
       expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
     });
 
@@ -273,7 +274,8 @@ describe("ClearingHouse Test", () => {
       // when the new fundingRate is 1% which means underlyingPrice < snapshotPrice
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.01));
 
       // then alice need to pay 1% of her position size as fundingPayment
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
@@ -289,11 +291,10 @@ describe("ClearingHouse Test", () => {
 
       // then fundingPayment will generate 1.5 loss and clearingHouse will withdraw in advanced from insuranceFund
       // clearingHouse: 1500 + 1.5
-      // insuranceFund: 5000 - 1.5
+      // insuranceFund: 5900 - 1.5
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1501.5, +(await quoteToken.decimals())));
-      const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5898.5, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5898.5, +(await quoteToken.decimals())));
     });
 
     it("will keep generating the same loss for amm when funding rate is positive and amm hold more long position", async () => {
@@ -314,11 +315,10 @@ describe("ClearingHouse Test", () => {
       // clearingHouse payFunding twice in the same condition
       // then fundingPayment will generate 1.5 * 2 loss and clearingHouse will withdraw in advanced from insuranceFund
       // clearingHouse: 1500 + 3
-      // insuranceFund: 5000 - 3
+      // insuranceFund: 6900 - 3
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1503, +(await quoteToken.decimals())));
-      const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5897, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5897, +(await quoteToken.decimals())));
     });
 
     it("funding rate is 1%, 1% then -1%", async () => {
@@ -326,7 +326,8 @@ describe("ClearingHouse Test", () => {
       await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.01));
 
       // then alice need to pay 1% of her position size as fundingPayment
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
@@ -339,7 +340,8 @@ describe("ClearingHouse Test", () => {
       // {balance: 37.5, margin: 299.625} => {balance: 37.5, margin: 299.25}
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.02));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.02));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.02));
       expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
         toFullDigitBN(299.25)
       );
@@ -350,7 +352,8 @@ describe("ClearingHouse Test", () => {
       await mockPriceFeed.setTwapPrice(toFullDigitBN(1.61));
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.01));
       expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
         toFullDigitBN(299.625)
       );
@@ -365,7 +368,8 @@ describe("ClearingHouse Test", () => {
 
       // then alice need to pay 1% of her position size as fundingPayment
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.01));
       expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
         toFullDigitBN(299.625)
       );
@@ -376,7 +380,8 @@ describe("ClearingHouse Test", () => {
       await gotoNextFundingTime();
       await mockPriceFeed.setTwapPrice(toFullDigitBN(1.61));
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0));
       expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(toFullDigitBN(300));
       expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq(toFullDigitBN(300));
 
@@ -384,7 +389,8 @@ describe("ClearingHouse Test", () => {
       // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 300.375}
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.01));
       expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
         toFullDigitBN(300.375)
       );
@@ -491,7 +497,8 @@ describe("ClearingHouse Test", () => {
       // when the new fundingRate is 0% which means underlyingPrice = snapshotPrice
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(0);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(0);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(0);
 
       // then alice's position won't change
       // {balance: 37.5, margin: 300}
@@ -506,11 +513,10 @@ describe("ClearingHouse Test", () => {
       expect(bobPosition.margin).to.eq(toFullDigitBN(1200));
 
       // clearingHouse: 1500
-      // insuranceFund: 5000
+      // insuranceFund: 5900
       const clearingHouseBaseToken = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseBaseToken).to.eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      const insuranceFundBaseToken = await quoteToken.balanceOf(insuranceFund.address);
-      expect(insuranceFundBaseToken).to.eq(toFullDigitBN(5900, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5900, +(await quoteToken.decimals())));
     });
   });
 
@@ -630,7 +636,8 @@ describe("ClearingHouse Test", () => {
 
         await gotoNextFundingTime();
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.125));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.125));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.125));
 
         // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
         // funding payment: 20 * -12.5% = -2.5
@@ -654,7 +661,8 @@ describe("ClearingHouse Test", () => {
 
         await gotoNextFundingTime();
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.075));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.075));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.075));
 
         // marginRatio = (margin + funding payment + unrealized Pnl) / openNotional
         // funding payment: 20 * 7.5% = 1.5
@@ -683,7 +691,8 @@ describe("ClearingHouse Test", () => {
 
         await gotoNextFundingTime();
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.1));
 
         // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
         // funding payment: 20 (position size) * -10% = -2
@@ -718,7 +727,8 @@ describe("ClearingHouse Test", () => {
 
         await gotoNextFundingTime();
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.1));
 
         // funding payment (alice receives): 20 (position size) * 10% = 2
         // (800 - x) * (125 + 20) = 1000 * 100

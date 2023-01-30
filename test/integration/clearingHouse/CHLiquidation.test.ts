@@ -78,7 +78,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function deployEnvFixture() {
@@ -100,7 +100,8 @@ describe("ClearingHouse Liquidation Test", () => {
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
+    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -1455,7 +1456,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await clearingHouse.payFunding(amm.address);
 
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).equal(BigNumber.from("1699999999999999999")); //1.699999999999999999
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).equal(BigNumber.from("1699999999999999999")); //1.699999999999999999
 
       // Alice - marginRatio = (25 + 18.2539 - 1.699999999999999999 * 20)/268.2539 = 9.2539 / 268.2539 = 0.03449
       expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).equal(BigNumber.from("34497041420118343"));

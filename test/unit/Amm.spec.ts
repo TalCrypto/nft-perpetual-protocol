@@ -44,6 +44,8 @@ describe("Amm Unit Test", () => {
       fundingPeriod: BigNumber.from(3600), // 1 hour
     });
     await amm.setCounterParty(admin.address);
+    await amm.setFundingCostCoverRate(toFullDigitBN(1));
+    await amm.setFundingRevenueTakeRate(toFullDigitBN(1));
     const fundingPeriod = await amm.fundingPeriod();
     const fundingBufferPeriod = await amm.fundingBufferPeriod();
     return { priceFeed, quoteToken, amm, fundingPeriod, fundingBufferPeriod };
@@ -868,27 +870,27 @@ describe("Amm Unit Test", () => {
     });
 
     it("will fail if price feed return 0", async () => {
-      await priceFeed.setTwapPrice(0);
+      await priceFeed.setPrice(0);
       await expect(amm.isOverSpreadLimit()).to.be.revertedWith("AMM_ZOP");
     });
 
     it("is true if abs((marketPrice-oraclePrice)/oraclePrice) >= 10%", async () => {
       // (10-12)/12=0.16
-      await priceFeed.setTwapPrice(toFullDigitBN(12));
-      expect(await amm.isOverSpreadLimit()).eq(true);
+      await priceFeed.setPrice(toFullDigitBN(12));
+      expect((await amm.isOverSpreadLimit()).result).eq(true);
 
       // (10-8)/8=0.25
-      await priceFeed.setTwapPrice(toFullDigitBN(8));
-      expect(await amm.isOverSpreadLimit()).eq(true);
+      await priceFeed.setPrice(toFullDigitBN(8));
+      expect((await amm.isOverSpreadLimit()).result).eq(true);
     });
 
     it("is false if abs((marketPrice-oraclePrice)/oraclePrice) < 10%", async () => {
       // (10-10.5)/10.5=-0.04
-      await priceFeed.setTwapPrice(toFullDigitBN(10.5));
-      expect(await amm.isOverSpreadLimit()).eq(false);
+      await priceFeed.setPrice(toFullDigitBN(10.5));
+      expect((await amm.isOverSpreadLimit()).result).eq(false);
       // (10-9.5)/9.5=0.05
-      await priceFeed.setTwapPrice(toFullDigitBN(9.5));
-      expect(await amm.isOverSpreadLimit()).eq(false);
+      await priceFeed.setPrice(toFullDigitBN(9.5));
+      expect((await amm.isOverSpreadLimit()).result).eq(false);
     });
   });
 
@@ -1177,7 +1179,12 @@ describe("Amm Unit Test", () => {
         const tx = await amm.settleFunding(toFullDigitBN(0));
         await expect(tx)
           .to.emit(amm, "FundingRateUpdated")
-          .withArgs(toFullDigitBN((15.625 - 10) / 24 / 10), toFullDigitBN(10), toFullDigitBN(((15.625 - 10) / 24) * 20));
+          .withArgs(
+            toFullDigitBN((15.625 - 10) / 24 / 10),
+            toFullDigitBN((15.625 - 10) / 24 / 10),
+            toFullDigitBN(10),
+            toFullDigitBN(((15.625 - 10) / 24) * 20)
+          );
       });
       it("funding payment is uncapped when the cost is negative and its absolute value is smaller than cap", async () => {
         await gotoNextFundingTimestamp();
@@ -1187,7 +1194,9 @@ describe("Amm Unit Test", () => {
         // funding payment = (15.625 - 20) / 24 * 20 = -3.645833333333333
         // funding rate = -0.009114583333333333
         const tx = await amm.settleFunding(toFullDigitBN(4));
-        await expect(tx).to.emit(amm, "FundingRateUpdated").withArgs("-9114583333333333", toFullDigitBN(20), "-3645833333333333320");
+        await expect(tx)
+          .to.emit(amm, "FundingRateUpdated")
+          .withArgs("-9114583333333333", "-9114583333333333", toFullDigitBN(20), "-3645833333333333320");
       });
       it("funding payment is capped when the cost is negative and its absolute value is greater than cap", async () => {
         await gotoNextFundingTimestamp();
@@ -1200,7 +1209,7 @@ describe("Amm Unit Test", () => {
         // funding rate = -(0.1 / 20) = -0.005
         await expect(tx)
           .to.emit(amm, "FundingRateUpdated")
-          .withArgs(toFullDigitBN(-0.005), toFullDigitBN(20), toFullDigitBN(-0.1 * 20));
+          .withArgs(toFullDigitBN(-0.005), toFullDigitBN(-0.005), toFullDigitBN(20), toFullDigitBN(-0.1 * 20));
       });
     });
   });
