@@ -520,6 +520,269 @@ describe("ClearingHouse Test", () => {
     });
   });
 
+  describe("payFunding-dynamic: when alice.size = 37.5 (long) & bob.size  = -187.5 (short)", () => {
+    beforeEach(async () => {
+      await amm.setFundingCostCoverRate(toFullDigitBN(0.5));
+      await amm.setFundingRevenueTakeRate(toFullDigitBN(0.5));
+      // given alice takes 2x long position (37.5B) with 300 margin
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(2), toFullDigitBN(37.5), true);
+
+      // given bob takes 1x short position (-187.5B) with 1200 margin
+      await approve(bob, clearingHouse.address, 1800);
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5), true);
+
+      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      // 300 (alice's margin) + 1200 (bob' margin) = 1500
+      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(5000));
+      expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
+    });
+
+    it("will generate loss for amm when dynamic funding rate is positive and amm hold more long position", async () => {
+      // given the underlying twap price is 1.59, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
+
+      // normalFraction = 0.01
+      // fractionLong = 0.01 * (2*187.5 + 0.5*(-150))/225 = 0.0133333333333333333
+      // fractionShort = 0.01 * (2*37.5 - 0.5*(-150))/225 = 0.0066666666666666666
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("13333333333333333");
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("6666666666666666");
+
+      // then alice need to pay 1.333% of her position size as fundingPayment
+      // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.5}
+      const alicePosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address);
+      expect(alicePosition.size).to.eq(toFullDigitBN(37.5));
+      expect(alicePosition.margin).to.eq("299500000000000000013");
+
+      // then bob will get 0.66% of her position size as fundingPayment
+      // {balance: -187.5, margin: 1200} => {balance: -187.5, margin: 1201.25}
+      const bobPosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address);
+      expect(bobPosition.size).to.eq(toFullDigitBN(-187.5));
+      expect(bobPosition.margin).to.eq("1201249999999999999875");
+
+      // then fundingPayment will generate 0.75 loss and clearingHouse will withdraw in advanced from insuranceFund
+      // clearingHouse: 1500 + 0.75
+      // insuranceFund: 5000 - 0.75
+      const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1500.75, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(4999.25, +(await quoteToken.decimals())));
+    });
+
+    it("will keep generating the same loss for amm when dynamic funding rate is positive and amm hold more long position", async () => {
+      // given the underlying twap price is 1.59, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
+
+      // normalFraction = 0.01
+      // fractionLong = 0.01 * (2*187.5 + 0.5*(-150))/225 = 0.0133333333333333333
+      // fractionShort = 0.01 * (2*37.5 - 0.5*(-150))/225 = 0.0066666666666666666
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // same as above test case:
+      // there are only 2 traders: bob and alice
+      // alice need to pay as fundingPayment (37.5 * 0.0133333333333333333 = 0.375)
+      // bob will get as fundingPayment (187.5 * 0.0066666666666666666 = 1.875)
+      // ammPnl = -0.75
+      // clearingHouse payFunding twice in the same condition
+      // then fundingPayment will generate 0.75 * 2 loss and clearingHouse will withdraw in advanced from insuranceFund
+      // clearingHouse: 1500 + 1.5
+      // insuranceFund: 5000 - 1.5
+      const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+      expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1501.5, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(4998.5, +(await quoteToken.decimals())));
+    });
+
+    it("normal funding rate is 1%, 1% then -1%", async () => {
+      // given the underlying twap price is 1.59, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("13333333333333333");
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("6666666666666666");
+
+      // then alice need to pay 1% of her position size as fundingPayment
+      // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.5}
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        "299500000000000000013"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq("299500000000000000013");
+
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address)).margin).eq(
+        "1201249999999999999875"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, bob.address)).eq("1201249999999999999875");
+
+      // pay 1% funding again
+      // {balance: 37.5, margin: 299.5} => {balance: 37.5, margin: 299}
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("26666666666666666");
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("13333333333333332");
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        "299000000000000000025"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq("299000000000000000025");
+
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address)).margin).eq(
+        "1202499999999999999750"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, bob.address)).eq("1202499999999999999750");
+
+      // pay -1% funding
+      // {balance: 37.5, margin: 299} => {balance: 37.5, margin: 299.5}
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.61));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("13333333333333333");
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("6666666666666666");
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        "299500000000000000013"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq("299500000000000000013");
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address)).margin).eq(
+        "1201249999999999999875"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, bob.address)).eq("1201249999999999999875");
+    });
+
+    it("has huge dynamic funding payment profit that doesn't need margin anymore", async () => {
+      // given the underlying twap price is 21.6, and current snapShot price is 400B/250Q = $1.6
+      // fractionLong = -20 * (2*187.5 + 0.5*(-150))/225 = -26.666666666666
+      // fractionShort = -20 * (2*37.5 - 0.5*(-150))/225 = -13.333333333333
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(21.6));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 1299.9999999999}
+      // then alice can withdraw more than her initial margin while remain the enough margin ratio
+      await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(400));
+
+      // margin = 1299.9999999999 - 400 = 899.9999999999
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address)).margin).eq(
+        "899999999999999999975"
+      );
+      expect(await clearingHouseViewer.getPersonalBalanceWithFundingPayment(quoteToken.address, alice.address)).eq("899999999999999999975");
+    });
+
+    it("has huge dynamic funding payment loss that the margin become negative with bad debt of long position", async () => {
+      await clearingHouse.setBackstopLiquidityProvider(alice.address, true);
+      // given the underlying twap price is 21.6, and current snapShot price is 400B/250Q = $1.6
+      // fractionLong = -20 * (2*187.5 + 0.5*(-150))/225 = -26.666666666666
+      // fractionShort = -20 * (2*37.5 - 0.5*(-150))/225 = -13.333333333333
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(21.6));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // then bob will get 2000% of her position size as fundingPayment
+      // funding payment: -187.5 x 13.333333333333 = -2500, margin is 1200 so bad debt = -2500 + 1200 = 1300
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address)).margin).eq(
+        "-1299999999999999999937"
+      );
+
+      // liquidate the bad debt position
+      const tx = await clearingHouse.connect(alice).liquidate(amm.address, bob.address);
+      const receipt = await tx.wait();
+      const event = receipt.events?.find((x) => {
+        return x.event == "PositionChanged";
+      });
+
+      expect(event?.args).to.not.be.null;
+      expect(event?.args?.[9]).to.eq("1299999999999999999937"); // bad debt
+      expect(event?.args?.[12]).to.eq("2499999999999999999937"); // funding payment
+    });
+
+    it("has huge dynamic funding payment loss that the margin become negative, can add margin", async () => {
+      // given the underlying twap price is 21.6, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(21.6));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // funding payment: -187.5 x 13.333333333333 = -2500, margin is 1200 so bad debt = -2500 + 1200 = 1300
+      // margin can be added but will still shows 0 until it's larger than bad debt
+      await approve(bob, clearingHouse.address, 1);
+      await clearingHouse.connect(bob).addMargin(amm.address, toFullDigitBN(1));
+      expect((await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address)).margin).eq(
+        "-1298999999999999999937"
+      );
+    });
+
+    it("has huge dynamic funding payment loss that the margin become 0, can not remove margin", async () => {
+      // given the underlying twap price is 21.6, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(21.6));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // funding payment: -187.5 x 13.333333333333 = -2500, margin is 1200 so bad debt = -2500 + 1200 = 1300
+      // margin can't removed
+      await expect(clearingHouse.connect(bob).removeMargin(amm.address, toFullDigitBN(1))).to.be.revertedWith("CH_MNE");
+    });
+
+    it("reduce bad debt after adding margin to a underwater position", async () => {
+      await clearingHouse.setBackstopLiquidityProvider(alice.address, true);
+      // given the underlying twap price is 21.6, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(21.6));
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      // funding payment: -187.5 x 13.333333333333 = -2500, margin is 1200 so bad debt = -2500 + 1200 = 1300
+      // margin can be added but will still shows 0 until it's larger than bad debt
+      // margin can't removed
+      await approve(bob, clearingHouse.address, 10);
+      await clearingHouse.connect(bob).addMargin(amm.address, toFullDigitBN(10));
+
+      // close bad debt position
+      // badDebt 1299.999999999999999937 - 10 margin = 1289.999999999999999937
+
+      const tx = await clearingHouse.connect(alice).liquidate(amm.address, bob.address);
+      const receipt = await tx.wait();
+      const event = receipt.events?.find((x) => {
+        return x.event == "PositionChanged";
+      });
+
+      expect(event?.args).to.not.be.null;
+      expect(event?.args?.[9]).to.eq("1289999999999999999937"); // bad debt
+      expect(event?.args?.[12]).to.eq("2499999999999999999937"); // funding payment
+    });
+
+    it("will change nothing if the dynamic funding rate is 0", async () => {
+      // when the underlying twap price is $1.6, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.6));
+
+      // when the new fundingRate is 0% which means underlyingPrice = snapshotPrice
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(0);
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(0);
+
+      // then alice's position won't change
+      // {balance: 37.5, margin: 300}
+      const alicePosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address);
+      expect(alicePosition.size).to.eq(toFullDigitBN(37.5));
+      expect(alicePosition.margin).to.eq(toFullDigitBN(300));
+
+      // then bob's position won't change
+      // {balance: -187.5, margin: 1200}
+      const bobPosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, bob.address);
+      expect(bobPosition.size).to.eq(toFullDigitBN(-187.5));
+      expect(bobPosition.margin).to.eq(toFullDigitBN(1200));
+
+      // clearingHouse: 1500
+      // insuranceFund: 5000
+      const clearingHouseBaseToken = await quoteToken.balanceOf(clearingHouse.address);
+      expect(clearingHouseBaseToken).to.eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
+      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
+    });
+  });
+
   describe("getMarginRatio", () => {
     it("get margin ratio", async () => {
       await approve(alice, clearingHouse.address, 2000);
@@ -742,6 +1005,147 @@ describe("ClearingHouse Test", () => {
         // margin ratio: (45 - 4.5) / 450 = 0.09
         const bobMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, bob.address);
         expect(bobMarginRatio).to.eq(toFullDigitBN(0.09));
+      });
+    });
+    describe("verify margin ratio when there is dynamic funding payment", () => {
+      beforeEach(async () => {
+        await amm.setFundingCostCoverRate(toFullDigitBN(0.5));
+        await amm.setFundingRevenueTakeRate(toFullDigitBN(0.5));
+      });
+      it("when dynamic funding rate is positive", async () => {
+        await approve(alice, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625, long = 20, short = 0
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+
+        // given the underlying twap price: 15.5
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(15.5));
+
+        // longFraction: 0.125 * 0.5
+        // shortFraction: 0.125 * 1.5
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.125 * 0.5));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.125 * 1.5));
+
+        // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
+        // funding payment: 20 * -12.5% * 0.5 = -2.5 * 0.5
+        // position notional: 250
+        // margin ratio: (25 - 2.5*0.5) / 250 = 0.095
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq(toFullDigitBN(0.095));
+      });
+
+      it("when dynamic funding rate is negative", async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
+        await approve(alice, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625, long = 20, short = 0
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+
+        // given the underlying twap price is 15.7
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(15.7));
+
+        // longFraction: -0.075 * 0.5
+        // shortFraction: -0.075 * 1.5
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.075 * 0.5));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("-112500000000000000");
+
+        // marginRatio = (margin + funding payment + unrealized Pnl) / openNotional
+        // funding payment: 20 * 7.5% *0.5 = 1.5 * 0.5
+        // position notional: 250
+        // margin ratio: (25 + 1.5 * 0.5) / 250 =  0.103
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq(toFullDigitBN(0.103));
+      });
+
+      it("with pnl and dynamic funding rate is positive", async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
+        await approve(alice, clearingHouse.address, 2000);
+        await approve(bob, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625, long - 20
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+        // price: 800 / 125 = 6.4, short - 45
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(10), toFullDigitBN(45), true);
+
+        // given the underlying twap price: 6.3
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
+
+        // longFraction: 0.1 * (2 * 45 + 0.5*(-25)) / 65 = 0.1192307692
+        // shortFraction: 0.1 * (2 * 20 - 0.5*(-25)) / 65 = 0.080769230
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("119230769230769230");
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("80769230769230769");
+
+        // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
+        // funding payment: 20 (position size) * -0.1192307692 = -2.3846153846153846
+        // (800 - x) * (125 + 20) = 1000 * 100
+        // position notional / x : 800 - 689.6551724138 = 110.3448275862
+        // unrealized Pnl: 250 - 110.3448275862 = 139.6551724138
+        // margin ratio: (25 - 2.3846153846153846 - 139.6551724138) / 110.3448275862 = -1.06067
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq("-1060673076923076922");
+
+        // funding payment (bob receives): 45 * 0.080769230 = 4.5
+        // margin ratio: (45 + 4.5) / 450 = 0.108076923
+        const bobMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, bob.address);
+        expect(bobMarginRatio).to.eq("108076923076923076");
+
+        // 5350 - 0.1 * 25 * 0.5
+        expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5348.75, +(await quoteToken.decimals())));
+      });
+
+      it("with pnl and dynamic funding rate is negative", async () => {
+        await approve(alice, clearingHouse.address, 2000);
+        await approve(bob, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+        // price: 800 / 125 = 6.4
+        await clearingHouse
+          .connect(bob)
+          .openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(10), toFullDigitBN(45), true);
+
+        // given the underlying twap price: 6.5
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(6.5));
+
+        // longFraction: -0.1 * (2 * 45 + 0.5*(-25)) / 65 = -0.1192307692
+        // shortFraction: -0.1 * (2 * 20 - 0.5*(-25)) / 65 = -0.080769230
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq("-119230769230769230");
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq("-80769230769230769");
+
+        // funding payment (alice receives): 20 (position size) * 0.1192307692  = 2.384615384
+        // (800 - x) * (125 + 20) = 1000 * 100
+        // position notional / x : 800 - 689.6551724138 = 110.3448275862
+        // unrealized Pnl: 250 - 110.3448275862 = 139.6551724138
+        // margin ratio: (25 + 2.384615384 - 139.6551724138) / 110.3448275862 = -1.0174519
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq("-1017451923076923077");
+
+        // funding payment: 45 (position size) * -0.080769230 = -3.63461535
+        // margin ratio: (45 - 3.63461535) / 450 = 0.091923
+        const bobMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, bob.address);
+        expect(bobMarginRatio).to.eq("91923076923076923");
+
+        // 5000 + 0.1 * 25 * 0.5
+        expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5001.25, +(await quoteToken.decimals())));
       });
     });
   });
