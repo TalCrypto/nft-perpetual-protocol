@@ -648,10 +648,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         _applyAdjustmentCost(_amm, -1 * fundingPayment);
         // include uncapped funding payment into the k-adjustment calculation
         netRevenuesSinceLastFunding[address(_amm)] += fundingImbalanceCost;
+        _formulaicRepegAmm(_amm);
         _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
-        _formulaicRepegAmm(_amm);
     }
 
     // /**
