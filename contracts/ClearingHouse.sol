@@ -639,7 +639,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        _formulaicRepegAmm(_amm);
         (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(
             insuranceBudgets[address(_amm)]
         );
@@ -647,9 +646,12 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
         _applyAdjustmentCost(_amm, -1 * fundingPayment);
-        _formulaicUpdateK(_amm, fundingImbalanceCost);
+        // include uncapped funding payment into the k-adjustment calculation
+        netRevenuesSinceLastFunding[address(_amm)] += fundingImbalanceCost;
+        _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
+        _formulaicRepegAmm(_amm);
     }
 
     // /**
@@ -906,6 +908,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 if (liquidationBadDebt > 0) {
                     require(backstopLiquidityProviderMap[_msgSender()], "CH_NBLP"); //not backstop LP
                     _realizeBadDebt(_amm, liquidationBadDebt);
+                    // include liquidation bad debt into the k-adjustment calculation
+                    netRevenuesSinceLastFunding[address(_amm)] -= int256(liquidationBadDebt);
                 }
                 feeToInsuranceFund = remainMargin;
                 _setPosition(_amm, _trader, positionResp.position);
@@ -913,6 +917,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
             if (feeToInsuranceFund > 0) {
                 _transferToInsuranceFund(_amm, feeToInsuranceFund);
+                // include liquidation fee to the insurance fund into the k-adjustment calculation
+                netRevenuesSinceLastFunding[address(_amm)] += int256(feeToInsuranceFund);
             }
             _withdraw(_amm, _msgSender(), feeToLiquidator);
             _enterRestrictionMode(_amm);
@@ -1334,19 +1340,15 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     // if fundingImbalance is positive, clearing house receives funds
-    function _formulaicUpdateK(IAmm _amm, int256 _fundingImbalance) private {
+    function _formulaicUpdateK(IAmm _amm) private {
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
         int256 budget;
-        if (_fundingImbalance > 0) {
-            // positive cost is period revenue, give back half in k increase
-            budget = _fundingImbalance / 2;
-        } else if (netRevenue < -_fundingImbalance) {
-            // cost exceeded period revenue, take back half in k decrease
-            if (netRevenue < 0) {
-                budget = _fundingImbalance / 2;
-            } else {
-                budget = (netRevenue + _fundingImbalance) / 2;
-            }
+        if (netRevenue > 0) {
+            // If the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
+            budget = netRevenue / 4;
+        } else {
+            // If the overall sum is a COST to the system, take back half of the COST in k decrease
+            budget = netRevenue / 2;
         }
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
             budget
