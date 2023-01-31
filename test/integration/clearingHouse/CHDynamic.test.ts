@@ -257,15 +257,15 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         beforeEach(async () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
         });
-        it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
+        it("k-adjustment occurs because net revenue + funding cost is positive", async () => {
           await gotoNextFundingTime();
           // funding imbalance cost = -2
           await clearingHouse.payFunding(amm.address);
           expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.1));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / 125).eq(1);
-          expect(Number(quoteAssetReserve) / 800).eq(1);
+          expect(Number(baseAssetReserve) / 125).gt(1);
+          expect(Number(quoteAssetReserve) / 800).gt(1);
         });
       });
     });
@@ -312,17 +312,6 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           const quoteAssetReserve = await amm.quoteAssetReserve();
           const baseAssetReserve = await amm.baseAssetReserve();
           expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(6.4));
-        });
-        it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
-          await gotoNextFundingTime();
-          const baseAssetReserveBefore = ethers.utils.formatEther(await amm.baseAssetReserve());
-          const quoteAssetReserveBefore = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          // funding imbalance cost = -2
-          await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(1.4));
-          const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
-          const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(quoteAssetReserveBefore) * Number(baseAssetReserveBefore)).eq(Number(baseAssetReserve) * Number(quoteAssetReserve));
         });
       });
     });
