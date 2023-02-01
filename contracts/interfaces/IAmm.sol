@@ -85,22 +85,22 @@ interface IAmm {
     //     uint256 _fromBaseReserve
     // ) external view returns (int256);
 
-    function getInputTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
+    function getQuoteTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
+    function getBaseTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
-    function getInputPrice(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
+    function getQuotePrice(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputPrice(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
+    function getBasePrice(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
-    function getInputPriceWithReserves(
+    function getQuotePriceWithReserves(
         Dir _dir,
         uint256 _quoteAssetAmount,
         uint256 _quoteAssetPoolAmount,
         uint256 _baseAssetPoolAmount
     ) external pure returns (uint256);
 
-    function getOutputPriceWithReserves(
+    function getBasePriceWithReserves(
         Dir _dir,
         uint256 _baseAssetAmount,
         uint256 _quoteAssetPoolAmount,

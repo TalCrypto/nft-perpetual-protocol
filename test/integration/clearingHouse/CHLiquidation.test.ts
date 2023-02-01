@@ -150,9 +150,9 @@ describe("ClearingHouse Liquidation Test", () => {
         .openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // partially liquidate 25%
-      // liquidated positionNotional: getOutputPrice(20 (original position) * 0.25) = 68.455
+      // liquidated positionNotional: getBasePrice(20 (original position) * 0.25) = 68.455
       // remain positionNotional: 233.945 - 68.455 = 165.49
-      // total pnl = openNotional - getOutputPrice(20) == 250 - 233.945 = 16.054(loss)
+      // total pnl = openNotional - getBasePrice(20) == 250 - 233.945 = 16.054(loss)
       // realizedPnl = 16.054 * 0.25 = 4.01, unrealizedPnl = 16.054 - 4.01 = 12.04
       // liquidationPenalty = liquidation fee + fee to InsuranceFund
       //                    = 68.455 * 0.0125 + 68.455 * 0.0125 = 1.711
@@ -215,7 +215,7 @@ describe("ClearingHouse Liquidation Test", () => {
         .openPosition(amm.address, Side.SELL, toFullDigitBN(45.18072289), toFullDigitBN(1), toFullDigitBN(0), true);
 
       // partially liquidate 25%
-      // liquidated positionNotional: getOutputPrice(20 (original position) * 0.25) = 68.455
+      // liquidated positionNotional: getBasePrice(20 (original position) * 0.25) = 68.455
       // if quoteAssetAmountLimit == 273.85 > 68.455 * 4 = 273.82, quote asset gets is less than expected, thus tx reverts
       await expect(
         clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.85))
@@ -249,9 +249,9 @@ describe("ClearingHouse Liquidation Test", () => {
       await syncAmmPriceToOracle();
 
       // partially liquidate 25%
-      // liquidated positionNotional: getOutputPrice(25 (original position) * 0.25) = 44.258
+      // liquidated positionNotional: getBasePrice(25 (original position) * 0.25) = 44.258
       // remain positionNotional: 211.255 - 44.258 = 166.997
-      // total pnl = openNotional - getOutputPrice(25) == 200 - 211.255 = 11.255(loss)
+      // total pnl = openNotional - getBasePrice(25) == 200 - 211.255 = 11.255(loss)
       // realizedPnl = 11.255 * 0.25 = 2.81, unrealizedPnl = 11.255 - 2.81 = 8.44
       // liquidationPenalty = liquidation fee + fee to InsuranceFund
       //                    = 44.258 * 0.0125 + 44.258 * 0.0125 = 1.106
@@ -319,7 +319,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await syncAmmPriceToOracle();
 
       // partially liquidate 25%
-      // liquidated positionNotional: getOutputPrice(25 (original position) * 0.25) = 44.258
+      // liquidated positionNotional: getBasePrice(25 (original position) * 0.25) = 44.258
       // if quoteAssetAmountLimit == 177 > 44.258 * 4 = 177.032, quote asset pays is more than expected, thus tx reverts
 
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(177))).to.be.revertedWith(

@@ -51,15 +51,15 @@ contract AmmMock {
         inputPrice = _inputPrice;
     }
 
-    function getOutputTwap(Amm.Dir, int256) external view returns (int256) {
+    function getBaseTwap(Amm.Dir, int256) external view returns (int256) {
         return outputTwap;
     }
 
-    function getOutputPrice(Amm.Dir, int256) external view returns (int256) {
+    function getBasePrice(Amm.Dir, int256) external view returns (int256) {
         return outputPrice;
     }
 
-    function getInputPrice(Amm.Dir, int256) external view returns (int256) {
+    function getQuotePrice(Amm.Dir, int256) external view returns (int256) {
         return inputPrice;
     }
 

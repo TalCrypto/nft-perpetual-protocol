@@ -658,7 +658,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
         ADD_TO_AMM = 0,
         REMOVE_FROM_AMM = 1,
       }
-      const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, "11111111111111111111");
+      const amount = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, "11111111111111111111");
       const receiptOpen2 = await clearingHouse
         .connect(alice)
         .openPosition(amm.address, Side.BUY, amount, toFullDigitBN(1), toFullDigitBN(0), true);

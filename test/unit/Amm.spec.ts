@@ -168,46 +168,46 @@ describe("Amm Unit Test", () => {
   //   });
   // });
 
-  describe("getInputPrice/getOutputPrice", () => {
+  describe("getQuotePrice/getBasePrice", () => {
     beforeEach(async () => {
       await amm.setOpen(true);
     });
-    it("getInputPrice, add to amm ", async () => {
+    it("getQuotePrice, add to amm ", async () => {
       // amount = 100(quote asset reserved) - (100 * 1000) / (1000 + 50) = 4.7619...
       // price = 50 / 4.7619 = 10.499
-      const amount = await amm.getInputPrice(Dir.ADD_TO_AMM, toFullDigitBN(50));
+      const amount = await amm.getQuotePrice(Dir.ADD_TO_AMM, toFullDigitBN(50));
       expect(amount).to.eq("4761904761904761904");
     });
 
-    it("getInputPrice, remove from amm ", async () => {
+    it("getQuotePrice, remove from amm ", async () => {
       // amount = (100 * 1000) / (1000 - 50) - 100(quote asset reserved) = 5.2631578947368
       // price = 50 / 5.263 = 9.5
-      const amount = await amm.getInputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(50));
+      const amount = await amm.getQuotePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(50));
       expect(amount).to.eq("5263157894736842106");
     });
 
-    it("getOutputPrice, add to amm ", async () => {
+    it("getBasePrice, add to amm ", async () => {
       // amount = 1000(base asset reversed) - (100 * 1000) / (100 + 5) = 47.619047619047619048
       // price = 47.619 / 5 = 9.52
-      const amount = await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(5));
+      const amount = await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(5));
       expect(amount).to.eq("47619047619047619047");
     });
 
-    it("getOutputPrice, add to amm with dividable output", async () => {
+    it("getBasePrice, add to amm with dividable output", async () => {
       // a dividable number should not plus 1 at mantissa
-      const amount = await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(25));
+      const amount = await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(25));
       expect(amount).to.eq(toFullDigitBN(200));
     });
 
-    it("getOutputPrice, remove from amm ", async () => {
+    it("getBasePrice, remove from amm ", async () => {
       // amount = (100 * 1000) / (100 - 5) - 1000(base asset reversed) = 52.631578947368
       // price = 52.631 / 5 = 10.52
-      const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(5));
+      const amount = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(5));
       expect(amount).to.eq("52631578947368421053");
     });
 
-    it("getOutputPrice, remove from amm  with dividable output", async () => {
-      const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(37.5));
+    it("getBasePrice, remove from amm  with dividable output", async () => {
+      const amount = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(37.5));
       expect(amount).to.eq(toFullDigitBN(600));
     });
   });
@@ -340,14 +340,14 @@ describe("Amm Unit Test", () => {
     });
 
     it("swapOutput, short and not dividable", async () => {
-      const amount = await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(5));
+      const amount = await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(5));
       const receipt = await amm.swapOutput(Dir.ADD_TO_AMM, toFullDigitBN(5), true);
 
       await expect(receipt).to.emit(amm, "SwapOutput").withArgs(Dir.ADD_TO_AMM, amount, toFullDigitBN(5));
     });
 
     it("swapOutput, long and not dividable", async () => {
-      const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(5));
+      const amount = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(5));
       const receipt = await amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(5), true);
 
       await expect(receipt).to.emit(amm, "SwapOutput").withArgs(Dir.REMOVE_FROM_AMM, amount, toFullDigitBN(5));
@@ -355,14 +355,14 @@ describe("Amm Unit Test", () => {
 
     it("swapOutput, long and then short the same size, should got different base asset amount", async () => {
       // quote asset = (1000 * 100 / (100 - 10)) - 1000 = 111.111...2
-      const amount1 = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
+      const amount1 = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
       await amm.swapOutput(Dir.REMOVE_FROM_AMM, toFullDigitBN(10), true);
       expect(await amm.quoteAssetReserve()).to.eq("1111111111111111111112");
       expect(await amm.baseAssetReserve()).to.eq(toFullDigitBN(90));
 
       // quote asset = 1111.111 - (111.111 * 90 / (90 + 10)) = 111.11...1
       // price will be 1 wei less after traded
-      const amount2 = await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
+      const amount2 = await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
       expect(BigNumber.from(amount1).sub(BigNumber.from(amount2))).eq(1);
     });
 
@@ -615,9 +615,9 @@ describe("Amm Unit Test", () => {
       // avoid actions from exceeding the fluctuation limit
       await amm.setFluctuationLimitRatio(toFullDigitBN(0.5));
     });
-    it("use getOutputPrice to query price and use it to swapInput(long)", async () => {
+    it("use getBasePrice to query price and use it to swapInput(long)", async () => {
       // when trader ask what's the requiredQuoteAsset if trader want to remove 10 baseAsset from amm
-      const requiredQuoteAsset = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
+      const requiredQuoteAsset = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
 
       // when trader add requiredQuoteAsset to amm
       const receipt = await amm.swapInput(Dir.ADD_TO_AMM, requiredQuoteAsset, false);
@@ -627,9 +627,9 @@ describe("Amm Unit Test", () => {
       await expect(receipt).to.emit(amm, "SwapInput").withArgs(Dir.ADD_TO_AMM, requiredQuoteAsset, toFullDigitBN(10));
     });
 
-    it("use getOutputPrice to query price and use it to swapInput(short)", async () => {
+    it("use getBasePrice to query price and use it to swapInput(short)", async () => {
       // when trader ask what's the requiredQuoteAsset if trader want to add 10 baseAsset from amm
-      const requiredQuoteAsset = await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
+      const requiredQuoteAsset = await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
 
       // when trader remove requiredQuoteAsset to amm
       const receipt = await amm.swapInput(Dir.REMOVE_FROM_AMM, requiredQuoteAsset, false);
@@ -637,9 +637,9 @@ describe("Amm Unit Test", () => {
       await expect(receipt).to.emit(amm, "SwapInput").withArgs(Dir.REMOVE_FROM_AMM, requiredQuoteAsset, toFullDigitBN(10));
     });
 
-    it("use getInputPrice(long) to swapOutput", async () => {
+    it("use getQuotePrice(long) to swapOutput", async () => {
       // when trader ask what's the baseAsset she will receive if trader want to add 10 quoteAsset to amm
-      const receivedBaseAsset = await amm.getInputPrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
+      const receivedBaseAsset = await amm.getQuotePrice(Dir.ADD_TO_AMM, toFullDigitBN(10));
 
       // when trader trade quoteAsset for receivedBaseAsset (amount as above)
       const receipt = await amm.swapOutput(Dir.REMOVE_FROM_AMM, receivedBaseAsset, true);
@@ -655,9 +655,9 @@ describe("Amm Unit Test", () => {
       await expect(receipt).to.emit(amm, "SwapOutput").withArgs(Dir.REMOVE_FROM_AMM, toFullDigitBN(10), receivedBaseAsset);
     });
 
-    it("use getInputPrice(short) to swapOutput", async () => {
+    it("use getQuotePrice(short) to swapOutput", async () => {
       // when trader ask what's the baseAsset she will receive if trader want to remove 10 quoteAsset to amm
-      const receivedBaseAsset = await amm.getInputPrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
+      const receivedBaseAsset = await amm.getQuotePrice(Dir.REMOVE_FROM_AMM, toFullDigitBN(10));
 
       // when trader trade quoteAsset for receivedBaseAsset (amount as above)
       const receipt = await amm.swapOutput(Dir.ADD_TO_AMM, receivedBaseAsset, true);
@@ -708,7 +708,7 @@ describe("Amm Unit Test", () => {
       // create 30 snapshot first, the average price will be 9.04
       await forward(14);
       for (let i = 0; i < 30; i++) {
-        // console.log((await amm.getOutputPrice(Dir.ADD_TO_AMM, toFullDigitBN(10))).d.toString())
+        // console.log((await amm.getBasePrice(Dir.ADD_TO_AMM, toFullDigitBN(10))).d.toString())
         if (i % 3 == 0) {
           await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), false);
         } else {
@@ -772,7 +772,7 @@ describe("Amm Unit Test", () => {
 
         it("get twap price", async () => {
           // total snapshots will be 65, 65 x 14 = 910 secs
-          // getInputTwap/getOutputPrice get 15 mins average
+          // getQuoteTwap/getBasePrice get 15 mins average
           for (let i = 0; i < 34; i++) {
             if (i % 3 == 0) {
               await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), false);
@@ -786,13 +786,13 @@ describe("Amm Unit Test", () => {
           // average is 1103873668968336329 =
           // (990099009900990099 x 21 snapshots x 14 secs + 1096491228070175439 x 21 x 14 + 1221001221001221002 x 22 x 14 +
           //  990099009900990099 x 1 snapshots x 4 secs) / 900
-          const twap = await amm.getInputTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
+          const twap = await amm.getQuoteTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
           expect(twap).to.eq("1103873668968336329");
         });
 
         it("the timestamp of latest snapshot is now, the latest snapshot wont have any effect ", async () => {
           // total snapshots will be 65, 65 x 14 = 910 secs
-          // getInputTwap/getOutputPrice get 15 mins average
+          // getQuoteTwap/getBasePrice get 15 mins average
           for (let i = 0; i < 34; i++) {
             if (i % 3 == 0) {
               await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), false);
@@ -805,19 +805,19 @@ describe("Amm Unit Test", () => {
           // price is 8.12 but time weighted is zero
           await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), false);
 
-          const twap = await amm.getInputTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
+          const twap = await amm.getQuoteTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
           expect(twap).to.eq("1103873668968336329");
         });
 
         it("accumulative time of snapshots is less than 15 mins ", async () => {
           // average is 1098903664504027596 =
           // (990099009900990099 x 11 snapshots x 14 secs + 1096491228070175439 x 10 x 14 + 1221001221001221002 x 10 x 14) / (31 x 14)
-          const twap = await amm.getInputTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
+          const twap = await amm.getQuoteTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
           expect(twap).to.eq("1098903664504027596");
         });
 
         it("input asset is 0, should return 0", async () => {
-          const twap = await amm.getInputTwap(Dir.ADD_TO_AMM, toFullDigitBN(0));
+          const twap = await amm.getQuoteTwap(Dir.ADD_TO_AMM, toFullDigitBN(0));
           expect(twap).eq("0");
         });
       });
@@ -829,7 +829,7 @@ describe("Amm Unit Test", () => {
         // 90909090909090909079
         it("get twap output price", async () => {
           // total snapshots will be 65, 65 x 14 = 910 secs
-          // getInputTwap/getOutputPrice get 15 mins average
+          // getQuoteTwap/getBasePrice get 15 mins average
           for (let i = 0; i < 34; i++) {
             if (i % 3 == 0) {
               await amm.swapInput(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), false);
@@ -844,19 +844,19 @@ describe("Amm Unit Test", () => {
           // average is 82456099260799524707 =
           // (90909090909090909079 x 21 snapshots x 14 secs + 82420091324200913231 x 21 x 14 + 74311926605504587146 x 22 x 14 +
           //  90909090909090909079 x 1 snapshots x 4 secs) / 900
-          const twap = await amm.getOutputTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
+          const twap = await amm.getBaseTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
           expect(twap).to.eq("82456099260799524707");
         });
 
         it("accumulative time of snapshots is less than 15 mins ", async () => {
           // average is 82816779977324354961 =
           // (90909090909090909079 x 11 snapshots x 14 secs + 82420091324200913231 x 10 x 14 + 74311926605504587146 x 10 x 14) / (31 x 14)
-          const twap = await amm.getOutputTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
+          const twap = await amm.getBaseTwap(Dir.ADD_TO_AMM, toFullDigitBN(10));
           expect(twap).to.eq("82816779977324354961");
         });
 
         it("input asset is 0, should return 0", async () => {
-          const twap = await amm.getOutputTwap(Dir.ADD_TO_AMM, toFullDigitBN(0));
+          const twap = await amm.getBaseTwap(Dir.ADD_TO_AMM, toFullDigitBN(0));
           expect(twap).eq("0");
         });
       });
@@ -898,9 +898,9 @@ describe("Amm Unit Test", () => {
     beforeEach(async () => {
       await amm.setOpen(true);
     });
-    describe("getInputPriceWithReserves", () => {
+    describe("getQuotePriceWithReserves", () => {
       it("should return 37.5B when ask for 600Q input at B100/Q1000 reserve and add to Amm", async () => {
-        const amount = await amm.getInputPriceWithReservesPublic(
+        const amount = await amm.getQuotePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           toFullDigitBN(600),
           toFullDigitBN(1000),
@@ -911,7 +911,7 @@ describe("Amm Unit Test", () => {
       });
 
       it("should return 150B  when ask for 600Q input at B100/Q1000 reserve and remove from Amm", async () => {
-        const amount = await amm.getInputPriceWithReservesPublic(
+        const amount = await amm.getQuotePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(600),
           toFullDigitBN(1000),
@@ -922,7 +922,7 @@ describe("Amm Unit Test", () => {
       });
 
       it("should get expected (amount - 1) when the base asset amount is not dividable and add to Amm", async () => {
-        const amount = await amm.getInputPriceWithReservesPublic(
+        const amount = await amm.getQuotePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           toFullDigitBN(200),
           toFullDigitBN(1000),
@@ -935,7 +935,7 @@ describe("Amm Unit Test", () => {
       });
 
       it("should get expected amount when the base asset amount is not dividable but remove from Amm", async () => {
-        const amount = await amm.getInputPriceWithReservesPublic(
+        const amount = await amm.getQuotePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(100),
           toFullDigitBN(1000),
@@ -948,30 +948,25 @@ describe("Amm Unit Test", () => {
 
       it("reach trading limit", async () => {
         await expect(
-          amm.getInputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(1000), toFullDigitBN(100))
+          amm.getQuotePriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(1000), toFullDigitBN(100))
         ).to.not.revertedWith("over trading limit");
       });
 
       it("force error, value of quote asset is 0", async () => {
         await expect(
-          amm.getInputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
+          amm.getQuotePriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
         ).to.be.revertedWith("AMM_ZQAA");
       });
     });
 
-    describe("getOutputPriceWithReserves", () => {
+    describe("getBasePriceWithReserves", () => {
       it("should need 375Q for 60B output at B100/Q1000 reserve when add to Amm", async () => {
-        const amount = await amm.getOutputPriceWithReservesPublic(
-          Dir.ADD_TO_AMM,
-          toFullDigitBN(60),
-          toFullDigitBN(1000),
-          toFullDigitBN(100)
-        );
+        const amount = await amm.getBasePriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(60), toFullDigitBN(1000), toFullDigitBN(100));
 
         expect(amount).eq(toFullDigitBN(375).toString());
       });
       it("should need 250Q for 20B output at B100/Q1000 reserve when remove from Amm", async () => {
-        const amount = await amm.getOutputPriceWithReservesPublic(
+        const amount = await amm.getBasePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(20),
           toFullDigitBN(1000),
@@ -982,7 +977,7 @@ describe("Amm Unit Test", () => {
       });
 
       it("should get expected (amount + 1) when the quote asset amount is not dividable and remove Amm", async () => {
-        const amount = await amm.getOutputPriceWithReservesPublic(
+        const amount = await amm.getBasePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(25),
           toFullDigitBN(1000),
@@ -995,12 +990,7 @@ describe("Amm Unit Test", () => {
       });
 
       it("should get expected amount when the base asset amount is not dividable but add to Amm", async () => {
-        const amount = await amm.getOutputPriceWithReservesPublic(
-          Dir.ADD_TO_AMM,
-          toFullDigitBN(20),
-          toFullDigitBN(1000),
-          toFullDigitBN(100)
-        );
+        const amount = await amm.getBasePriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(20), toFullDigitBN(1000), toFullDigitBN(100));
 
         // trader will get 1 wei less quoteAsset
         expect(amount).eq("166666666666666666666");
@@ -1008,20 +998,20 @@ describe("Amm Unit Test", () => {
 
       it("force error, value of base asset is 0", async () => {
         await expect(
-          amm.getOutputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
+          amm.getBasePriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(900), toFullDigitBN(900), toFullDigitBN(900))
         ).to.be.revertedWith("AMM_ZBAA");
       });
     });
 
-    describe("the result of x's getOutPrice of getInputPrice should be equals to x", () => {
-      it("without fee, getOutputPrice(getInputPrice(x).amount) == x (quote settlement)", async () => {
-        const baseAssetAmount = await amm.getInputPriceWithReservesPublic(
+    describe("the result of x's getOutPrice of getQuotePrice should be equals to x", () => {
+      it("without fee, getBasePrice(getQuotePrice(x).amount) == x (quote settlement)", async () => {
+        const baseAssetAmount = await amm.getQuotePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           toFullDigitBN(250),
           toFullDigitBN(1000),
           toFullDigitBN(100)
         );
-        const quoteAssetAmmPrice = await amm.getOutputPriceWithReservesPublic(
+        const quoteAssetAmmPrice = await amm.getBasePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           baseAssetAmount,
           toFullDigitBN(1250),
@@ -1031,14 +1021,14 @@ describe("Amm Unit Test", () => {
         expect(quoteAssetAmmPrice).eq(toFullDigitBN(250));
       });
 
-      it("without fee, getOutputPrice(getInputPrice(x).amount) == x (base settlement)", async () => {
-        const baseAssetAmount = await amm.getInputPriceWithReservesPublic(
+      it("without fee, getBasePrice(getQuotePrice(x).amount) == x (base settlement)", async () => {
+        const baseAssetAmount = await amm.getQuotePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(200),
           toFullDigitBN(1000),
           toFullDigitBN(100)
         );
-        const amount = await amm.getOutputPriceWithReservesPublic(
+        const amount = await amm.getBasePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           baseAssetAmount,
           toFullDigitBN(800),
@@ -1048,14 +1038,14 @@ describe("Amm Unit Test", () => {
         expect(amount).eq(toFullDigitBN(200));
       });
 
-      it("without fee, getInputPrice(getOutputPrice(x).amount) == x (quote settlement)", async () => {
-        const quoteAssetAmmPrice = await amm.getOutputPriceWithReservesPublic(
+      it("without fee, getQuotePrice(getBasePrice(x).amount) == x (quote settlement)", async () => {
+        const quoteAssetAmmPrice = await amm.getBasePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           toFullDigitBN(60),
           toFullDigitBN(1000),
           toFullDigitBN(100)
         );
-        const baseAssetAmount = await amm.getInputPriceWithReservesPublic(
+        const baseAssetAmount = await amm.getQuotePriceWithReservesPublic(
           Dir.ADD_TO_AMM,
           quoteAssetAmmPrice,
           toFullDigitBN(625),
@@ -1065,14 +1055,14 @@ describe("Amm Unit Test", () => {
         expect(baseAssetAmount).eq(toFullDigitBN(60));
       });
 
-      it("without fee, getInputPrice(getOutputPrice(x).amount) == x (base settlement)", async () => {
-        const amount = await amm.getOutputPriceWithReservesPublic(
+      it("without fee, getQuotePrice(getBasePrice(x).amount) == x (base settlement)", async () => {
+        const amount = await amm.getBasePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           toFullDigitBN(60),
           toFullDigitBN(1000),
           toFullDigitBN(100)
         );
-        const baseAssetAmount = await amm.getInputPriceWithReservesPublic(
+        const baseAssetAmount = await amm.getQuotePriceWithReservesPublic(
           Dir.REMOVE_FROM_AMM,
           amount,
           toFullDigitBN(2500),
@@ -1086,7 +1076,7 @@ describe("Amm Unit Test", () => {
     describe("AMM will always get 1 wei more reserve than trader when the result is not dividable", () => {
       it("swapInput, add to amm", async () => {
         // add 200 quote, amm: 83.33...4:1200. trader: 12.66
-        expect(await amm.getInputPriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(200), toFullDigitBN(1000), toFullDigitBN(100))).eq(
+        expect(await amm.getQuotePriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(200), toFullDigitBN(1000), toFullDigitBN(100))).eq(
           "16666666666666666666"
         );
       });
@@ -1094,13 +1084,13 @@ describe("Amm Unit Test", () => {
       it("swapInput, remove from amm", async () => {
         // remove 100 quote, amm: 111.111...1 + 1 wei:900. trader: -11.11...1 - 1wei
         expect(
-          await amm.getInputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), toFullDigitBN(1000), toFullDigitBN(100))
+          await amm.getQuotePriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(100), toFullDigitBN(1000), toFullDigitBN(100))
         ).eq("11111111111111111112");
       });
 
       it("swapOutput, add to amm", async () => {
         // add 20 base, amm: 120:83.33...+ 1 wei. trader: 166.66..6
-        expect(await amm.getOutputPriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(20), toFullDigitBN(1000), toFullDigitBN(100))).eq(
+        expect(await amm.getBasePriceWithReservesPublic(Dir.ADD_TO_AMM, toFullDigitBN(20), toFullDigitBN(1000), toFullDigitBN(100))).eq(
           "166666666666666666666"
         );
       });
@@ -1108,7 +1098,7 @@ describe("Amm Unit Test", () => {
       it("swapOutput, remove from amm", async () => {
         // remove 10 base, amm: 90:1111.11...1 + 1 wei. trader: -111.11 - 1 wei
         expect(
-          await amm.getOutputPriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(10), toFullDigitBN(1000), toFullDigitBN(100))
+          await amm.getBasePriceWithReservesPublic(Dir.REMOVE_FROM_AMM, toFullDigitBN(10), toFullDigitBN(1000), toFullDigitBN(100))
         ).eq("111111111111111111112");
       });
     });

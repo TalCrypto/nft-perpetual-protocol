@@ -768,9 +768,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             bool isShortPosition = position.size < 0;
             IAmm.Dir dir = isShortPosition ? IAmm.Dir.REMOVE_FROM_AMM : IAmm.Dir.ADD_TO_AMM;
             if (_pnlCalcOption == PnlCalcOption.TWAP) {
-                positionNotional = _amm.getOutputTwap(dir, positionSizeAbs);
+                positionNotional = _amm.getBaseTwap(dir, positionSizeAbs);
             } else if (_pnlCalcOption == PnlCalcOption.SPOT_PRICE) {
-                positionNotional = _amm.getOutputPrice(dir, positionSizeAbs);
+                positionNotional = _amm.getBasePrice(dir, positionSizeAbs);
             } else {
                 uint256 oraclePrice = _amm.getUnderlyingPrice();
                 positionNotional = positionSizeAbs.mulD(oraclePrice);

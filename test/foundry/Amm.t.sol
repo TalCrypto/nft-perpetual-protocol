@@ -77,14 +77,14 @@ contract AmmTest is Test {
 
         // cost correctness
         if (totalPositionSize > 0) {
-            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
-            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             assertEq(cost, notionalAfter.toInt() - notionalBefore.toInt(), "cost calculation incorrect when #long>#short");
         } else {
-            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
-            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
             assertEq(cost, notionalBefore.toInt() - notionalAfter.toInt(), "cost calculation incorrect when #long<#short");
         }
     }
@@ -173,14 +173,14 @@ contract AmmTest is Test {
         }
         // cost correctness
         if (totalPositionSize > 0 && isAdjustable) {
-            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
-            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
+            uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             assertEq(cost, notionalAfter.toInt() - notionalBefore.toInt(), "cost calculation incorrect when #long>#short");
         } else if (isAdjustable) {
-            uint256 notionalBefore = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
-            uint256 notionalAfter = amm.getOutputPrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
+            uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
             assertEq(cost, notionalBefore.toInt() - notionalAfter.toInt(), "cost calculation incorrect when #long<#short");
         }
     }

@@ -746,7 +746,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         (uint256 upperLimit, uint256 lowerLimit) = _getPriceBoundariesOfLastBlock();
 
-        uint256 quoteAssetExchanged = getOutputPrice(_dirOfBase, _baseAssetAmount);
+        uint256 quoteAssetExchanged = getBasePrice(_dirOfBase, _baseAssetAmount);
         uint256 price = (_dirOfBase == Dir.REMOVE_FROM_AMM)
             ? (quoteAssetReserve + quoteAssetExchanged).divD(baseAssetReserve - _baseAssetAmount)
             : (quoteAssetReserve - quoteAssetExchanged).divD(baseAssetReserve + _baseAssetAmount);
@@ -764,18 +764,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _quoteAssetAmount quote asset amount
      * @return base asset amount
      */
-    function getInputTwap(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
+    function getQuoteTwap(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
         return _implGetInputAssetTwapPrice(_dirOfQuote, _quoteAssetAmount, QuoteAssetDir.QUOTE_IN, 15 minutes);
     }
 
     /**
      * @notice get output twap amount.
      * return how many quote asset you will get with the input base amount on twap price.
-     * @param _dirOfBase ADD_TO_AMM for short, REMOVE_FROM_AMM for long, opposite direction from `getInputTwap`.
+     * @param _dirOfBase ADD_TO_AMM for short, REMOVE_FROM_AMM for long, opposite direction from `getQuoteTwap`.
      * @param _baseAssetAmount base asset amount
      * @return quote asset amount
      */
-    function getOutputTwap(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
+    function getBaseTwap(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
         return _implGetInputAssetTwapPrice(_dirOfBase, _baseAssetAmount, QuoteAssetDir.QUOTE_OUT, 15 minutes);
     }
 
@@ -785,8 +785,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _quoteAssetAmount quote asset amount
      * @return base asset amount
      */
-    function getInputPrice(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
-        return getInputPriceWithReserves(_dirOfQuote, _quoteAssetAmount, quoteAssetReserve, baseAssetReserve);
+    function getQuotePrice(Dir _dirOfQuote, uint256 _quoteAssetAmount) public view override returns (uint256) {
+        return getQuotePriceWithReserves(_dirOfQuote, _quoteAssetAmount, quoteAssetReserve, baseAssetReserve);
     }
 
     /**
@@ -795,8 +795,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _baseAssetAmount base asset amount
      * @return quote asset amount
      */
-    function getOutputPrice(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
-        return getOutputPriceWithReserves(_dirOfBase, _baseAssetAmount, quoteAssetReserve, baseAssetReserve);
+    function getBasePrice(Dir _dirOfBase, uint256 _baseAssetAmount) public view override returns (uint256) {
+        return getBasePriceWithReserves(_dirOfBase, _baseAssetAmount, quoteAssetReserve, baseAssetReserve);
     }
 
     /**
@@ -899,7 +899,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     /*       plus/minus 1 while the amount is not dividable
      *
-     *        getInputPrice                         getOutputPrice
+     *        getQuotePrice                         getBasePrice
      *
      *     ＡＤＤ      (amount - 1)              (amount + 1)   ＲＥＭＯＶＥ
      *      ◥◤            ▲                         |             ◢◣
@@ -912,7 +912,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      *   ＲＥＭＯＶＥ  (amount + 1)              (amount - 1)      ＡＤＤ
      **/
 
-    function getInputPriceWithReserves(
+    function getQuotePriceWithReserves(
         Dir _dirOfQuote,
         uint256 _quoteAssetAmount,
         uint256 _quoteAssetPoolAmount,
@@ -948,7 +948,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return baseAssetBought;
     }
 
-    function getOutputPriceWithReserves(
+    function getBasePriceWithReserves(
         Dir _dirOfBase,
         uint256 _baseAssetAmount,
         uint256 _quoteAssetPoolAmount,
@@ -1114,7 +1114,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             }
             if (params.asset.inOrOut == QuoteAssetDir.QUOTE_IN) {
                 return
-                    getInputPriceWithReserves(
+                    getQuotePriceWithReserves(
                         params.asset.dir,
                         params.asset.assetAmount,
                         snapshot.quoteAssetReserve,
@@ -1122,7 +1122,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     );
             } else if (params.asset.inOrOut == QuoteAssetDir.QUOTE_OUT) {
                 return
-                    getOutputPriceWithReserves(
+                    getBasePriceWithReserves(
                         params.asset.dir,
                         params.asset.assetAmount,
                         snapshot.quoteAssetReserve,
