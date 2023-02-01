@@ -126,8 +126,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     //
     // EVENTS
     //
-    event SwapInput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
-    event SwapOutput(Dir dir, uint256 quoteAssetAmount, uint256 baseAssetAmount);
+    event SwapInput(Dir dirOfQuote, uint256 quoteAssetAmount, uint256 baseAssetAmount);
+    event SwapOutput(Dir dirOfQuote, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event FundingRateUpdated(int256 rateLong, int256 rateShort, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
     // event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
