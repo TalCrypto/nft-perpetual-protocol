@@ -196,16 +196,17 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     /**
-     * @notice Swap your quote asset to base asset,
+     * @notice this function is called only when opening position
      * @dev Only clearingHouse can call this function
-     * @param _dirOfQuote ADD_TO_AMM for long, REMOVE_FROM_AMM for short
-     * @param _quoteAssetAmount quote asset amount
+     * @param _dir ADD_TO_AMM, REMOVE_FROM_AMM
+     * @param _amount quote asset amount
+     * @param _isQuote whether or not amount is quote
      * @param _canOverFluctuationLimit if true, the impact of the price MUST be less than `fluctuationLimitRatio`
-     * @return base asset amount
      */
     function swapInput(
-        Dir _dirOfQuote,
-        uint256 _quoteAssetAmount,
+        Dir _dir,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
@@ -213,36 +214,52 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         onlyOpen
         onlyCounterParty
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
         )
     {
-        uint256 baseAssetAmount = getInputPrice(_dirOfQuote, _quoteAssetAmount);
-        // mainly this function is called when opening position, thus
-        if (_dirOfQuote == Dir.ADD_TO_AMM) {
+        uint256 uBaseAssetAmount;
+        if (_isQuote) {
+            quoteAssetAmount = _amount;
+            uBaseAssetAmount = getQuotePrice(_dir, _amount);
+        } else {
+            quoteAssetAmount = getBasePrice(_dir, _amount);
+            uBaseAssetAmount = _amount;
+        }
+
+        Dir dirOfQuote;
+        if (_isQuote == (_dir == Dir.ADD_TO_AMM)) {
             // open long
-            longPositionSize += baseAssetAmount;
+            longPositionSize += uBaseAssetAmount;
+            dirOfQuote = Dir.ADD_TO_AMM;
+            baseAssetAmount = int256(uBaseAssetAmount);
         } else {
             // open short
-            shortPositionSize += baseAssetAmount;
+            shortPositionSize += uBaseAssetAmount;
+            dirOfQuote = Dir.REMOVE_FROM_AMM;
+            baseAssetAmount = -1 * int256(uBaseAssetAmount);
         }
-        _updateReserve(_dirOfQuote, _quoteAssetAmount, baseAssetAmount, _canOverFluctuationLimit);
-        emit SwapInput(_dirOfQuote, _quoteAssetAmount, baseAssetAmount);
-        return (baseAssetAmount, _quoteAssetAmount.mulD(spreadRatio), _quoteAssetAmount.mulD(tollRatio));
+        spreadFee = quoteAssetAmount.mulD(spreadRatio);
+        tollFee = quoteAssetAmount.mulD(tollRatio);
+
+        _updateReserve(dirOfQuote, quoteAssetAmount, uBaseAssetAmount, _canOverFluctuationLimit);
+        emit SwapInput(dirOfQuote, quoteAssetAmount, uBaseAssetAmount);
     }
 
     /**
-     * @notice swap your base asset to quote asset
+     * @notice this function is called only when closing/reversing position
      * @dev only clearingHouse can call this function
-     * @param _dirOfBase ADD_TO_AMM for short, REMOVE_FROM_AMM for long, opposite direction from swapInput
-     * @param _baseAssetAmount base asset amount
+     * @param _dir ADD_TO_AMM, REMOVE_FROM_AMM
+     * @param _amount base asset amount
+     * @param _isQuote whether or not amount is quote
      * @param _canOverFluctuationLimit if true, the impact of the price MUST be less than `fluctuationLimitRatio`
-     * @return quote asset amount
      */
     function swapOutput(
-        Dir _dirOfBase,
-        uint256 _baseAssetAmount,
+        Dir _dir,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
@@ -250,38 +267,40 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         onlyOpen
         onlyCounterParty
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
         )
     {
-        uint256 quoteAssetAmount = getOutputPrice(_dirOfBase, _baseAssetAmount);
-        // mainly this function is called when closing position, thus
-        if (_dirOfBase == Dir.ADD_TO_AMM) {
-            // close long
-            uint256 _longPositionSize = longPositionSize;
-            if (_longPositionSize > _baseAssetAmount) {
-                longPositionSize = _longPositionSize - _baseAssetAmount;
-            } else {
-                shortPositionSize += _baseAssetAmount;
-            }
+        uint256 uBaseAssetAmount;
+        if (_isQuote) {
+            quoteAssetAmount = _amount;
+            uBaseAssetAmount = getQuotePrice(_dir, _amount);
         } else {
-            // close short
-            uint256 _shortPositionSize = shortPositionSize;
-            if (_shortPositionSize > _baseAssetAmount) {
-                shortPositionSize = _shortPositionSize - _baseAssetAmount;
-            } else {
-                longPositionSize += _baseAssetAmount;
-            }
+            quoteAssetAmount = getBasePrice(_dir, _amount);
+            uBaseAssetAmount = _amount;
         }
-        _updateReserve(
-            _dirOfBase == Dir.ADD_TO_AMM ? Dir.REMOVE_FROM_AMM : Dir.ADD_TO_AMM,
-            quoteAssetAmount,
-            _baseAssetAmount,
-            _canOverFluctuationLimit
-        );
-        emit SwapOutput(_dirOfBase, quoteAssetAmount, _baseAssetAmount);
-        return (quoteAssetAmount, quoteAssetAmount.mulD(spreadRatio), quoteAssetAmount.mulD(tollRatio));
+
+        Dir dirOfQuote;
+        if (_isQuote == (_dir == Dir.ADD_TO_AMM)) {
+            // close/reverse short
+            uint256 _shortPositionSize = shortPositionSize;
+            _shortPositionSize >= uBaseAssetAmount ? shortPositionSize = _shortPositionSize - uBaseAssetAmount : shortPositionSize = 0;
+            dirOfQuote = Dir.ADD_TO_AMM;
+            baseAssetAmount = int256(uBaseAssetAmount);
+        } else {
+            // close/reverse long
+            uint256 _longPositionSize = longPositionSize;
+            _longPositionSize >= uBaseAssetAmount ? longPositionSize = _longPositionSize - uBaseAssetAmount : longPositionSize = 0;
+            dirOfQuote = Dir.REMOVE_FROM_AMM;
+            baseAssetAmount = -1 * int256(uBaseAssetAmount);
+        }
+        spreadFee = quoteAssetAmount.mulD(spreadRatio);
+        tollFee = quoteAssetAmount.mulD(tollRatio);
+
+        _updateReserve(dirOfQuote, quoteAssetAmount, uBaseAssetAmount, _canOverFluctuationLimit);
+        emit SwapOutput(dirOfQuote, quoteAssetAmount, uBaseAssetAmount);
     }
 
     /**

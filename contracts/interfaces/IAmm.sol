@@ -6,7 +6,7 @@ import { IPriceFeed } from "./IPriceFeed.sol";
 
 interface IAmm {
     /**
-     * @notice asset direction, used in getInputPrice, getOutputPrice, swapInput and swapOutput
+     * @notice asset direction, used in getQuotePrice, getBasePrice, swapInput and swapOutput
      * @param ADD_TO_AMM add asset to Amm
      * @param REMOVE_FROM_AMM remove asset from Amm
      */
@@ -17,26 +17,30 @@ interface IAmm {
 
     function swapInput(
         Dir _dir,
-        uint256 _quoteAssetAmount,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
         );
 
     function swapOutput(
         Dir _dir,
-        uint256 _baseAssetAmount,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
         );
 
     function repegCheck(uint256 budget, bool adjustK)

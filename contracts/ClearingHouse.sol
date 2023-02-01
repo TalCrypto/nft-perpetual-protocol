@@ -959,13 +959,15 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // only called from openPosition and _closeAndOpenReversePosition. caller need to ensure there's enough marginRatio
     function _increasePosition(InternalOpenPositionParams memory params) internal returns (PositionResp memory positionResp) {
         Position memory oldPosition = getPosition(params.amm, params.trader);
-        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
-            params.amm,
-            params.side,
-            params.amount,
-            params.isQuote,
-            params.canOverFluctuationLimit
-        );
+
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = params
+            .amm
+            .swapInput(
+                params.isQuote == (params.side == Side.BUY) ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                params.amount,
+                params.isQuote,
+                params.canOverFluctuationLimit
+            );
 
         int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
@@ -1019,8 +1021,12 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 positionResp.exchangedPositionSize,
                 positionResp.spreadFee,
                 positionResp.tollFee
-            ) = _swap(params.amm, params.side, params.amount, params.isQuote, params.canOverFluctuationLimit);
-
+            ) = params.amm.swapOutput(
+                params.isQuote == (params.side == Side.BUY) ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                params.amount,
+                params.isQuote,
+                params.canOverFluctuationLimit
+            );
             _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
@@ -1129,56 +1135,16 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             blockNumber: _blockNumber()
         });
 
-        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
-            _amm,
-            oldPosition.size > 0 ? Side.SELL : Side.BUY,
-            oldPosition.size.abs(),
-            false,
-            _canOverFluctuationLimit
-        );
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _amm
+            .swapOutput(
+                oldPosition.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                oldPosition.size.abs(),
+                false,
+                _canOverFluctuationLimit
+            );
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
         _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
-    }
-
-    function _swap(
-        IAmm _amm,
-        Side _side,
-        uint256 _amount,
-        bool _isQuote,
-        bool _canOverFluctuationLimit
-    )
-        internal
-        returns (
-            uint256 quoteAmount,
-            int256 baseAmount,
-            uint256 spreadFee,
-            uint256 tollFee
-        )
-    {
-        if (_isQuote) {
-            // swap quote
-            // long => add, short => remove
-            quoteAmount = _amount;
-            uint256 ubaseAmount;
-            if (_side == Side.BUY) {
-                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = ubaseAmount.toInt();
-            } else {
-                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = ubaseAmount.toInt() * -1;
-            }
-        } else {
-            // swap base
-            // long => remove, short => add
-            if (_side == Side.BUY) {
-                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = _amount.toInt();
-            } else {
-                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = _amount.toInt() * -1;
-            }
-        }
     }
 
     function _checkSlippage(
