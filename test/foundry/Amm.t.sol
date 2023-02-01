@@ -47,9 +47,9 @@ contract AmmTest is Test {
         int256 budget = _budget * int256(PRECISION);
         vm.assume(budget.abs() < 10000 ether);
         if (totalPositionSize > 0) {
-            amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), true);
+            amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), false, true);
         } else {
-            amm.swapOutput(IAmm.Dir.ADD_TO_AMM, uint256(-totalPositionSize), true);
+            amm.swapInput(IAmm.Dir.ADD_TO_AMM, uint256(-totalPositionSize), false, true);
         }
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.getFormulaicUpdateKResult(int256(budget));
@@ -102,9 +102,9 @@ contract AmmTest is Test {
         vm.assume(oraclePrice > 1e15);
         uint256 budget = budgetIsEnough ? type(uint256).max : 0;
         if (totalPositionSize > 0) {
-            amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), true);
+            amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, uint256(totalPositionSize), false, true);
         } else {
-            amm.swapOutput(IAmm.Dir.ADD_TO_AMM, uint256(-totalPositionSize), true);
+            amm.swapInput(IAmm.Dir.ADD_TO_AMM, uint256(-totalPositionSize), false, true);
         }
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         uint256 spotPrice = amm.getSpotPrice();
@@ -192,7 +192,7 @@ contract AmmTest is Test {
         (bool isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
         assertTrue(isAdjustable);
 
-        amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, 1 ether, true);
+        amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, 1 ether, false, true);
         (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
         assertFalse(isAdjustable);
         (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
