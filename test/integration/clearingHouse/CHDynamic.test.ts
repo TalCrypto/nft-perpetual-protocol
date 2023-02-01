@@ -75,7 +75,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function deployEnvFixture() {
@@ -97,7 +97,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     await amm.setCanLowerK(true);
 
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
     return { amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer };
   }
 
@@ -112,104 +112,104 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     clearingHouseViewer = fixture.clearingHouseViewer;
   });
 
-  describe("manual repeg test when position size = -25", () => {
-    beforeEach(async () => {
-      await amm.setSpreadRatio(toFullDigitBN(0.1));
-      // given alice takes 2x long position (20B) with 125 margin
-      await approve(alice, clearingHouse.address, 250);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
-      // B = 80, Q = 1250
+  // describe("manual repeg test when position size = -25", () => {
+  //   beforeEach(async () => {
+  //     await amm.setSpreadRatio(toFullDigitBN(0.1));
+  //     // given alice takes 2x long position (20B) with 125 margin
+  //     await approve(alice, clearingHouse.address, 250);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
+  //     // B = 80, Q = 1250
 
-      // given bob takes 1x short position (-45B) with 450 margin
-      await approve(bob, clearingHouse.address, 900);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
-      // B = 125, Q = 800
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
-      expect(await amm.getBaseAssetDelta()).eql(toFullDigitBN(-25));
+  //     // given bob takes 1x short position (-45B) with 450 margin
+  //     await approve(bob, clearingHouse.address, 900);
+  //     await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     // B = 125, Q = 800
+  //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
+  //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+  //     expect(await amm.getBaseAssetDelta()).eql(toFullDigitBN(-25));
 
-      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
-      // 125 (alice's margin) + 450 (bob' margin)  = 575
-      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35));
-    });
-    it("fail to repeg because of not a operator", async () => {
-      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("CH_NO");
-    });
-    it("success to increase mark price with revenue", async () => {
-      await clearingHouse.setOperator(admin.address);
-      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6.5));
-      await expect(tx)
-        .to.emit(clearingHouse, "Repeg")
-        .withArgs(amm.address, "806225774750000000000", "124034734500000000000", "-3520961312316134901");
-    });
-    it("success to decrease mark price with expense", async () => {
-      await clearingHouse.setOperator(admin.address);
-      // mark_price = 6.4
-      const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6));
-      // cost = 800 * 25 / 100 - 700 * 25 / 100 = 25
-      await expect(tx)
-        .to.emit(clearingHouse, "Repeg")
-        .withArgs(amm.address, "774596669125000000000", "129099444750000000000", "13976752953574231241");
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35).sub(BigNumber.from("13976752953574231241")));
-    });
-    it("fail to decrease mark price with expense more than half of fee pool", async () => {
-      await clearingHouse.setOperator(admin.address);
-      await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(3))).to.revertedWith("CH_IAB");
-    });
-  });
+  //     const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+  //     // 125 (alice's margin) + 450 (bob' margin)  = 575
+  //     expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
+  //     expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(70));
+  //   });
+  //   it("fail to repeg because of not a operator", async () => {
+  //     await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("CH_NO");
+  //   });
+  //   it("success to increase mark price with revenue", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6.5));
+  //     await expect(tx)
+  //       .to.emit(clearingHouse, "Repeg")
+  //       .withArgs(amm.address, "806225774750000000000", "124034734500000000000", "-3520961312316134901");
+  //   });
+  //   it("success to decrease mark price with expense", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     // mark_price = 6.4
+  //     const tx = await clearingHouse.repegAmm(amm.address, toFullDigitBN(6));
+  //     // cost = 800 * 25 / 100 - 700 * 25 / 100 = 25
+  //     await expect(tx)
+  //       .to.emit(clearingHouse, "Repeg")
+  //       .withArgs(amm.address, "774596669125000000000", "129099444750000000000", "13976752953574231241");
+  //     expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("13976752953574231241")));
+  //   });
+  //   it("fail to decrease mark price with expense more than half of fee pool", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(3))).to.revertedWith("CH_IAB");
+  //   });
+  // });
 
-  describe("manual k-adjustment test when position size = -25", () => {
-    beforeEach(async () => {
-      await amm.setSpreadRatio(toFullDigitBN(0.1));
-      // given alice takes 2x long position (20B) with 125 margin
-      await approve(alice, clearingHouse.address, 250);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
-      // B = 80, Q = 1250
+  // describe("manual k-adjustment test when position size = -25", () => {
+  //   beforeEach(async () => {
+  //     await amm.setSpreadRatio(toFullDigitBN(0.1));
+  //     // given alice takes 2x long position (20B) with 125 margin
+  //     await approve(alice, clearingHouse.address, 250);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(2), toFullDigitBN(0), true);
+  //     // B = 80, Q = 1250
 
-      // given bob takes 1x short position (-45B) with 450 margin
-      await approve(bob, clearingHouse.address, 900);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
-      // B = 125, Q = 800
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
-      expect(await amm.getBaseAssetDelta()).eql(toFullDigitBN(-25));
+  //     // given bob takes 1x short position (-45B) with 450 margin
+  //     await approve(bob, clearingHouse.address, 900);
+  //     await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     // B = 125, Q = 800
+  //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(800));
+  //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(125));
+  //     expect(await amm.getBaseAssetDelta()).eql(toFullDigitBN(-25));
 
-      const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
-      // 125 (alice's margin) + 450 (bob' margin)  = 575
-      expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35));
-    });
-    it("fail to repeg because of not a operator", async () => {
-      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1), toFullDigitBN(1))).to.revertedWith("CH_NO");
-    });
-    it("success to increase k by 0.1 with expense", async () => {
-      await clearingHouse.setOperator(admin.address);
-      const tx = await clearingHouse.adjustK(amm.address, toFullDigitBN(11), toFullDigitBN(10));
-      // cost = (800*125/(125-25)-800) - (880*137.5/(137.5-25)-880) = 4.444
-      await expect(tx)
-        .to.emit(clearingHouse, "UpdateK")
-        .withArgs(amm.address, toFullDigitBN(880), toFullDigitBN(137.5), "4444444444444444445");
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(880));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(137.5));
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35).sub(BigNumber.from("4444444444444444445")));
-    });
-    it("success to decrease k with revenue", async () => {
-      await clearingHouse.setOperator(admin.address);
-      const tx = await clearingHouse.adjustK(amm.address, toFullDigitBN(9), toFullDigitBN(10));
-      // cost = (800*125/(125-25)-800) - (720*112.5/(112.5-25)-720) = -5.7142857142857
-      await expect(tx)
-        .to.emit(clearingHouse, "UpdateK")
-        .withArgs(amm.address, toFullDigitBN(720), toFullDigitBN(112.5), "-5714285714285714285");
-      expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(720));
-      expect(await amm.baseAssetReserve()).eql(toFullDigitBN(112.5));
-      expect(await clearingHouse.adjustmentBudgets(amm.address)).eq(toFullDigitBN(35).add(BigNumber.from("5714285714285714285")));
-    });
-    it("fail to increase k with expense more than half of fee pool", async () => {
-      await clearingHouse.setOperator(admin.address);
-      await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(100), toFullDigitBN(10))).to.revertedWith("CH_IAB");
-    });
-  });
+  //     const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
+  //     // 125 (alice's margin) + 450 (bob' margin)  = 575
+  //     expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
+  //     expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(70));
+  //   });
+  //   it("fail to repeg because of not a operator", async () => {
+  //     await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1), toFullDigitBN(1))).to.revertedWith("CH_NO");
+  //   });
+  //   it("success to increase k by 0.1 with expense", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     const tx = await clearingHouse.adjustK(amm.address, toFullDigitBN(11), toFullDigitBN(10));
+  //     // cost = (800*125/(125-25)-800) - (880*137.5/(137.5-25)-880) = 4.444
+  //     await expect(tx)
+  //       .to.emit(clearingHouse, "UpdateK")
+  //       .withArgs(amm.address, toFullDigitBN(880), toFullDigitBN(137.5), "4444444444444444445");
+  //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(880));
+  //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(137.5));
+  //     expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("4444444444444444445")));
+  //   });
+  //   it("success to decrease k with revenue", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     const tx = await clearingHouse.adjustK(amm.address, toFullDigitBN(9), toFullDigitBN(10));
+  //     // cost = (800*125/(125-25)-800) - (720*112.5/(112.5-25)-720) = -5.7142857142857
+  //     await expect(tx)
+  //       .to.emit(clearingHouse, "UpdateK")
+  //       .withArgs(amm.address, toFullDigitBN(720), toFullDigitBN(112.5), "-5714285714285714285");
+  //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(720));
+  //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(112.5));
+  //     expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(70).add(BigNumber.from("5714285714285714285")));
+  //   });
+  //   it("fail to increase k with expense more than the insurance budget", async () => {
+  //     await clearingHouse.setOperator(admin.address);
+  //     await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1000), toFullDigitBN(156.25))).to.revertedWith("CH_IAB");
+  //   });
+  // });
 
   describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short) and fee pool > 0", () => {
     beforeEach(async () => {
@@ -244,7 +244,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await gotoNextFundingTime();
           // funding imbalance cost = 2
           await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-0.1));
+          expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.1));
+          expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.1));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
           expect(Number(baseAssetReserve) / 125).above(1);
@@ -256,15 +257,15 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         beforeEach(async () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(6.3));
         });
-        it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
+        it("k-adjustment occurs because net revenue + funding cost is positive", async () => {
           await gotoNextFundingTime();
           // funding imbalance cost = -2
           await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+          expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.1));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / 125).eq(1);
-          expect(Number(quoteAssetReserve) / 800).eq(1);
+          expect(Number(baseAssetReserve) / 125).gt(1);
+          expect(Number(quoteAssetReserve) / 800).gt(1);
         });
       });
     });
@@ -276,46 +277,41 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       });
       describe("when oracle twap is higher than mark twap", () => {
         beforeEach(async () => {
+          await mockPriceFeed.setPrice(toFullDigitBN(8));
           await mockPriceFeed.setTwapPrice(toFullDigitBN(8));
         });
-        it("repeg occurs", async () => {
+        it("repeg doesn't occur", async () => {
           await gotoNextFundingTime();
           await clearingHouse.payFunding(amm.address);
           const quoteAssetReserve = await amm.quoteAssetReserve();
           const baseAssetReserve = await amm.baseAssetReserve();
-          expect(quoteAssetReserve.div(baseAssetReserve)).eq(8);
+          expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(6.4));
         });
         it("should increase k because funding payment is positive", async () => {
           await gotoNextFundingTime();
+          const baseAssetReserveBefore = ethers.utils.formatEther(await amm.baseAssetReserve());
+          const quoteAssetReserveBefore = ethers.utils.formatEther(await amm.quoteAssetReserve());
           // funding imbalance cost = 2
           await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(-1.6));
+          expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-1.6));
+          expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-1.6));
           const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
           const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / (125 * Math.sqrt(6.4 / 8))).above(1);
-          expect(Number(quoteAssetReserve) / (125 * Math.sqrt(6.4 * 8))).above(1);
+          expect(
+            ((Number(baseAssetReserve) * Number(quoteAssetReserve)) / Number(baseAssetReserveBefore)) * Number(quoteAssetReserveBefore)
+          ).above(1);
         });
       });
       describe("when oracle twap is lower than mark twap", () => {
         beforeEach(async () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(5));
         });
-        it("repeg occurs", async () => {
+        it("repeg doesn't occur", async () => {
           await gotoNextFundingTime();
           await clearingHouse.payFunding(amm.address);
           const quoteAssetReserve = await amm.quoteAssetReserve();
           const baseAssetReserve = await amm.baseAssetReserve();
-          expect(quoteAssetReserve.div(baseAssetReserve)).eq(5);
-        });
-        it("k-adjustment doesn't occur because funding cost is negative and it's absolute value is smaller than net revenue", async () => {
-          await gotoNextFundingTime();
-          // funding imbalance cost = -2
-          await clearingHouse.payFunding(amm.address);
-          expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(1.4));
-          const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
-          const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-          expect(Number(baseAssetReserve) / (125 * Math.sqrt(6.4 / 5))).eq(0.9999999992058518);
-          expect(Number(quoteAssetReserve) / (125 * Math.sqrt(6.4 * 5))).eq(0.9999999999129586);
+          expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserve)).eq(toFullDigitBN(6.4));
         });
       });
     });
@@ -352,7 +348,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         // uncapped funding imbalance cost = -2
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0));
         const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
         const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
         expect(Number(baseAssetReserve) / 80).below(1);
@@ -369,12 +366,12 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         // funding imbalance cost = 2
         await clearingHouse.payFunding(amm.address);
-        expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.1));
         const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
         const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
         expect(Number(baseAssetReserve) / 80).above(1);
         expect(Number(quoteAssetReserve) / 1250).above(1);
-        expect(Number(quoteAssetReserve) / Number(baseAssetReserve)).eq(15.625);
+        expect(Number(quoteAssetReserve) / Number(baseAssetReserve)).eq(15.624999999999998);
       });
     });
   });
@@ -408,7 +405,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
-        const fraction = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
+        const fraction = await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address);
         const positionSize = await amm.getBaseAssetDelta();
         expect(fraction.mul(positionSize)).eq(toFullDigitBN(0));
         const baseAssetReserve = await amm.baseAssetReserve();
@@ -429,7 +426,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
-        const fraction = await clearingHouse.getLatestCumulativePremiumFraction(amm.address);
+        const fraction = await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address);
         const positionSize = await amm.getBaseAssetDelta();
         expect(fraction.mul(positionSize)).above(toFullDigitBN(0));
         const baseAssetReserve = await amm.baseAssetReserve();

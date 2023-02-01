@@ -8,8 +8,8 @@ import { UIntMath } from "./UIntMath.sol";
 library AmmMath {
     using UIntMath for uint256;
     using IntMath for int256;
-    uint256 constant K_DECREASE_MAX = 0.999 ether; //99.9% decrease
-    uint256 constant K_INCREASE_MAX = 1.001 ether; //100.1% increase
+    uint256 constant K_DECREASE_MAX = 0.99 ether; // 99% (1%) decrease
+    uint256 constant K_INCREASE_MAX = 1.005 ether; // 100.5% (0.5%) increase
 
     /**
      * @notice calculate reserves after repegging with preserving K
@@ -67,8 +67,16 @@ library AmmMath {
                 (Math.mulDiv(_quoteAssetReserve, uint256(_positionSize), (_baseAssetReserve + uint256(_positionSize)))).toInt();
         } else {
             cost =
-                (Math.mulDiv(_quoteAssetReserve, uint256(-_positionSize), (_baseAssetReserve - uint256(-_positionSize)))).toInt() -
-                (Math.mulDiv(_newQuoteAssetReserve, uint256(-_positionSize), (_newBaseAssetReserve - uint256(-_positionSize)))).toInt();
+                (Math.mulDiv(_quoteAssetReserve, uint256(-_positionSize), (_baseAssetReserve - uint256(-_positionSize)), Math.Rounding.Up))
+                    .toInt() -
+                (
+                    Math.mulDiv(
+                        _newQuoteAssetReserve,
+                        uint256(-_positionSize),
+                        (_newBaseAssetReserve - uint256(-_positionSize)),
+                        Math.Rounding.Up
+                    )
+                ).toInt();
         }
     }
 

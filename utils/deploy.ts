@@ -136,6 +136,9 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
 
   await amm.setOpen(true);
 
+  await amm.setFundingCostCoverRate(toFullDigitBN(1));
+  await amm.setFundingRevenueTakeRate(toFullDigitBN(1));
+
   const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);

@@ -6,7 +6,7 @@ import { IPriceFeed } from "./IPriceFeed.sol";
 
 interface IAmm {
     /**
-     * @notice asset direction, used in getInputPrice, getOutputPrice, swapInput and swapOutput
+     * @notice asset direction, used in getQuotePrice, getBasePrice, swapInput and swapOutput
      * @param ADD_TO_AMM add asset to Amm
      * @param REMOVE_FROM_AMM remove asset from Amm
      */
@@ -17,24 +17,37 @@ interface IAmm {
 
     function swapInput(
         Dir _dir,
-        uint256 _quoteAssetAmount,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
         returns (
-            uint256,
-            uint256,
-            uint256
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
         );
 
     function swapOutput(
         Dir _dir,
-        uint256 _baseAssetAmount,
+        uint256 _amount,
+        bool _isQuote,
         bool _canOverFluctuationLimit
     )
         external
         returns (
-            uint256,
+            uint256 quoteAssetAmount,
+            int256 baseAssetAmount,
+            uint256 spreadFee,
+            uint256 tollFee
+        );
+
+    function repegCheck(uint256 budget, bool adjustK)
+        external
+        returns (
+            bool,
+            int256,
             uint256,
             uint256
         );
@@ -46,7 +59,8 @@ interface IAmm {
     function settleFunding(uint256 _cap)
         external
         returns (
-            int256 premiumFraction,
+            int256 premiumFractionLong,
+            int256 premiumFractionShort,
             int256 fundingPayment,
             int256 uncappedFundingPayment
         );
@@ -56,16 +70,6 @@ interface IAmm {
     //
     // VIEW
     //
-
-    function getFormulaicRepegResult(uint256 budget, bool adjustK)
-        external
-        view
-        returns (
-            bool,
-            int256,
-            uint256,
-            uint256
-        );
 
     function getFormulaicUpdateKResult(int256 budget)
         external
@@ -85,22 +89,22 @@ interface IAmm {
     //     uint256 _fromBaseReserve
     // ) external view returns (int256);
 
-    function getInputTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
+    function getQuoteTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
+    function getBaseTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
-    function getInputPrice(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
+    function getQuotePrice(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
-    function getOutputPrice(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
+    function getBasePrice(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);
 
-    function getInputPriceWithReserves(
+    function getQuotePriceWithReserves(
         Dir _dir,
         uint256 _quoteAssetAmount,
         uint256 _quoteAssetPoolAmount,
         uint256 _baseAssetPoolAmount
     ) external pure returns (uint256);
 
-    function getOutputPriceWithReserves(
+    function getBasePriceWithReserves(
         Dir _dir,
         uint256 _baseAssetAmount,
         uint256 _quoteAssetPoolAmount,
@@ -141,5 +145,12 @@ interface IAmm {
 
     function getUnderlyingPrice() external view returns (uint256);
 
-    function isOverSpreadLimit() external view returns (bool);
+    function isOverSpreadLimit()
+        external
+        view
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        );
 }

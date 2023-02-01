@@ -501,7 +501,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getInputPrice",
+    "name": "getQuotePrice",
     "outputs": [
       {
         "internalType": "uint256",
@@ -535,7 +535,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getInputPriceWithReserves",
+    "name": "getQuotePriceWithReserves",
     "outputs": [
       {
         "internalType": "uint256",
@@ -559,7 +559,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getInputTwap",
+    "name": "getQuoteTwap",
     "outputs": [
       {
         "internalType": "uint256",
@@ -698,7 +698,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getOutputPrice",
+    "name": "getBasePrice",
     "outputs": [
       {
         "internalType": "uint256",
@@ -732,7 +732,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getOutputPriceWithReserves",
+    "name": "getBasePriceWithReserves",
     "outputs": [
       {
         "internalType": "uint256",
@@ -756,7 +756,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getOutputTwap",
+    "name": "getBaseTwap",
     "outputs": [
       {
         "internalType": "uint256",

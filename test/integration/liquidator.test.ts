@@ -89,7 +89,8 @@ describe("Liquidator Test", () => {
       await quoteToken.transfer(accounts[i].address, toFullDigitBN(15, +(await quoteToken.decimals())));
       await approve(accounts[i], clearingHouse.address, 15);
     }
-    await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
+    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await syncAmmPriceToOracle();
 

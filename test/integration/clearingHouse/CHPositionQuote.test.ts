@@ -67,7 +67,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function expectPositionChanged(tx: ContractTransaction, val: PositionChangedStruct) {
@@ -136,7 +136,8 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
     // Each of Alice & Bob have 5000 USDC
     await transfer(admin, alice.address, 5000);
     await transfer(admin, bob.address, 5000);
-    await transfer(admin, insuranceFund.address, 5000);
+    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await syncAmmPriceToOracle();
   });
@@ -657,7 +658,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
         ADD_TO_AMM = 0,
         REMOVE_FROM_AMM = 1,
       }
-      const amount = await amm.getOutputPrice(Dir.REMOVE_FROM_AMM, "11111111111111111111");
+      const amount = await amm.getBasePrice(Dir.REMOVE_FROM_AMM, "11111111111111111111");
       const receiptOpen2 = await clearingHouse
         .connect(alice)
         .openPosition(amm.address, Side.BUY, amount, toFullDigitBN(1), toFullDigitBN(0), true);

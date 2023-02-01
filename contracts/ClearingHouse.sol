@@ -37,6 +37,16 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         MIN_PNL
     }
 
+    struct InternalOpenPositionParams {
+        IAmm amm;
+        Side side;
+        address trader;
+        uint256 amount;
+        uint256 leverage;
+        bool isQuote;
+        bool canOverFluctuationLimit;
+    }
+
     /// @notice This struct is used for avoiding stack too deep error when passing too many var between functions
     struct PositionResp {
         Position position;
@@ -72,7 +82,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // This design is to prevent the attacker being benefited from the multiple action in one block
         // in extreme cases
         uint256 lastRestrictionBlock;
-        int256 latestCumulativePremiumFraction;
+        int256 latestCumulativePremiumFractionLong;
+        int256 latestCumulativePremiumFractionShort;
         mapping(address => Position) positionMap;
     }
 
@@ -115,14 +126,14 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // vamm => balance of vault
     mapping(address => uint256) public vaults;
 
-    // amm => budget allocated to adjust market
-    mapping(address => uint256) public adjustmentBudgets;
+    // amm => budget of the insurance fund, allocated to each market
+    mapping(address => uint256) public insuranceBudgets;
 
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(address => int256) public netRevenuesSinceLastFunding;
 
-    // the address of bot that controls market
-    address public operator;
+    // // the address of bot that controls market
+    // address public operator;
 
     uint256[50] private __gap;
 
@@ -197,11 +208,11 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         uint256 badDebt
     );
 
-    modifier onlyOperator() {
-        // not operator
-        require(operator == _msgSender(), "CH_NO");
-        _;
-    }
+    // modifier onlyOperator() {
+    //     // not operator
+    //     require(operator == _msgSender(), "CH_NO");
+    //     _;
+    // }
 
     // FUNCTIONS
     //
@@ -289,9 +300,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         partialLiquidationRatio = _ratio;
     }
 
-    function setOperator(address _operator) external onlyOwner {
-        operator = _operator;
-    }
+    // function setOperator(address _operator) external onlyOwner {
+    //     operator = _operator;
+    // }
 
     /**
      * @notice add margin to increase margin ratio
@@ -335,7 +346,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             uint256 badDebt,
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
-        ) = _calcRemainMarginWithFundingPayment(_amm, position, marginDelta);
+        ) = _calcRemainMarginWithFundingPayment(_amm, position, marginDelta, position.size > 0);
         require(badDebt == 0, "CH_MNE"); // margin is not enough
         position.margin = remainMargin;
         position.lastUpdatedCumulativePremiumFraction = latestCumulativePremiumFraction;
@@ -463,9 +474,29 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
             // increase or decrease position depends on old position's side and size
             if (isNewPosition || (oldPositionSize > 0 ? Side.BUY : Side.SELL) == _side) {
-                positionResp = _increasePosition(_amm, _side, trader, _amount, _leverage, _isQuote);
+                positionResp = _increasePosition(
+                    InternalOpenPositionParams({
+                        amm: _amm,
+                        side: _side,
+                        trader: trader,
+                        amount: _amount,
+                        leverage: _leverage,
+                        isQuote: _isQuote,
+                        canOverFluctuationLimit: false
+                    })
+                );
             } else {
-                positionResp = _openReversePosition(_amm, _side, trader, _amount, _leverage, _isQuote, false);
+                positionResp = _openReversePosition(
+                    InternalOpenPositionParams({
+                        amm: _amm,
+                        side: _side,
+                        trader: trader,
+                        amount: _amount,
+                        leverage: _leverage,
+                        isQuote: _isQuote,
+                        canOverFluctuationLimit: false
+                    })
+                );
             }
 
             _checkSlippage(
@@ -608,71 +639,75 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        _formulaicRepegAmm(_amm);
-        uint256 cap = adjustmentBudgets[address(_amm)];
-        (int256 premiumFraction, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(cap);
-        ammMap[address(_amm)].latestCumulativePremiumFraction = premiumFraction + getLatestCumulativePremiumFraction(_amm);
+        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(
+            insuranceBudgets[address(_amm)]
+        );
+        ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
+        ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
-        require(_applyAdjustmentCost(_amm, -1 * fundingPayment), "CH_IAB"); //insufficient adjustment budget
-        _formulaicUpdateK(_amm, fundingImbalanceCost);
+        _applyAdjustmentCost(_amm, -1 * fundingPayment);
+        // include uncapped funding payment into the k-adjustment calculation
+        netRevenuesSinceLastFunding[address(_amm)] += fundingImbalanceCost;
+        _formulaicRepegAmm(_amm);
+        _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
     }
 
-    /**
-     * @notice repeg amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _targetPrice target price to be repegged
-     */
-    function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
-            quoteAssetReserve,
-            baseAssetReserve,
-            _targetPrice,
-            positionSize
-        );
-        int256 cost = AmmMath.calcCostForAdjustReserves(
-            quoteAssetReserve,
-            baseAssetReserve,
-            positionSize,
-            newQuoteAssetReserve,
-            newBaseAssetReserve
-        );
-        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-        emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    }
+    // /**
+    //  * @notice repeg amm according to off-chain calculation for the healthy of market
+    //  * @dev only the operator can call this function
+    //  * @param _amm IAmm address
+    //  * @param _targetPrice target price to be repegged
+    //  */
+    // function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
+    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+    //     int256 positionSize = _amm.getBaseAssetDelta();
+    //     (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         _targetPrice,
+    //         positionSize
+    //     );
+    //     int256 cost = AmmMath.calcCostForAdjustReserves(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         positionSize,
+    //         newQuoteAssetReserve,
+    //         newBaseAssetReserve
+    //     );
+    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
+    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+    //     emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    // }
 
-    /**
-     * @notice adjust K of amm according to off-chain calculation for the healthy of market
-     * @dev only the operator can call this function
-     * @param _amm IAmm address
-     * @param _scaleNum the numerator of K scale to be adjusted
-     * @param _scaleDenom the denominator of K scale to be adjusted
-     */
-    function adjustK(
-        IAmm _amm,
-        uint256 _scaleNum,
-        uint256 _scaleDenom
-    ) external onlyOperator {
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-        int256 positionSize = _amm.getBaseAssetDelta();
-        uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
-        uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
-        int256 cost = AmmMath.calcCostForAdjustReserves(
-            quoteAssetReserve,
-            baseAssetReserve,
-            positionSize,
-            newQuoteAssetReserve,
-            newBaseAssetReserve
-        );
-        require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-        _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-        emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    }
+    // /**
+    //  * @notice adjust K of amm according to off-chain calculation for the healthy of market
+    //  * @dev only the operator can call this function
+    //  * @param _amm IAmm address
+    //  * @param _scaleNum the numerator of K scale to be adjusted
+    //  * @param _scaleDenom the denominator of K scale to be adjusted
+    //  */
+    // function adjustK(
+    //     IAmm _amm,
+    //     uint256 _scaleNum,
+    //     uint256 _scaleDenom
+    // ) external onlyOperator {
+    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+    //     int256 positionSize = _amm.getBaseAssetDelta();
+    //     uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
+    //     uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
+    //     int256 cost = AmmMath.calcCostForAdjustReserves(
+    //         quoteAssetReserve,
+    //         baseAssetReserve,
+    //         positionSize,
+    //         newQuoteAssetReserve,
+    //         newBaseAssetReserve
+    //     );
+    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
+    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+    //     emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+    // }
 
     /**
      *@notice inject WETH to the insurance fund half of which is used for the adjustment
@@ -680,7 +715,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      *@param _amount the amount to be injected
      */
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        adjustmentBudgets[address(_amm)] = adjustmentBudgets[address(_amm)] + _amount / 2;
+        insuranceBudgets[address(_amm)] = insuranceBudgets[address(_amm)] + _amount;
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
     }
@@ -700,7 +735,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         Position memory position = getPosition(_amm, _trader);
         _requirePositionSize(position.size);
         (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        return _getMarginRatio(_amm, position, unrealizedPnl, positionNotional);
+        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, position, unrealizedPnl, position.size > 0);
+        return remainMargin.divD(positionNotional.toInt());
     }
 
     /**
@@ -732,9 +768,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             bool isShortPosition = position.size < 0;
             IAmm.Dir dir = isShortPosition ? IAmm.Dir.REMOVE_FROM_AMM : IAmm.Dir.ADD_TO_AMM;
             if (_pnlCalcOption == PnlCalcOption.TWAP) {
-                positionNotional = _amm.getOutputTwap(dir, positionSizeAbs);
+                positionNotional = _amm.getBaseTwap(dir, positionSizeAbs);
             } else if (_pnlCalcOption == PnlCalcOption.SPOT_PRICE) {
-                positionNotional = _amm.getOutputPrice(dir, positionSizeAbs);
+                positionNotional = _amm.getBasePrice(dir, positionSizeAbs);
             } else {
                 uint256 oraclePrice = _amm.getUnderlyingPrice();
                 positionNotional = positionSizeAbs.mulD(oraclePrice);
@@ -749,12 +785,21 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     /**
-     * @notice get latest cumulative premium fraction.
+     * @notice get latest cumulative premium fraction for long.
      * @param _amm IAmm address
-     * @return latest cumulative premium fraction in 18 digits
+     * @return latest cumulative premium fraction for long in 18 digits
      */
-    function getLatestCumulativePremiumFraction(IAmm _amm) public view returns (int256 latest) {
-        latest = ammMap[address(_amm)].latestCumulativePremiumFraction;
+    function getLatestCumulativePremiumFractionLong(IAmm _amm) public view returns (int256 latest) {
+        latest = ammMap[address(_amm)].latestCumulativePremiumFractionLong;
+    }
+
+    /**
+     * @notice get latest cumulative premium fraction for short.
+     * @param _amm IAmm address
+     * @return latest cumulative premium fraction for short in 18 digits
+     */
+    function getLatestCumulativePremiumFractionShort(IAmm _amm) public view returns (int256 latest) {
+        latest = ammMap[address(_amm)].latestCumulativePremiumFractionShort;
     }
 
     // function _getMarginRatioByCalcOption(
@@ -771,16 +816,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     //
     // INTERNAL FUNCTIONS
     //
-
-    function _getMarginRatio(
-        IAmm _amm,
-        Position memory _position,
-        int256 _unrealizedPnl,
-        uint256 _positionNotional
-    ) internal view returns (int256) {
-        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, _position, _unrealizedPnl);
-        return remainMargin.divD(_positionNotional.toInt());
-    }
 
     function _enterRestrictionMode(IAmm _amm) internal {
         uint256 blockNumber = _blockNumber();
@@ -822,25 +857,29 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             uint256 feeToInsuranceFund;
 
             // int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+            uint256 _partialLiquidationRatio = partialLiquidationRatio;
+            uint256 _liquidationFeeRatio = liquidationFeeRatio;
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
                 // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatio > int256(liquidationFeeRatio) && partialLiquidationRatio < 1 ether && partialLiquidationRatio != 0
+                marginRatio > int256(_liquidationFeeRatio) && _partialLiquidationRatio < 1 ether && _partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
                 positionResp = _openReversePosition(
-                    _amm,
-                    position.size > 0 ? Side.SELL : Side.BUY,
-                    _trader,
-                    position.size.mulD(partialLiquidationRatio.toInt()).abs(),
-                    1 ether,
-                    false,
-                    true
+                    InternalOpenPositionParams({
+                        amm: _amm,
+                        side: position.size > 0 ? Side.SELL : Side.BUY,
+                        trader: _trader,
+                        amount: position.size.mulD(_partialLiquidationRatio.toInt()).abs(),
+                        leverage: 1 ether,
+                        isQuote: false,
+                        canOverFluctuationLimit: true
+                    })
                 );
 
                 // half of the liquidationFee goes to liquidator & another half goes to insurance fund
-                liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio);
+                liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio);
                 feeToLiquidator = liquidationPenalty / 2;
                 feeToInsuranceFund = liquidationPenalty - feeToLiquidator;
 
@@ -852,7 +891,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 // liquidationPenalty = getPosition(_amm, _trader).margin.abs();
                 positionResp = _closePosition(_amm, _trader, true);
                 uint256 remainMargin = positionResp.marginToVault < 0 ? positionResp.marginToVault.abs() : 0;
-                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(liquidationFeeRatio) / 2;
+                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio) / 2;
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund
@@ -869,6 +908,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 if (liquidationBadDebt > 0) {
                     require(backstopLiquidityProviderMap[_msgSender()], "CH_NBLP"); //not backstop LP
                     _realizeBadDebt(_amm, liquidationBadDebt);
+                    // include liquidation bad debt into the k-adjustment calculation
+                    netRevenuesSinceLastFunding[address(_amm)] -= int256(liquidationBadDebt);
                 }
                 feeToInsuranceFund = remainMargin;
                 _setPosition(_amm, _trader, positionResp.position);
@@ -876,6 +917,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
             if (feeToInsuranceFund > 0) {
                 _transferToInsuranceFund(_amm, feeToInsuranceFund);
+                // include liquidation fee to the insurance fund into the k-adjustment calculation
+                netRevenuesSinceLastFunding[address(_amm)] += int256(feeToInsuranceFund);
             }
             _withdraw(_amm, _msgSender(), feeToLiquidator);
             _enterRestrictionMode(_amm);
@@ -914,44 +957,39 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     // only called from openPosition and _closeAndOpenReversePosition. caller need to ensure there's enough marginRatio
-    function _increasePosition(
-        IAmm _amm,
-        Side _side,
-        address _trader,
-        uint256 _amount,
-        uint256 _leverage,
-        bool _isQuote
-    ) internal returns (PositionResp memory positionResp) {
-        Position memory oldPosition = getPosition(_amm, _trader);
-        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
-            _amm,
-            _side,
-            _amount,
-            _isQuote,
-            false
-        );
+    function _increasePosition(InternalOpenPositionParams memory params) internal returns (PositionResp memory positionResp) {
+        Position memory oldPosition = getPosition(params.amm, params.trader);
+
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = params
+            .amm
+            .swapInput(
+                params.isQuote == (params.side == Side.BUY) ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                params.amount,
+                params.isQuote,
+                params.canOverFluctuationLimit
+            );
 
         int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
-        _updateOpenInterestNotional(_amm, positionResp.exchangedQuoteAssetAmount.toInt());
+        _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt());
         // if the trader is not in the whitelist, check max position size
-        if (_trader != whitelist) {
-            uint256 maxHoldingBaseAsset = _amm.getMaxHoldingBaseAsset();
+        if (params.trader != whitelist) {
+            uint256 maxHoldingBaseAsset = params.amm.getMaxHoldingBaseAsset();
             if (maxHoldingBaseAsset > 0) {
                 // total position size should be less than `positionUpperBound`
                 require(newSize.abs() <= maxHoldingBaseAsset, "CH_OPUB"); //over position size upper bound
             }
         }
 
-        int256 increaseMarginRequirement = positionResp.exchangedQuoteAssetAmount.divD(_leverage).toInt();
+        int256 increaseMarginRequirement = positionResp.exchangedQuoteAssetAmount.divD(params.leverage).toInt();
         (
             int256 remainMargin,
             uint256 badDebt,
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
-        ) = _calcRemainMarginWithFundingPayment(_amm, oldPosition, increaseMarginRequirement);
+        ) = _calcRemainMarginWithFundingPayment(params.amm, oldPosition, increaseMarginRequirement, params.side == Side.BUY);
 
-        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(params.amm, params.trader, PnlCalcOption.SPOT_PRICE);
 
         // update positionResp
         positionResp.badDebt = badDebt;
@@ -967,29 +1005,29 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         );
     }
 
-    function _openReversePosition(
-        IAmm _amm,
-        Side _side,
-        address _trader,
-        uint256 _amount,
-        uint256 _leverage,
-        bool _isQuote,
-        bool _canOverFluctuationLimit
-    ) internal returns (PositionResp memory) {
-        (uint256 oldPositionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        Position memory oldPosition = getPosition(_amm, _trader);
+    function _openReversePosition(InternalOpenPositionParams memory params) internal returns (PositionResp memory) {
+        (uint256 oldPositionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(
+            params.amm,
+            params.trader,
+            PnlCalcOption.SPOT_PRICE
+        );
+        Position memory oldPosition = getPosition(params.amm, params.trader);
         PositionResp memory positionResp;
 
         // reduce position if old position is larger
-        if (_isQuote ? oldPositionNotional > _amount : oldPosition.size.abs() > _amount) {
+        if (params.isQuote ? oldPositionNotional > params.amount : oldPosition.size.abs() > params.amount) {
             (
                 positionResp.exchangedQuoteAssetAmount,
                 positionResp.exchangedPositionSize,
                 positionResp.spreadFee,
                 positionResp.tollFee
-            ) = _swap(_amm, _side, _amount, _isQuote, _canOverFluctuationLimit);
-
-            _updateOpenInterestNotional(_amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
+            ) = params.amm.swapOutput(
+                params.isQuote == (params.side == Side.BUY) ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                params.amount,
+                params.isQuote,
+                params.canOverFluctuationLimit
+            );
+            _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
             if (oldPosition.size != 0) {
@@ -1004,7 +1042,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 positionResp.badDebt,
                 positionResp.fundingPayment,
                 latestCumulativePremiumFraction
-            ) = _calcRemainMarginWithFundingPayment(_amm, oldPosition, positionResp.realizedPnl);
+            ) = _calcRemainMarginWithFundingPayment(params.amm, oldPosition, positionResp.realizedPnl, oldPosition.size > 0);
 
             // positionResp.unrealizedPnlAfter = unrealizedPnl - realizedPnl
             positionResp.unrealizedPnlAfter = unrealizedPnl - positionResp.realizedPnl;
@@ -1028,36 +1066,30 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             return positionResp;
         }
 
-        return _closeAndOpenReversePosition(_amm, _side, _trader, _amount, _leverage, _isQuote);
+        return _closeAndOpenReversePosition(params);
     }
 
-    function _closeAndOpenReversePosition(
-        IAmm _amm,
-        Side _side,
-        address _trader,
-        uint256 _amount,
-        uint256 _leverage,
-        bool _isQuote
-    ) internal returns (PositionResp memory positionResp) {
+    function _closeAndOpenReversePosition(InternalOpenPositionParams memory params) internal returns (PositionResp memory positionResp) {
         // new position size is larger than or equal to the old position size
         // so either close or close then open a larger position
-        PositionResp memory closePositionResp = _closePosition(_amm, _trader, false);
+        PositionResp memory closePositionResp = _closePosition(params.amm, params.trader, params.canOverFluctuationLimit);
 
         // the old position is underwater. trader should close a position first
         require(closePositionResp.badDebt == 0, "CH_BDP"); // bad debt position
 
         // update open notional after closing position
-        uint256 amount = _isQuote
-            ? _amount - closePositionResp.exchangedQuoteAssetAmount
-            : _amount - closePositionResp.exchangedPositionSize.abs();
+        uint256 amount = params.isQuote
+            ? params.amount - closePositionResp.exchangedQuoteAssetAmount
+            : params.amount - closePositionResp.exchangedPositionSize.abs();
 
         // if remain asset amount is too small (eg. 100 wei) then the required margin might be 0
         // then the clearingHouse will stop opening position
         if (amount <= 100 wei) {
             positionResp = closePositionResp;
         } else {
-            _setPosition(_amm, _trader, closePositionResp.position);
-            PositionResp memory increasePositionResp = _increasePosition(_amm, _side, _trader, amount, _leverage, _isQuote);
+            _setPosition(params.amm, params.trader, closePositionResp.position);
+            params.amount = amount;
+            PositionResp memory increasePositionResp = _increasePosition(params);
             positionResp = PositionResp({
                 position: increasePositionResp.position,
                 exchangedQuoteAssetAmount: closePositionResp.exchangedQuoteAssetAmount + increasePositionResp.exchangedQuoteAssetAmount,
@@ -1087,7 +1119,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         (int256 remainMargin, uint256 badDebt, int256 fundingPayment, ) = _calcRemainMarginWithFundingPayment(
             _amm,
             oldPosition,
-            unrealizedPnl
+            unrealizedPnl,
+            oldPosition.size > 0
         );
 
         positionResp.realizedPnl = unrealizedPnl;
@@ -1102,56 +1135,16 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             blockNumber: _blockNumber()
         });
 
-        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _swap(
-            _amm,
-            oldPosition.size > 0 ? Side.SELL : Side.BUY,
-            oldPosition.size.abs(),
-            false,
-            _canOverFluctuationLimit
-        );
+        (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = _amm
+            .swapOutput(
+                oldPosition.size > 0 ? IAmm.Dir.ADD_TO_AMM : IAmm.Dir.REMOVE_FROM_AMM,
+                oldPosition.size.abs(),
+                false,
+                _canOverFluctuationLimit
+            );
 
         // bankrupt position's bad debt will be also consider as a part of the open interest
         _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
-    }
-
-    function _swap(
-        IAmm _amm,
-        Side _side,
-        uint256 _amount,
-        bool _isQuote,
-        bool _canOverFluctuationLimit
-    )
-        internal
-        returns (
-            uint256 quoteAmount,
-            int256 baseAmount,
-            uint256 spreadFee,
-            uint256 tollFee
-        )
-    {
-        if (_isQuote) {
-            // swap quote
-            // long => add, short => remove
-            quoteAmount = _amount;
-            uint256 ubaseAmount;
-            if (_side == Side.BUY) {
-                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = ubaseAmount.toInt();
-            } else {
-                (ubaseAmount, spreadFee, tollFee) = _amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = ubaseAmount.toInt() * -1;
-            }
-        } else {
-            // swap base
-            // long => remove, short => add
-            if (_side == Side.BUY) {
-                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.REMOVE_FROM_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = _amount.toInt();
-            } else {
-                (quoteAmount, spreadFee, tollFee) = _amm.swapOutput(IAmm.Dir.ADD_TO_AMM, _amount, _canOverFluctuationLimit);
-                baseAmount = _amount.toInt() * -1;
-            }
-        }
     }
 
     function _checkSlippage(
@@ -1199,8 +1192,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
             quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            // 50% of fees are allocated to adjustment
-            adjustmentBudgets[address(_amm)] += _spreadFee / 2;
+            insuranceBudgets[address(_amm)] += _spreadFee;
             // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
         }
@@ -1255,22 +1247,26 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
+    // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        IERC20 quoteToken = _amm.quoteAsset();
+        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
+        require(insuranceBudget >= _amount, "CH_IIB"); // insufficient insurance budget
+        insuranceBudgets[address(_amm)] = insuranceBudget - _amount;
         vaults[address(_amm)] += _amount;
+        IERC20 quoteToken = _amm.quoteAsset();
         insuranceFund.withdraw(quoteToken, _amount);
     }
 
+    // transfer fund from vault to insurance fund
     function _transferToInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        IERC20 quoteToken = _amm.quoteAsset();
         uint256 vault = vaults[address(_amm)];
-        if (vault > _amount) {
-            vaults[address(_amm)] = vault - _amount;
-            quoteToken.safeTransfer(address(insuranceFund), _amount);
-        } else {
-            vaults[address(_amm)] = 0;
-            quoteToken.safeTransfer(address(insuranceFund), vault);
+        if (vault < _amount) {
+            _amount = vault;
         }
+        vaults[address(_amm)] = vault - _amount;
+        insuranceBudgets[address(_amm)] += _amount;
+        IERC20 quoteToken = _amm.quoteAsset();
+        quoteToken.safeTransfer(address(insuranceFund), _amount);
     }
 
     /**
@@ -1294,6 +1290,54 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
+    function _formulaicRepegAmm(IAmm _amm) private {
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
+            insuranceBudgets[address(_amm)],
+            true
+        );
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            // consider repeg cost in k-adjustment
+            // negative cost means revenue
+            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
+            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+    }
+
+    // if fundingImbalance is positive, clearing house receives funds
+    function _formulaicUpdateK(IAmm _amm) private {
+        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
+        int256 budget;
+        if (netRevenue > 0) {
+            // If the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
+            budget = netRevenue / 4;
+        } else {
+            // If the overall sum is a COST to the system, take back half of the COST in k decrease
+            budget = netRevenue / 2;
+        }
+        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
+            budget
+        );
+        if (isAdjustable) {
+            _applyAdjustmentCost(_amm, cost);
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+    }
+
+    /**
+     * @notice apply cost for funding payment, repeg and k-adjustment
+     * @dev negative cost is revenue, otherwise is expense of insurance fund
+     */
+    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private {
+        if (_cost > 0) {
+            _withdrawFromInsuranceFund(_amm, _cost.abs());
+        } else if (_cost < 0) {
+            _transferToInsuranceFund(_amm, _cost.abs());
+        }
+    }
+
     //
     // INTERNAL VIEW FUNCTIONS
     //
@@ -1301,7 +1345,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function _calcRemainMarginWithFundingPayment(
         IAmm _amm,
         Position memory _oldPosition,
-        int256 _marginDelta
+        int256 _marginDelta,
+        bool isLong
     )
         internal
         view
@@ -1313,7 +1358,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         )
     {
         // calculate funding payment
-        latestCumulativePremiumFraction = getLatestCumulativePremiumFraction(_amm);
+        latestCumulativePremiumFraction = isLong
+            ? getLatestCumulativePremiumFractionLong(_amm)
+            : getLatestCumulativePremiumFractionShort(_amm);
         if (_oldPosition.size != 0) {
             fundingPayment = (latestCumulativePremiumFraction - _oldPosition.lastUpdatedCumulativePremiumFraction).mulD(_oldPosition.size);
         }
@@ -1405,63 +1452,5 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
-    }
-
-    function _formulaicRepegAmm(IAmm _amm) private {
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicRepegResult(
-            adjustmentBudgets[address(_amm)],
-            true
-        );
-        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            // consider repeg cost in k-adjustment
-            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
-            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }
-    }
-
-    // if fundingImbalance is positive, clearing house receives funds
-    function _formulaicUpdateK(IAmm _amm, int256 _fundingImbalance) private {
-        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-        int256 budget;
-        if (_fundingImbalance > 0) {
-            // positive cost is period revenue, give back half in k increase
-            budget = _fundingImbalance / 2;
-        } else if (netRevenue < -_fundingImbalance) {
-            // cost exceeded period revenue, take back half in k decrease
-            if (netRevenue < 0) {
-                budget = _fundingImbalance / 2;
-            } else {
-                budget = (netRevenue + _fundingImbalance) / 2;
-            }
-        }
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
-            budget
-        );
-        if (isAdjustable && _applyAdjustmentCost(_amm, cost)) {
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }
-    }
-
-    /**
-     * @notice apply cost for funding payment, repeg and k-adjustment
-     * @dev negative cost is revenue, otherwise is expense of insurance fund
-     */
-    function _applyAdjustmentCost(IAmm _amm, int256 _cost) private returns (bool) {
-        uint256 adjustmentBudget = adjustmentBudgets[address(_amm)];
-        uint256 costAbs = _cost.abs();
-        if (_cost > 0) {
-            if (costAbs <= adjustmentBudget) {
-                adjustmentBudgets[address(_amm)] = adjustmentBudget - costAbs;
-                _withdrawFromInsuranceFund(_amm, costAbs);
-            } else {
-                return false;
-            }
-        } else {
-            adjustmentBudgets[address(_amm)] = adjustmentBudget + costAbs;
-            _transferToInsuranceFund(_amm, costAbs);
-        }
-        return true;
     }
 }

@@ -2,10 +2,10 @@ import { utils, BigNumber } from "ethers";
 import { AmmInstanceName, PriceFeedKey } from "./Constants";
 
 const DEFAULT_AMM_TRADE_LIMIT_RATIO = utils.parseEther("0.9"); // 90% trading limit ratio
-const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(21600); // 6 hour
-const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.012"); // 1.2%
-const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0"); // 0.0%
-const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.005"); // 0.5%
+const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(10800); // 3 hour
+const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.02"); // 2%
+const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0.0006"); // 0.06%
+const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.0024"); // 0.24%
 
 // amm
 export interface AmmDeployArgs {
@@ -31,9 +31,9 @@ const BAYC_AMM: AmmConfig = {
   name: AmmInstanceName.BAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("226.02"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("6000"),
+    baseAssetReserve: utils.parseEther("82.22"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.BAYC,
@@ -50,9 +50,9 @@ const DOODLES_AMM: AmmConfig = {
   name: AmmInstanceName.DOODLESETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("1862.9"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("428.57"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.DOODLES,
@@ -69,9 +69,9 @@ const AZUKI_AMM: AmmConfig = {
   name: AmmInstanceName.AZUKIETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("1636"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("202.51"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.AZUKIETH,
@@ -88,9 +88,9 @@ const MOONBIRDS_AMM: AmmConfig = {
   name: AmmInstanceName.MOONBIRDSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("1513.7"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("387.00"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.MOONBIRDS,
@@ -107,9 +107,9 @@ const CLONEX_AMM: AmmConfig = {
   name: AmmInstanceName.CLONEXETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("2773.1"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("560.51"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.CLONEX,
@@ -126,9 +126,9 @@ const CRYPTOPUNKS_AMM: AmmConfig = {
   name: AmmInstanceName.CRYPTOPUNKSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("254"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("45.26"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.CRYPTOPUNKS,
@@ -145,9 +145,9 @@ const MEEBITS_AMM: AmmConfig = {
   name: AmmInstanceName.MEEBITSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("16500"),
-    baseAssetReserve: utils.parseEther("4963.6"),
-    tradeLimitRatio: utils.parseEther("0.9"), // 90% trading limit ratio
+    quoteAssetReserve: utils.parseEther("3000"),
+    baseAssetReserve: utils.parseEther("912.78"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
     priceFeedKey: PriceFeedKey.MEEBITS,
@@ -242,7 +242,7 @@ export class DeployConfig {
         // fake address
         this.priceFeed = "0xF8d5fd95EB2087E907bA6E78bf873F1A39c273Ed"; // For campaign only
         // fake address
-        this.weth = "0x823D87cD252b5Ae7c4190832326Bf67d95F1a943"; // Test WETH for campaign only
+        this.weth = "0x1DcD297530778f987e8DEEB07667E29Cd052bC50"; // Test WETH for campaign only
         break;
       case "rinkeby":
         this.confirmations = 5;

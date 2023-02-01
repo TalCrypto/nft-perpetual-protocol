@@ -67,7 +67,7 @@ describe("ClearingHouse add/remove margin Test", () => {
 
   async function syncAmmPriceToOracle() {
     const marketPrice = await amm.getSpotPrice();
-    await mockPriceFeed.setTwapPrice(marketPrice);
+    await mockPriceFeed.setPrice(marketPrice);
   }
 
   async function expectMarginChanged(tx: ContractTransaction, val: MarginChangedStruct) {
@@ -108,7 +108,8 @@ describe("ClearingHouse add/remove margin Test", () => {
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
+    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
+    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
     await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -173,7 +174,7 @@ describe("ClearingHouse add/remove margin Test", () => {
       // when the new fundingRate is 10% which means underlyingPrice < snapshotPrice
       await gotoNextFundingTime();
       await clearingHouse.payFunding(amm.address);
-      expect(await clearingHouse.getLatestCumulativePremiumFraction(amm.address)).eq(toFullDigitBN(0.1));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.1));
 
       // remove margin 20
       const receipt = await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(20));
