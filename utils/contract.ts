@@ -229,7 +229,7 @@ export async function deployErc20Fake(
 
 export async function deployInsuranceFund(signer: Signer, exchange: string, minter: string): Promise<InsuranceFundFake> {
   const instance = await new InsuranceFundFake__factory(signer).deploy();
-  await instance.initialize();
+  // await instance.initialize();
   // await instance.setExchange(exchange)
   // await instance.setMinter(minter)
   return instance;

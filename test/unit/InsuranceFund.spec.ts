@@ -23,7 +23,6 @@ describe("InsuranceFund Spec", () => {
     const admin = account[0];
 
     insuranceFund = await new InsuranceFundFake__factory(admin).deploy();
-    await insuranceFund.initialize();
 
     quoteToken1 = await deployErc20Fake(admin, toFullDigitBN(0), "NAME1", "SYMBOL1");
     quoteToken2 = await deployErc20Fake(admin, toFullDigitBN(0), "NAME2", "SYMBOL2");
