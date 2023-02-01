@@ -7,6 +7,10 @@ contract InsuranceFundFake is InsuranceFund {
     uint256 private timestamp = 1444004400;
     uint256 private number = 10001;
 
+    constructor() {
+        InsuranceFund.initialize();
+    }
+
     // make internal function testable
 
     function mock_setBlockTimestamp(uint256 _timestamp) public {
