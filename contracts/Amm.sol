@@ -354,106 +354,72 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             // when the normal funding payment is revenue and daynamic rate is available, system takes profit partially
             uncappedFundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
             fundingPayment = uncappedFundingPayment;
-            premiumFractionLong = premiumFraction > 0
-                ? int256(
+            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
+            premiumFractionLong =
+                int256(
                     Math.mulDiv(
                         premiumFraction.abs(),
                         uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingRevenueTakeRate)),
                         uint256(_longPositionSize + _shortPositionSize)
                     )
-                )
-                : int256(
-                    Math.mulDiv(
-                        premiumFraction.abs(),
-                        uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingRevenueTakeRate)),
-                        uint256(_longPositionSize + _shortPositionSize)
-                    )
-                ) * (-1);
-            premiumFractionShort = premiumFraction > 0
-                ? int256(
+                ) *
+                sign;
+            premiumFractionShort =
+                int256(
                     Math.mulDiv(
                         premiumFraction.abs(),
                         uint256(_longPositionSize * 2 - positionSize.mulD(_fundingRevenueTakeRate)),
                         uint256(_longPositionSize + _shortPositionSize)
                     )
-                )
-                : int256(
-                    Math.mulDiv(
-                        premiumFraction.abs(),
-                        uint256(_longPositionSize * 2 - positionSize.mulD(_fundingRevenueTakeRate)),
-                        uint256(_longPositionSize + _shortPositionSize)
-                    )
-                ) * (-1);
+                ) *
+                sign;
         } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
             uncappedFundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
+            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
             if (uint256(-uncappedFundingPayment) > _cap) {
                 // when the funding payment that system covers is greater than the cap, then cap it
                 fundingPayment = int256(_cap) * (-1);
                 // fundingPayment = normalFundingPayment * newCoverRate => newCoverRate = fundingPayment / normalFundingPayment
                 int256 newCoverRate = fundingPayment.divD(normalFundingPayment);
-                premiumFractionLong = premiumFraction > 0
-                    ? int256(
+                premiumFractionLong =
+                    int256(
                         Math.mulDiv(
                             premiumFraction.abs(),
                             uint256(_shortPositionSize * 2 + positionSize.mulD(newCoverRate)),
                             uint256(_longPositionSize + _shortPositionSize)
                         )
-                    )
-                    : int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_shortPositionSize * 2 + positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) * (-1);
-                premiumFractionShort = premiumFraction > 0
-                    ? int256(
+                    ) *
+                    sign;
+                premiumFractionShort =
+                    int256(
                         Math.mulDiv(
                             premiumFraction.abs(),
                             uint256(_longPositionSize * 2 - positionSize.mulD(newCoverRate)),
                             uint256(_longPositionSize + _shortPositionSize)
                         )
-                    )
-                    : int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_longPositionSize * 2 - positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) * (-1);
+                    ) *
+                    sign;
             } else {
                 fundingPayment = uncappedFundingPayment;
-                premiumFractionLong = premiumFraction > 0
-                    ? int256(
+                premiumFractionLong =
+                    int256(
                         Math.mulDiv(
                             premiumFraction.abs(),
                             uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingCostCoverRate)),
                             uint256(_longPositionSize + _shortPositionSize)
                         )
-                    )
-                    : int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingCostCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) * (-1);
-                premiumFractionShort = premiumFraction > 0
-                    ? int256(
+                    ) *
+                    sign;
+                premiumFractionShort =
+                    int256(
                         Math.mulDiv(
                             premiumFraction.abs(),
                             uint256(_longPositionSize * 2 - positionSize.mulD(_fundingCostCoverRate)),
                             uint256(_longPositionSize + _shortPositionSize)
                         )
-                    )
-                    : int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_longPositionSize * 2 - positionSize.mulD(_fundingCostCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) * (-1);
+                    ) *
+                    sign;
             }
         } else {
             uncappedFundingPayment = normalFundingPayment;
