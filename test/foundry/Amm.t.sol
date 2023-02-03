@@ -40,7 +40,6 @@ contract AmmTest is Test {
     }
 
     function testKAdjutment(int96 _totalPositionSize, int56 _budget) public {
-        vm.assume(_budget != 0);
         int256 totalPositionSize = int256(_totalPositionSize);
         vm.assume(totalPositionSize <= 90 ether);
         vm.assume(totalPositionSize >= -900 ether);
@@ -53,7 +52,7 @@ contract AmmTest is Test {
         }
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.getFormulaicUpdateKResult(int256(budget));
-        if (budget >= 0) {
+        if (budget > 0) {
             // #long > #short
             assertTrue(isAdjustable);
             // increase K
@@ -63,7 +62,7 @@ contract AmmTest is Test {
             assertLe(newQReserve.divD(oldQReserve), 1.005 ether, "exceeds quote increase limit");
             assertLe(newBReserve.divD(oldBReserve), 1.005 ether, "exceeds base increase limit");
             assertLe(cost / int256(PRECISION), budget / int256(PRECISION), "bigger than positive budget");
-        } else {
+        } else if (budget < 0) {
             // #long < #short
             assertTrue(isAdjustable);
             // decrease K
@@ -73,15 +72,17 @@ contract AmmTest is Test {
             assertGe((newQReserve + 1).divD(oldQReserve), 0.99 ether, "exceeds quote decrease limit");
             assertGe((newBReserve + 1).divD(oldBReserve), 0.99 ether, "exceeds base decrease limit");
             assertGe(cost / int256(PRECISION), budget / int256(PRECISION), "smaller than negative budget");
+        } else {
+            assertFalse(isAdjustable);
         }
 
         // cost correctness
-        if (totalPositionSize > 0) {
+        if (totalPositionSize > 0 && isAdjustable) {
             uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
             uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.ADD_TO_AMM, totalPositionSize.abs());
             assertEq(cost, notionalAfter.toInt() - notionalBefore.toInt(), "cost calculation incorrect when #long>#short");
-        } else {
+        } else if (totalPositionSize < 0 && isAdjustable) {
             uint256 notionalBefore = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
             amm.adjust(newQReserve, newBReserve);
             uint256 notionalAfter = amm.getBasePrice(IAmm.Dir.REMOVE_FROM_AMM, totalPositionSize.abs());
