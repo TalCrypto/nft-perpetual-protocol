@@ -661,6 +661,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
+        _enterRestrictionMode(_amm);
     }
 
     // /**
