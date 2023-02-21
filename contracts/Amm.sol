@@ -329,8 +329,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         // timeFraction = fundingPeriod(3 hour) / 1 day
         // premiumFraction = premium * timeFraction
         uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        int256 premium = getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt();
-        int256 premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
+        int256 premiumFraction = ((getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt()) * fundingPeriod.toInt()) /
+            int256(1 days);
         int256 positionSize = getBaseAssetDelta();
         // funding payment = premium fraction * position
         // eg. if alice takes 10 long position, totalPositionSize = 10
@@ -408,12 +408,13 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 premiumFractionShort = premiumFraction;
             }
         }
-
-        // update funding rate = premiumFraction / twapIndexPrice
-        int256 fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
-        int256 fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
         // positive fundingPayment is revenue to system, otherwise cost to system
-        emit FundingRateUpdated(fundingRateLong, fundingRateShort, underlyingPrice, fundingPayment);
+        emit FundingRateUpdated(
+            premiumFractionLong.divD(underlyingPrice.toInt()),
+            premiumFractionShort.divD(underlyingPrice.toInt()),
+            underlyingPrice,
+            fundingPayment
+        );
 
         // in order to prevent multiple funding settlement during very short time after network congestion
         uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
