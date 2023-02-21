@@ -168,7 +168,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     {
         (uint80 round, int256 latestPrice, , uint256 latestTimestamp, ) = _aggregator.latestRoundData();
         finalPrice = uint256(latestPrice);
-        if (latestPrice < 0) {
+        if (latestPrice <= 0) {
             _requireEnoughHistory(round);
             (round, finalPrice, latestTimestamp) = _getRoundData(_aggregator, round - 1);
         }
@@ -185,7 +185,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         )
     {
         (uint80 round, int256 latestPrice, , uint256 latestTimestamp, ) = _aggregator.getRoundData(_round);
-        while (latestPrice < 0) {
+        while (latestPrice <= 0) {
             _requireEnoughHistory(round);
             round = round - 1;
             (, latestPrice, , latestTimestamp, ) = _aggregator.getRoundData(round);
