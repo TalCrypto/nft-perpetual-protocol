@@ -172,6 +172,10 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 _quoteAsset != address(0),
             "AMM_III"
         ); //initial with invalid input
+        _requireRatio(_fluctuationLimitRatio);
+        _requireRatio(_tollRatio);
+        _requireRatio(_spreadRatio);
+        _requireRatio(_tradeLimitRatio);
         __Ownable_init();
 
         repegPriceGapRatio = 0.05 ether; // 5%
@@ -515,6 +519,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _counterParty address of counter party
      */
     function setCounterParty(address _counterParty) external onlyOwner {
+        _requireNonZeroAddress(_counterParty);
         counterParty = _counterParty;
     }
 
@@ -524,6 +529,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _globalShutdown address of `globalShutdown`
      */
     function setGlobalShutdown(address _globalShutdown) external onlyOwner {
+        _requireNonZeroAddress(_globalShutdown);
         globalShutdown = _globalShutdown;
     }
 
@@ -533,6 +539,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _fluctuationLimitRatio fluctuation limit rate in 18 digits, 0 means skip the checking
      */
     function setFluctuationLimitRatio(uint256 _fluctuationLimitRatio) external onlyOwner {
+        _requireRatio(_fluctuationLimitRatio);
         fluctuationLimitRatio = _fluctuationLimitRatio;
     }
 
@@ -542,7 +549,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _interval time interval in seconds
      */
     function setSpotPriceTwapInterval(uint256 _interval) external onlyOwner {
-        require(_interval != 0, "AMM_ZI"); //zero interval
+        require(_interval != 0, "AMM_ZI"); // zero interval
+        require(_interval <= 24 * 3600, "AMM_GTO"); // greater than 1 day
         spotPriceTwapInterval = _interval;
     }
 
@@ -586,6 +594,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _tollRatio new toll ratio in 18 digits
      */
     function setTollRatio(uint256 _tollRatio) external onlyOwner {
+        _requireRatio(_tollRatio);
         tollRatio = _tollRatio;
     }
 
@@ -595,12 +604,13 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _spreadRatio new toll spread in 18 digits
      */
     function setSpreadRatio(uint256 _spreadRatio) external onlyOwner {
+        _requireRatio(_spreadRatio);
         spreadRatio = _spreadRatio;
     }
 
     /**
      * @notice set new cap during guarded period, which is max position size that traders can hold
-     * @dev only owner can call. assume this will be removes soon once the guarded period has ended. must be set before opening amm
+     * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
      * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
      * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
      */
@@ -616,20 +626,23 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
      * @param _priceFeed new price feed for this AMM
      */
     function setPriceFeed(IPriceFeed _priceFeed) external onlyOwner {
-        require(address(_priceFeed) != address(0), "AMM_ZAPF"); //zero address of price feed
+        _requireNonZeroAddress(address(_priceFeed));
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
     }
 
     function setRepegPriceGapRatio(uint256 _ratio) external onlyOwner {
+        _requireRatio(_ratio);
         repegPriceGapRatio = _ratio;
     }
 
     function setFundingCostCoverRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
         fundingCostCoverRate = _rate;
     }
 
     function setFundingRevenueTakeRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
         fundingRevenueTakeRate = _rate;
     }
 
@@ -1220,5 +1233,13 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         }
         open = false;
         emit Shutdown(settlementPrice);
+    }
+
+    function _requireRatio(uint256 _ratio) private pure {
+        require(_ratio <= 1 ether, "AMM_IR"); //invalid ratio
+    }
+
+    function _requireNonZeroAddress(address _input) private pure {
+        require(_input != address(0), "AMM_ZA");
     }
 }

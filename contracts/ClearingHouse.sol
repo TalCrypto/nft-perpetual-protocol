@@ -224,10 +224,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         uint256 _liquidationFeeRatio,
         IInsuranceFund _insuranceFund
     ) public initializer {
-        require(address(_insuranceFund) != address(0), "CH_ZAIF"); //zero addres of IF
+        _requireNonZeroAddress(address(_insuranceFund));
         _requireNonZeroInput(_initMarginRatio);
         _requireNonZeroInput(_maintenanceMarginRatio);
         _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_initMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
+        _requireRatio(_liquidationFeeRatio);
         __OwnerPausable_init();
 
         //comment these out for reducing bytecode size
@@ -249,8 +252,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
      */
     function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
+        _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_liquidationFeeRatio);
         liquidationFeeRatio = _liquidationFeeRatio;
-        //emit LiquidationFeeRatioChanged(liquidationFeeRatio.toUint());
     }
 
     /**
@@ -259,8 +263,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
      */
     function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_maintenanceMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
         maintenanceMarginRatio = _maintenanceMarginRatio;
-        //emit MarginRatioChanged(maintenanceMarginRatio.toUint());
     }
 
     /**
@@ -268,6 +273,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @dev only owner can call
      */
     function setTollPool(address _tollPool) external onlyOwner {
+        _requireNonZeroAddress(_tollPool);
         tollPool = IMultiTokenRewardRecipient(_tollPool);
     }
 
@@ -277,6 +283,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param _whitelist an address
      */
     function setWhitelist(address _whitelist) external onlyOwner {
+        _requireNonZeroAddress(_whitelist);
         whitelist = _whitelist;
     }
 
@@ -287,6 +294,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param isProvider wether the account is a backstop liquidity provider
      */
     function setBackstopLiquidityProvider(address account, bool isProvider) external onlyOwner {
+        _requireNonZeroAddress(account);
         backstopLiquidityProviderMap[account] = isProvider;
         emit BackstopLiquidityProviderChanged(account, isProvider);
     }
@@ -296,7 +304,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @dev only owner can call
      */
     function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
-        require(_ratio <= 1 ether, "CH_IPLR"); //invalid partial liquidation ratio
+        _requireRatio(_ratio);
         partialLiquidationRatio = _ratio;
     }
 
@@ -1199,7 +1207,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // transfer toll to tollPool
         if (_tollFee > 0) {
-            require(address(tollPool) != address(0), "CH_ZATP"); // zero address of toll pool
+            _requireNonZeroAddress(address(tollPool));
             quoteAsset.safeTransferFrom(_from, address(tollPool), _tollFee);
         }
     }
@@ -1454,5 +1462,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
+    }
+
+    function _requireRatio(uint256 _ratio) private pure {
+        require(_ratio <= 1 ether, "CH_IR"); //invalid ratio
+    }
+
+    function _requireNonZeroAddress(address _input) private pure {
+        require(_input != address(0), "CH_ZA");
     }
 }
