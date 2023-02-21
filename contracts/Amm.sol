@@ -70,10 +70,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     uint256 public longPositionSize;
     uint256 public shortPositionSize;
 
-    // latest funding rate
-    int256 public fundingRateLong;
-    int256 public fundingRateShort;
-
     int256 private cumulativeNotional;
 
     uint256 private settlementPrice;
@@ -414,8 +410,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         }
 
         // update funding rate = premiumFraction / twapIndexPrice
-        fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
-        fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
+        int256 fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
+        int256 fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
         // positive fundingPayment is revenue to system, otherwise cost to system
         emit FundingRateUpdated(fundingRateLong, fundingRateShort, underlyingPrice, fundingPayment);
 
