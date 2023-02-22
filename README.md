@@ -17,3 +17,6 @@
 # Run forge tests:
 1. Just run `forge test`
 
+# Run hardhat coverage:
+1. Just run `npx hardhat coverage`
+
