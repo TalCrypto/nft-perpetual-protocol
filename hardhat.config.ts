@@ -11,6 +11,7 @@ import "@nomiclabs/hardhat-etherscan";
 import { task } from "hardhat/config";
 import "@graphprotocol/hardhat-graph";
 import "hardhat-contract-sizer";
+import "solidity-coverage";
 
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
