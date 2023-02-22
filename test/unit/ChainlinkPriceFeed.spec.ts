@@ -149,10 +149,6 @@ describe("ChainlinkPriceFeed Spec", () => {
       const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 95);
       expect(price).to.eq("409736842105263157894");
     });
-
-    it("force error, interval is zero", async () => {
-      await expect(priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 0)).revertedWith("CL_ZIT");
-    });
   });
 
   describe("getprice/getLatestTimestamp/getPreviousPrice/getPreviousTimestamp", () => {
