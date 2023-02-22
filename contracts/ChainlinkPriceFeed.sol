@@ -104,7 +104,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
         while (true) {
             aggregatorRoundId = uint64(round); // The id starts at 1
             // if this round is the start of new aggregator, then don't get the previous data
-            if (round == 0 || aggregatorRoundId == 1) {
+            if (aggregatorRoundId == 1) {
                 // to prevent from div 0 error, return the latest price if `cumulativeTime == 0`
                 return cumulativeTime == 0 ? latestPrice : weightedPrice / cumulativeTime;
             }
@@ -135,7 +135,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
         uint64 aggregatorRoundId = uint64(round); // starts at 1
-        require(round > 0 && round >= _numOfRoundBack && aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
+        require(aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , , ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return uint256(previousPrice);
@@ -147,7 +147,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
         uint64 aggregatorRoundId = uint64(round); // starts at 1
-        require(round > 0 && round >= _numOfRoundBack && aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
+        require(aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , uint256 previousTimestamp, ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return previousTimestamp;
@@ -203,7 +203,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
 
     function _requireEnoughHistory(uint80 _round) internal pure {
         uint64 aggregatorRoundId = uint64(_round); // starts at 1
-        require(_round > 0 || aggregatorRoundId > 1, "CL_NEH"); //not enough history
+        require(aggregatorRoundId > 1, "CL_NEH"); //not enough history
     }
 
     function _requirePositivePrice(int256 _price) internal pure {
