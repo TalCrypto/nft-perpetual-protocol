@@ -136,9 +136,9 @@ interface IAmm {
 
     function getCumulativeNotional() external view returns (int256);
 
-    function getMaxHoldingBaseAsset() external view returns (uint256);
+    // function getMaxHoldingBaseAsset() external view returns (uint256);
 
-    function getOpenInterestNotionalCap() external view returns (uint256);
+    // function getOpenInterestNotionalCap() external view returns (uint256);
 
     function getBaseAssetDelta() external view returns (int256);
 

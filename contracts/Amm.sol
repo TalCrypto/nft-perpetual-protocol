@@ -85,8 +85,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     // owner can update
     uint256 public tollRatio;
     uint256 public spreadRatio;
-    uint256 private maxHoldingBaseAsset;
-    uint256 private openInterestNotionalCap;
+    // uint256 private maxHoldingBaseAsset;
+    // uint256 private openInterestNotionalCap;
 
     uint256 public spotPriceTwapInterval;
     uint256 public fundingPeriod;
@@ -608,17 +608,17 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         spreadRatio = _spreadRatio;
     }
 
-    /**
-     * @notice set new cap during guarded period, which is max position size that traders can hold
-     * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
-     * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
-     * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
-     */
-    function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
-        maxHoldingBaseAsset = _maxHoldingBaseAsset;
-        openInterestNotionalCap = _openInterestNotionalCap;
-        emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
-    }
+    // /**
+    //  * @notice set new cap during guarded period, which is max position size that traders can hold
+    //  * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
+    //  * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
+    //  * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
+    //  */
+    // function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
+    //     maxHoldingBaseAsset = _maxHoldingBaseAsset;
+    //     openInterestNotionalCap = _openInterestNotionalCap;
+    //     emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
+    // }
 
     /**
      * @notice set priceFee address
@@ -804,13 +804,13 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         return settlementPrice;
     }
 
-    function getMaxHoldingBaseAsset() public view override returns (uint256) {
-        return maxHoldingBaseAsset;
-    }
+    // function getMaxHoldingBaseAsset() public view override returns (uint256) {
+    //     return maxHoldingBaseAsset;
+    // }
 
-    function getOpenInterestNotionalCap() public view override returns (uint256) {
-        return openInterestNotionalCap;
-    }
+    // function getOpenInterestNotionalCap() public view override returns (uint256) {
+    //     return openInterestNotionalCap;
+    // }
 
     function getBaseAssetDelta() public view override returns (int256) {
         return longPositionSize.toInt() - shortPositionSize.toInt();

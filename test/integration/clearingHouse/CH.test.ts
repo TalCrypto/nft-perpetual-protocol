@@ -96,7 +96,7 @@ describe("ClearingHouse Test", () => {
     await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
     await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
-    await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     const marketPrice = await amm.getSpotPrice();
     await mockPriceFeed.setTwapPrice(marketPrice);
@@ -146,104 +146,104 @@ describe("ClearingHouse Test", () => {
     });
   });
 
-  describe("openInterestNotional", () => {
-    beforeEach(async () => {
-      await amm.setCap(toFullDigitBN(0), toFullDigitBN(600));
-      await approve(alice, clearingHouse.address, 1600);
-      await approve(bob, clearingHouse.address, 1600);
-    });
+  // describe("openInterestNotional", () => {
+  //   beforeEach(async () => {
+  //     await amm.setCap(toFullDigitBN(0), toFullDigitBN(600));
+  //     await approve(alice, clearingHouse.address, 1600);
+  //     await approve(bob, clearingHouse.address, 1600);
+  //   });
 
-    it("increase when increase position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
-    });
+  //   it("increase when increase position", async () => {
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
+  //   });
 
-    it("reduce when reduce position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
-    });
+  //   it("reduce when reduce position", async () => {
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
+  //   });
 
-    it("reduce when close position", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(400), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   it("reduce when close position", async () => {
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(400), toFullDigitBN(1), toFullDigitBN(0), true);
 
-      await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+  //     await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
 
-      // expect the result will be almost 0 (with a few rounding error)
-      const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
-      expect(openInterestNotional.toNumber()).lte(10);
-    });
+  //     // expect the result will be almost 0 (with a few rounding error)
+  //     const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
+  //     expect(openInterestNotional.toNumber()).lte(10);
+  //   });
 
-    it("increase when traders open positions in different direction", async () => {
-      await approve(alice, clearingHouse.address, 300);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
-      await approve(bob, clearingHouse.address, 300);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
-    });
+  //   it("increase when traders open positions in different direction", async () => {
+  //     await approve(alice, clearingHouse.address, 300);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await approve(bob, clearingHouse.address, 300);
+  //     await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(600));
+  //   });
 
-    it("increase when traders open larger position in reverse direction", async () => {
-      await approve(alice, clearingHouse.address, 600);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(200));
-    });
+  //   it("increase when traders open larger position in reverse direction", async () => {
+  //     await approve(alice, clearingHouse.address, 600);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(450), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(200));
+  //   });
 
-    it("is 0 when everyone close position", async () => {
-      // avoid two closing positions from exceeding the fluctuation limit
-      await amm.setFluctuationLimitRatio(toFullDigitBN(0.8));
+  //   it("is 0 when everyone close position", async () => {
+  //     // avoid two closing positions from exceeding the fluctuation limit
+  //     await amm.setFluctuationLimitRatio(toFullDigitBN(0.8));
 
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
 
-      await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
-      await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
+  //     await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+  //     await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
 
-      // expect the result will be almost 0 (with a few rounding error)
-      const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
-      expect(openInterestNotional.toNumber()).lte(10);
-    });
+  //     // expect the result will be almost 0 (with a few rounding error)
+  //     const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
+  //     expect(openInterestNotional.toNumber()).lte(10);
+  //   });
 
-    it("is 0 when everyone close position, one of them is bankrupt position", async () => {
-      await amm.setSpreadRatio(toFullDigitBN(0.1));
-      await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
-      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   it("is 0 when everyone close position, one of them is bankrupt position", async () => {
+  //     await amm.setSpreadRatio(toFullDigitBN(0.1));
+  //     await clearingHouse.setBackstopLiquidityProvider(bob.address, true);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(1), toFullDigitBN(0), true);
 
-      // when alice close, it create bad debt (bob's position is bankrupt), so we can only liquidate her position
-      // await clearingHouse.closePosition(amm.address, toFullDigitBN(0), { from: alice })
-      await clearingHouse.connect(bob).liquidate(amm.address, alice.address);
+  //     // when alice close, it create bad debt (bob's position is bankrupt), so we can only liquidate her position
+  //     // await clearingHouse.closePosition(amm.address, toFullDigitBN(0), { from: alice })
+  //     await clearingHouse.connect(bob).liquidate(amm.address, alice.address);
 
-      // bypass the restrict mode
-      await forwardBlockTimestamp(15);
-      await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
+  //     // bypass the restrict mode
+  //     await forwardBlockTimestamp(15);
+  //     await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
 
-      // expect the result will be almost 0 (with a few rounding error)
-      const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
-      expect(openInterestNotional.toNumber()).lte(10);
-    });
+  //     // expect the result will be almost 0 (with a few rounding error)
+  //     const openInterestNotional = await clearingHouse.openInterestNotionalMap(amm.address);
+  //     expect(openInterestNotional.toNumber()).lte(10);
+  //   });
 
-    it("stop trading if it's over openInterestCap", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_ONOL");
-    });
+  //   it("stop trading if it's over openInterestCap", async () => {
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(1), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_ONOL");
+  //   });
 
-    it("won't be limited by the open interest cap if the trader is the whitelist", async () => {
-      await approve(alice, clearingHouse.address, 700);
-      await clearingHouse.setWhitelist(alice.address);
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(700), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(700));
-    });
+  //   it("won't be limited by the open interest cap if the trader is the whitelist", async () => {
+  //     await approve(alice, clearingHouse.address, 700);
+  //     await clearingHouse.setWhitelist(alice.address);
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(700), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(700));
+  //   });
 
-    it("won't stop trading if it's reducing position, even it's more than cap", async () => {
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
-      await amm.setCap(toFullDigitBN(0), toFullDigitBN(300));
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
-      expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
-    });
-  });
+  //   it("won't stop trading if it's reducing position, even it's more than cap", async () => {
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     await amm.setCap(toFullDigitBN(0), toFullDigitBN(300));
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(300), toFullDigitBN(1), toFullDigitBN(0), true);
+  //     expect(await clearingHouse.openInterestNotionalMap(amm.address)).eq(toFullDigitBN(300));
+  //   });
+  // });
 
   describe("payFunding: when alice.size = 37.5 & bob.size = -187.5", () => {
     beforeEach(async () => {

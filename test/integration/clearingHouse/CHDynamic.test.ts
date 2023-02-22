@@ -92,7 +92,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
 
-    await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
     await amm.setAdjustable(true);
     await amm.setCanLowerK(true);
 

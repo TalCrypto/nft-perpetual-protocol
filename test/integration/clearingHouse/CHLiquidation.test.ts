@@ -103,7 +103,7 @@ describe("ClearingHouse Liquidation Test", () => {
     await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
     await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
-    await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     const marketPrice = await amm.getSpotPrice();
     await mockPriceFeed.setTwapPrice(marketPrice);
@@ -925,7 +925,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await amm.setFluctuationLimitRatio(toFullDigitBN(0.07));
 
       // temporarily exclude the maintenance margin ratio to openReverse
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0));
+      // await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0));
 
       await expect(
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(44), toFullDigitBN(1), toFullDigitBN(0), true)
