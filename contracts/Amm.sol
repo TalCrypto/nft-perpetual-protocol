@@ -682,16 +682,18 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
             if (scaleNum == scaleDenom || scaleDenom == 0 || scaleNum == 0) {
                 isAdjustable = false;
             } else {
-                isAdjustable = true;
                 newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, scaleNum, scaleDenom);
                 newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
-                cost = AmmMath.calcCostForAdjustReserves(
-                    _quoteAssetReserve,
-                    _baseAssetReserve,
-                    _positionSize,
-                    newQuoteAssetReserve,
-                    newBaseAssetReserve
-                );
+                isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                if (isAdjustable) {
+                    cost = AmmMath.calcCostForAdjustReserves(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        newQuoteAssetReserve,
+                        newBaseAssetReserve
+                    );
+                }
             }
         }
     }
