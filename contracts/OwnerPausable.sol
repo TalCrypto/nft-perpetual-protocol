@@ -2,9 +2,9 @@
 pragma solidity 0.8.9;
 
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 
-contract OwnerPausableUpgradeSafe is OwnableUpgradeable, PausableUpgradeable {
+contract OwnerPausableUpgradeSafe is OwnableUpgradeableSafe, PausableUpgradeable {
     function __OwnerPausable_init() internal initializer {
         __Ownable_init();
         __Pausable_init();

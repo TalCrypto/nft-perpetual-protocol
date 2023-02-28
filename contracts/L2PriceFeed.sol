@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { SafeMath } from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract L2PriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
+contract L2PriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext {
     using SafeMath for uint256;
 
     struct PriceData {

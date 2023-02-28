@@ -4,14 +4,14 @@ pragma solidity 0.8.9;
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 
-contract Amm is IAmm, OwnableUpgradeable, BlockContext {
+contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
 

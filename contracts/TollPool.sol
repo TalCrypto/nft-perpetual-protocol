@@ -2,11 +2,11 @@
 pragma solidity 0.8.9;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { AddressArray } from "./utils/AddressArray.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 
-contract TollPool is OwnableUpgradeable {
+contract TollPool is OwnableUpgradeableSafe {
     using UIntMath for uint256;
     using AddressArray for address[];
 

@@ -2,11 +2,11 @@
 pragma solidity 0.8.9;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
+contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext {
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
