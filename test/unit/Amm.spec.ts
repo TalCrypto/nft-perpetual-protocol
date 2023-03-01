@@ -1203,4 +1203,12 @@ describe("Amm Unit Test", () => {
       });
     });
   });
+
+  describe("ownership renounce", async () => {
+    it("not allowed to renounce ownership by admin", async () => {
+      await expect(amm.connect(admin).renounceOwnership()).to.be.revertedWith(
+        "OS_NR"
+      );
+    });
+  });
 });
