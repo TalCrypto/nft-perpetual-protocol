@@ -117,7 +117,7 @@ async function main() {
   await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
 
-  const liquidator = await deployLiquidator(ledger, clearingHouse.address, deployConfig.maintenanceMarginRequirement);
+  const liquidator = await deployLiquidator(ledger, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 
