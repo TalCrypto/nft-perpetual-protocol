@@ -109,11 +109,11 @@ contract AmmTest is Test {
         }
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         uint256 spotPrice = amm.getSpotPrice();
-        (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.repegCheck(budget, false);
+        (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.repegCheck(budget);
         totalPositionSize == 0 ? assertTrue(isAdjustable) : assertFalse(isAdjustable);
-        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
+        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget);
         totalPositionSize == 0 ? assertTrue(isAdjustable) : assertFalse(isAdjustable);
-        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget, false);
+        (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget);
         if (totalPositionSize > 0) {
             // #long > #short
             if (oraclePrice * 900 > spotPrice * 1000) {
@@ -190,21 +190,21 @@ contract AmmTest is Test {
         uint256 spotPrice = amm.getSpotPrice();
         priceFeed.setPrice(spotPrice * 2);
 
-        (bool isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (bool isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertTrue(isAdjustable);
 
         amm.swapInput(IAmm.Dir.REMOVE_FROM_AMM, 1 ether, false, true);
-        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertFalse(isAdjustable);
-        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertTrue(isAdjustable);
-        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertTrue(isAdjustable);
 
         priceFeed.setPrice(spotPrice);
-        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertFalse(isAdjustable);
-        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max, true);
+        (isAdjustable, , , ) = amm.repegCheck(type(uint256).max);
         assertFalse(isAdjustable);
     }
 
