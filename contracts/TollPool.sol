@@ -6,8 +6,9 @@ import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { AddressArray } from "./utils/AddressArray.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
+import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipient.sol";
 
-contract TollPool is OwnableUpgradeableSafe {
+contract TollPool is IMultiTokenRewardRecipient, OwnableUpgradeableSafe {
     using UIntMath for uint256;
     using AddressArray for address[];
     using TransferHelper for IERC20;
@@ -56,6 +57,11 @@ contract TollPool is OwnableUpgradeableSafe {
         require(address(_clearingHouse) != address(0), "TP_NCH"); //not clearinghouse
         __Ownable_init();
         clearingHouse = _clearingHouse;
+    }
+
+    // this function will be used for upcoming staking system
+    function notifyTokenAmount(IERC20, uint256) external pure {
+        revert("TP_NSY"); // not supported yet
     }
 
     function transferToFeeTokenPoolDispatcher() external {
