@@ -163,7 +163,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     /// @param amm IAmm address
     /// @param margin margin
     /// @param positionNotional margin * leverage
-    /// @param exchangedPositionSize position size, e.g. ETHUSDC or LINKUSDC
+    /// @param exchangedPositionSize position size
     /// @param fee transaction fee
     /// @param positionSizeAfter position size after this transaction, might be increased or decreased
     /// @param realizedPnl realized pnl after this position changed

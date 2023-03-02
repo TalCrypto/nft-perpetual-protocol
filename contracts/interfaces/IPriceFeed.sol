@@ -23,4 +23,6 @@ interface IPriceFeed {
         uint256 _timestamp,
         uint256 _roundId
     ) external;
+
+    function decimals(bytes32 _priceFeedKey) external view returns (uint8);
 }

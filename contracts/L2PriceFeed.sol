@@ -197,6 +197,10 @@ contract L2PriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext {
         return priceFeedMap[_priceFeedKey].priceData[len - _numOfRoundBack - 1].timestamp;
     }
 
+    function decimals(bytes32) external pure returns (uint8) {
+        return 18;
+    }
+
     //
     // END OF INTERFACE IMPLEMENTATION
     //

@@ -16,7 +16,7 @@ contract ChainlinkAggregatorMock is AggregatorV3Interface {
     }
 
     function decimals() external view override returns (uint8) {
-        return 8;
+        return 18;
     }
 
     function description() external view override returns (string memory) {

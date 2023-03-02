@@ -153,6 +153,12 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
         return previousTimestamp;
     }
 
+    function decimals(bytes32 _priceFeedKey) external view override returns (uint8) {
+        AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
+        _requireNonEmptyAddress(address(aggregator));
+        return aggregator.decimals();
+    }
+
     //
     // INTERNAL VIEW FUNCTIONS
     //

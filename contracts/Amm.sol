@@ -172,6 +172,10 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         _requireRatio(_tollRatio);
         _requireRatio(_spreadRatio);
         _requireRatio(_tradeLimitRatio);
+        (bool success, bytes memory data) = _quoteAsset.call(abi.encodeWithSelector(bytes4(keccak256("decimals()"))));
+        require(success && abi.decode(data, (uint8)) == 18, "AMM_NMD"); // not match decimal
+        require(_priceFeed.decimals(_priceFeedKey) == 18, "AMM_NMD"); // not match decimal
+
         __Ownable_init();
 
         repegPriceGapRatio = 0.05 ether; // 5%
