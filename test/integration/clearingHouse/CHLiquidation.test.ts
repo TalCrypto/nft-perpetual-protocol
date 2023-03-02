@@ -136,7 +136,7 @@ describe("ClearingHouse Liquidation Test", () => {
     it("partially liquidate a long position", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
@@ -201,7 +201,7 @@ describe("ClearingHouse Liquidation Test", () => {
     it("partially liquidate a long position with quoteAssetAmountLimit", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
@@ -228,7 +228,7 @@ describe("ClearingHouse Liquidation Test", () => {
     it("partially liquidate a short position", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
@@ -298,7 +298,7 @@ describe("ClearingHouse Liquidation Test", () => {
     it("partially liquidate a short position with quoteAssetAmountLimit", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
@@ -334,7 +334,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
@@ -386,7 +386,7 @@ describe("ClearingHouse Liquidation Test", () => {
     it("a long position is under water, thus liquidating the complete position with quoteAssetAmountLimit", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 25 margin * 10x position to get 20 long position
       // AMM after: 1250 : 80
@@ -415,7 +415,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.05));
 
       // when alice create a 25 margin * 10x position to get 20 long position
@@ -471,7 +471,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when alice create a 20 margin * 10x position to get 25 short position
       // AMM after: 800 : 125
@@ -548,7 +548,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setBackstopLiquidityProvider(carol.address, true);
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.05));
 
       // when alice create a 20 margin * 10x position to get 25 short position
@@ -709,7 +709,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100
       // AMM after: 1100 : 90.9090909091
@@ -751,7 +751,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(bob, clearingHouse.address, 100);
       await approve(carol, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100
       // AMM after: 1100 : 90.9090909091
@@ -795,7 +795,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(carol, clearingHouse.address, 100);
       await approve(relayer, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100
       // AMM after: 1100 : 90.9090909091
@@ -840,7 +840,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(carol, clearingHouse.address, 100);
       await approve(relayer, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100
       // AMM after: 1100 : 90.9090909091
@@ -879,7 +879,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909091
@@ -907,7 +907,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       // bob pays 20 margin * 5x quote to get 9.0909090909 base
       // AMM after: 1100 : 90.9090909091
@@ -931,7 +931,7 @@ describe("ClearingHouse Liquidation Test", () => {
         clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(44), toFullDigitBN(1), toFullDigitBN(0), true)
       ).to.be.revertedWith("AMM_POFL");
 
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
       await syncAmmPriceToOracle();
       await expect(clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(0))).to.emit(
         clearingHouse,
@@ -951,7 +951,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(bob, clearingHouse.address, 100);
       await approve(carol, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // bob pays 20 margin * 5x quote to get 9.0909090909 base
       // AMM after: 1100 : 90.9090909091, price: 12.1
@@ -995,7 +995,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(bob, clearingHouse.address, 100);
       await approve(carol, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // bob pays 20 margin * 5x quote to get 9.0909090909 base
       // AMM after: 1100 : 90.9090909091, price: 12.1
@@ -1038,7 +1038,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(carol, clearingHouse.address, 100);
       await approve(relayer, clearingHouse.address, 100);
       // maintenance margin ratio should set 20%, but due to rounding error, below margin ratio becomes 19.99..9%
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.199));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.199));
 
       // when bob create a 20 margin * 5x long position when 9.0909090909 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909091, price: 12.1
@@ -1077,7 +1077,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
     });
 
     async function makeAliceLiquidatableByShort() {
@@ -1168,7 +1168,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       traderWallet1 = await new TraderWallet__factory(admin).deploy(clearingHouse.address, quoteToken.address);
       traderWallet2 = await new TraderWallet__factory(admin).deploy(clearingHouse.address, quoteToken.address);
@@ -1191,7 +1191,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
 
       traderWallet1 = await new TraderWallet__factory(admin).deploy(clearingHouse.address, quoteToken.address);
       traderWallet2 = await new TraderWallet__factory(admin).deploy(clearingHouse.address, quoteToken.address);
@@ -1234,7 +1234,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(admin, clearingHouse.address, 1000);
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
-      await clearingHouse.setMaintenanceMarginRatio(toFullDigitBN(0.2));
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.2));
       await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
     });
 
@@ -1402,7 +1402,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.connect(admin).setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.connect(admin).mockSetMMRatio(toFullDigitBN(0.1));
     });
     it("make alice liquidatable by another liquidation", async () => {
       await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9.09), true);
@@ -1428,7 +1428,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.setMaintenanceMarginRatio(toFullDigitBN(0.1));
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.1));
       await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(0.25));
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
       // B: 100, Q: 1000
