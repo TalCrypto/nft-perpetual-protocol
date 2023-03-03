@@ -74,23 +74,23 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         }
     }
 
-    /**
-     * @dev only owner can call. no need to call
-     * @param _amm IAmm address
-     */
-    function removeAmm(IAmm _amm) external onlyOwner {
-        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
-        ammMap[address(_amm)] = false;
-        uint256 ammLength = amms.length;
-        for (uint256 i = 0; i < ammLength; i++) {
-            if (amms[i] == _amm) {
-                amms[i] = amms[ammLength - 1];
-                amms.pop();
-                emit AmmRemoved(address(_amm));
-                break;
-            }
-        }
-    }
+    // /**
+    //  * @dev only owner can call. no need to call
+    //  * @param _amm IAmm address
+    //  */
+    // function removeAmm(IAmm _amm) external onlyOwner {
+    //     require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
+    //     ammMap[address(_amm)] = false;
+    //     uint256 ammLength = amms.length;
+    //     for (uint256 i = 0; i < ammLength; i++) {
+    //         if (amms[i] == _amm) {
+    //             amms[i] = amms[ammLength - 1];
+    //             amms.pop();
+    //             emit AmmRemoved(address(_amm));
+    //             break;
+    //         }
+    //     }
+    // }
 
     /**
      * @notice shutdown all Amms when fatal error happens
@@ -103,28 +103,28 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         emit ShutdownAllAmms(block.number);
     }
 
-    function removeToken(IERC20 _token) external onlyOwner {
-        require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
+    // function removeToken(IERC20 _token) external onlyOwner {
+    //     require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
 
-        quoteTokenMap[address(_token)] = false;
-        uint256 quoteTokensLength = getQuoteTokenLength();
-        for (uint256 i = 0; i < quoteTokensLength; i++) {
-            if (quoteTokens[i] == _token) {
-                if (i < quoteTokensLength - 1) {
-                    quoteTokens[i] = quoteTokens[quoteTokensLength - 1];
-                }
-                quoteTokens.pop();
-                break;
-            }
-        }
+    //     quoteTokenMap[address(_token)] = false;
+    //     uint256 quoteTokensLength = getQuoteTokenLength();
+    //     for (uint256 i = 0; i < quoteTokensLength; i++) {
+    //         if (quoteTokens[i] == _token) {
+    //             if (i < quoteTokensLength - 1) {
+    //                 quoteTokens[i] = quoteTokens[quoteTokensLength - 1];
+    //             }
+    //             quoteTokens.pop();
+    //             break;
+    //         }
+    //     }
 
-        // transfer the quoteToken to owner.
-        if (balanceOf(_token) > 0) {
-            _token.safeTransfer(owner(), balanceOf(_token));
-        }
+    //     // transfer the quoteToken to owner.
+    //     if (balanceOf(_token) > 0) {
+    //         _token.safeTransfer(owner(), balanceOf(_token));
+    //     }
 
-        emit TokenRemoved(address(_token));
-    }
+    //     emit TokenRemoved(address(_token));
+    // }
 
     /**
      * @notice withdraw token to caller

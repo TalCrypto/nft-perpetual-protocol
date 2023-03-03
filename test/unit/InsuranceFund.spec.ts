@@ -58,29 +58,29 @@ describe("InsuranceFund Spec", () => {
       await expect(insuranceFund.addAmm(amm1.address)).to.be.revertedWith("IF_AAA");
     });
 
-    it("removeAmm", async () => {
-      await insuranceFund.addAmm(amm1.address);
-      await insuranceFund.addAmm(amm2.address);
-      const receipt = await insuranceFund.removeAmm(amm1.address);
+    // it("removeAmm", async () => {
+    //   await insuranceFund.addAmm(amm1.address);
+    //   await insuranceFund.addAmm(amm2.address);
+    //   const receipt = await insuranceFund.removeAmm(amm1.address);
 
-      const amms = await insuranceFund.getAllAmms();
-      expect(amm2.address).to.eq(amms[0]);
-      expect(amms.length).eq(1);
+    //   const amms = await insuranceFund.getAllAmms();
+    //   expect(amm2.address).to.eq(amms[0]);
+    //   expect(amms.length).eq(1);
 
-      expect(receipt).to.emit(insuranceFund, "AmmRemoved").withArgs(amm1.address);
-    });
+    //   expect(receipt).to.emit(insuranceFund, "AmmRemoved").withArgs(amm1.address);
+    // });
 
-    it("amms, supportedQuoteToken and ammMetadata has being removed if there's no other amm", async () => {
-      await insuranceFund.addAmm(amm1.address);
-      await insuranceFund.removeAmm(amm1.address);
+    // it("amms, supportedQuoteToken and ammMetadata has being removed if there's no other amm", async () => {
+    //   await insuranceFund.addAmm(amm1.address);
+    //   await insuranceFund.removeAmm(amm1.address);
 
-      const amms = await insuranceFund.getAllAmms();
-      expect(amms.length).eq(0);
-    });
+    //   const amms = await insuranceFund.getAllAmms();
+    //   expect(amms.length).eq(0);
+    // });
 
-    it("force error, remove non existed amm", async () => {
-      await expect(insuranceFund.removeAmm(amm1.address)).to.be.revertedWith("IF_ANE");
-    });
+    // it("force error, remove non existed amm", async () => {
+    //   await expect(insuranceFund.removeAmm(amm1.address)).to.be.revertedWith("IF_ANE");
+    // });
 
     // it("isExistedAmm")
   });
