@@ -17,7 +17,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "STF");
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TH_STF"); // failed Safe Transfer From
     }
 
     /// @notice Transfers tokens from msg.sender to a recipient
@@ -31,7 +31,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.transfer.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "ST");
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TH_ST"); // failed Safe Transfer
     }
 
     /// @notice Approves the stipulated contract to spend the given allowance in the given token
@@ -45,7 +45,7 @@ library TransferHelper {
         uint256 value
     ) internal {
         (bool success, bytes memory data) = address(token).call(abi.encodeWithSelector(IERC20.approve.selector, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), "SA");
+        require(success && (data.length == 0 || abi.decode(data, (bool))), "TH_SA"); // failed Safe Approve
     }
 
     // /// @notice Transfers ETH to the recipient address
