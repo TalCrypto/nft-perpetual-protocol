@@ -310,7 +310,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @return premiumFractionLong premium fraction for long of this period in 18 digits
      * @return premiumFractionShort premium fraction for short of this period in 18 digits
      * @return fundingPayment profit of insurance fund in funding payment
-     * @return uncappedFundingPayment imbalance cost of funding payment without cap
      */
     function settleFunding(uint256 _cap)
         external
@@ -320,8 +319,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         returns (
             int256 premiumFractionLong,
             int256 premiumFractionShort,
-            int256 fundingPayment,
-            int256 uncappedFundingPayment
+            int256 fundingPayment
         )
     {
         require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
@@ -352,8 +350,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         if (normalFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is revenue and daynamic rate is available, system takes profit partially
-            uncappedFundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
-            fundingPayment = uncappedFundingPayment;
+            fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
             int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
             premiumFractionLong =
                 int256(
@@ -375,33 +372,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 sign;
         } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
-            uncappedFundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
+            fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
             int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
-            if (uint256(-uncappedFundingPayment) > _cap) {
-                // when the funding payment that system covers is greater than the cap, then cap it
-                fundingPayment = int256(_cap) * (-1);
-                // fundingPayment = normalFundingPayment * newCoverRate => newCoverRate = fundingPayment / normalFundingPayment
-                int256 newCoverRate = fundingPayment.divD(normalFundingPayment);
-                premiumFractionLong =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_shortPositionSize * 2 + positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
-                premiumFractionShort =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_longPositionSize * 2 - positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
+            if (uint256(-fundingPayment) > _cap) {
+                // when the funding payment that system covers is greater than the cap, then not pay funding and shutdown amm
+                fundingPayment = 0;
+                _implShutdown();
             } else {
-                fundingPayment = uncappedFundingPayment;
                 premiumFractionLong =
                     int256(
                         Math.mulDiv(
@@ -422,14 +399,12 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     sign;
             }
         } else {
-            uncappedFundingPayment = normalFundingPayment;
-            // if expense of funding payment is greater than cap amount, then cap it
-            if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
-                fundingPayment = int256(_cap) * (-1);
-                premiumFractionLong = fundingPayment.divD(positionSize);
-                premiumFractionShort = premiumFractionLong;
+            fundingPayment = normalFundingPayment;
+            // if expense of funding payment is greater than cap amount, then not pay funding and shutdown amm
+            if (fundingPayment < 0 && uint256(-fundingPayment) > _cap) {
+                fundingPayment = 0;
+                _implShutdown();
             } else {
-                fundingPayment = uncappedFundingPayment;
                 premiumFractionLong = premiumFraction;
                 premiumFractionShort = premiumFraction;
             }
@@ -454,16 +429,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * @notice check if repeg can be done and get the cost and reserves of formulaic repeg
      * @param _budget the budget available for repeg
-     * @param _adjustK if true, repeg curve with adjusting K
      * @return isAdjustable if true, curve can be adjustable by repeg
      * @return cost the amount of cost of repeg, negative means profit of system
      * @return newQuoteAssetReserve the new quote asset reserve by repeg
      * @return newBaseAssetReserve the new base asset reserve by repeg
      */
-    function repegCheck(uint256 _budget, bool _adjustK)
+    function repegCheck(uint256 _budget)
         external
         override
-        onlyOpen
         onlyCounterParty
         returns (
             bool isAdjustable,
@@ -472,19 +445,19 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        uint256 _repegFlag = repegFlag;
-        (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
-        if (result) {
-            _repegFlag += 1;
-        } else {
-            _repegFlag = 0;
-        }
-        if (adjustable) {
+        if (open && adjustable) {
+            uint256 _repegFlag = repegFlag;
+            (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
+            if (result) {
+                _repegFlag += 1;
+            } else {
+                _repegFlag = 0;
+            }
             int256 _positionSize = getBaseAssetDelta();
             uint256 targetPrice;
             if (_positionSize == 0) {
                 targetPrice = oraclePrice;
-            } else if (open && _repegFlag >= MIN_NUM_REPEG_FLAG) {
+            } else if (_repegFlag >= MIN_NUM_REPEG_FLAG) {
                 targetPrice = oraclePrice > marketPrice
                     ? oraclePrice.mulD(1 ether - repegPriceGapRatio)
                     : oraclePrice.mulD(1 ether + repegPriceGapRatio);
@@ -506,25 +479,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     newBaseAssetReserve
                 );
                 if (cost > 0 && uint256(cost) > _budget) {
-                    if (_adjustK && canLowerK) {
-                        // scale down K by 1% that returns a profit of clearing house
-                        newQuoteAssetReserve = (_quoteAssetReserve * 99) / 100;
-                        newBaseAssetReserve = (_baseAssetReserve * 99) / 100;
-                        cost = AmmMath.calcCostForAdjustReserves(
-                            _quoteAssetReserve,
-                            _baseAssetReserve,
-                            _positionSize,
-                            newQuoteAssetReserve,
-                            newBaseAssetReserve
-                        );
-                        isAdjustable = true;
-                    }
+                    isAdjustable = false;
                 } else {
                     isAdjustable = true;
                 }
             }
+            repegFlag = uint8(_repegFlag);
         }
-        repegFlag = uint8(_repegFlag);
     }
 
     /**

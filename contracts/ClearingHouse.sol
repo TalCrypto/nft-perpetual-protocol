@@ -639,15 +639,15 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(
+        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment) = _amm.settleFunding(
             insuranceBudgets[address(_amm)]
         );
         ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
         ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
         _applyAdjustmentCost(_amm, -1 * fundingPayment);
-        // include uncapped funding payment into the k-adjustment calculation
-        netRevenuesSinceLastFunding[address(_amm)] += fundingImbalanceCost;
+        // include funding payment into the k-adjustment calculation
+        netRevenuesSinceLastFunding[address(_amm)] += fundingPayment;
         _formulaicRepegAmm(_amm);
         _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
@@ -1292,8 +1292,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
     function _formulaicRepegAmm(IAmm _amm) private {
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
-            insuranceBudgets[address(_amm)],
-            true
+            insuranceBudgets[address(_amm)]
         );
         if (isAdjustable) {
             _applyAdjustmentCost(_amm, cost);
@@ -1302,6 +1301,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             // negative cost means revenue
             netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        } else if (cost > 0) {
+            // consider repeg cost in k-adjustment even if not doing repeg
+            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
         }
     }
 
