@@ -55,4 +55,8 @@ contract ClearingHouseFake is ClearingHouse {
     function getPrepaidBadDebt(address _amm) public view returns (uint256) {
         return prepaidBadDebts[_amm];
     }
+
+    function mockSetMMRatio(uint256 _ratio) public {
+        maintenanceMarginRatio = _ratio;
+    }
 }

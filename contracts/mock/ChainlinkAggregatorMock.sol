@@ -16,7 +16,7 @@ contract ChainlinkAggregatorMock is AggregatorV3Interface {
     }
 
     function decimals() external view override returns (uint8) {
-        return 8;
+        return 18;
     }
 
     function description() external view override returns (string memory) {
@@ -39,7 +39,8 @@ contract ChainlinkAggregatorMock is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
-        return (roundIdArray[_roundId], answerArray[_roundId], decimalsArray[_roundId], timestampArray[_roundId], versionArray[_roundId]);
+        uint64 index = uint64(_roundId) - 1;
+        return (roundIdArray[index], answerArray[index], decimalsArray[index], timestampArray[index], versionArray[index]);
     }
 
     function latestRoundData()
@@ -65,7 +66,7 @@ contract ChainlinkAggregatorMock is AggregatorV3Interface {
         uint256 _updatedAt,
         uint80 _answeredInRound
     ) external {
-        roundIdArray.push(_roundId);
+        roundIdArray.push(uint80((uint256(1) << 64) | (_roundId + 1)));
         answerArray.push(_answer);
         decimalsArray.push(_startedAt);
         timestampArray.push(_updatedAt);

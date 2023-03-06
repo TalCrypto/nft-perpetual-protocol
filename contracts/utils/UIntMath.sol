@@ -5,7 +5,6 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /// @dev Implements simple fixed point math add, sub, mul and div operations.
 library UIntMath {
-    uint256 private constant _INT256_MAX = 2**255 - 1;
     string private constant ERROR_NON_CONVERTIBLE = "Math: uint value is bigger than _INT256_MAX";
 
     /// @dev Returns 1 in the fixed point representation, with `decimals` decimals.
@@ -14,7 +13,7 @@ library UIntMath {
     }
 
     function toInt(uint256 x) internal pure returns (int256) {
-        require(_INT256_MAX >= x, ERROR_NON_CONVERTIBLE);
+        require(uint256(type(int256).max) >= x, ERROR_NON_CONVERTIBLE);
         return int256(x);
     }
 

@@ -44,15 +44,15 @@ async function configAmm(
   await amm.setGlobalShutdown(insuranceFund.address);
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
-  if (
-    deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
-    deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
-  ) {
-    await amm.setCap(
-      deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset,
-      deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap
-    );
-  }
+  // if (
+  //   deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
+  //   deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
+  // ) {
+  //   await amm.setCap(
+  //     deployConfig.legacyAmmConfigMap[ammInstanceName].properties.maxHoldingBaseAsset,
+  //     deployConfig.legacyAmmConfigMap[ammInstanceName].properties.openInterestNotionalCap
+  //   );
+  // }
   await amm.setOpen(true);
   await amm.setAdjustable(true);
   await amm.setCanLowerK(true);
@@ -117,7 +117,7 @@ async function main() {
   await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
 
-  const liquidator = await deployLiquidator(ledger, clearingHouse.address, deployConfig.maintenanceMarginRequirement);
+  const liquidator = await deployLiquidator(ledger, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 

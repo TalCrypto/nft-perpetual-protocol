@@ -35,15 +35,15 @@ async function main() {
   const insuranceFund = await InsuranceFund.attach(addresses.insuranceFund);
   await insuranceFund.addAmm(moonBirdsAmm.address);
 
-  if (
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
-    deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
-  ) {
-    await moonBirdsAmm.setCap(
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.maxHoldingBaseAsset,
-      deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.openInterestNotionalCap
-    );
-  }
+  // if (
+  //   deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.maxHoldingBaseAsset.gt(ethers.utils.parseEther("0")) ||
+  //   deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.openInterestNotionalCap.gt(ethers.utils.parseEther("0"))
+  // ) {
+  //   await moonBirdsAmm.setCap(
+  //     deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.maxHoldingBaseAsset,
+  //     deployConfig.legacyAmmConfigMap[AmmInstanceName.MOONBIRDSETH].properties.openInterestNotionalCap
+  //   );
+  // }
 
   await moonBirdsAmm.setOpen(true);
 

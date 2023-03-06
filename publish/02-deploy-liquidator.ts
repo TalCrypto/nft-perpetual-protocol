@@ -15,7 +15,7 @@ async function main() {
   const addresses = getAddresses(network.name);
 
   console.log("deploying liquidator");
-  const liquidator = await deployLiquidator(ledger, addresses.clearingHouse, deployConfig.maintenanceMarginRequirement);
+  const liquidator = await deployLiquidator(ledger, addresses.clearingHouse);
   console.log("deployed liquidator address: ", liquidator.address);
 
   const ClearingHouse = await ethers.getContractFactory("ClearingHouse");

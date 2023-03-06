@@ -1295,184 +1295,184 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
     });
   });
 
-  describe("position upper bound", () => {
-    beforeEach(async () => {
-      await amm.setCap(toFullDigitBN(10), toFullDigitBN(0));
-      await approve(alice, clearingHouse.address, 1000);
-    });
+  // describe("position upper bound", () => {
+  //   beforeEach(async () => {
+  //     await amm.setCap(toFullDigitBN(10), toFullDigitBN(0));
+  //     await approve(alice, clearingHouse.address, 1000);
+  //   });
 
-    it("open a long and a smaller short position under limit", async () => {
-      // position size is 9.9
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(110), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
+  //   it("open a long and a smaller short position under limit", async () => {
+  //     // position size is 9.9
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(110), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-    });
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //   });
 
-    it("open two long positions under limit", async () => {
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
+  //   it("open two long positions under limit", async () => {
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-    });
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(55), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //   });
 
-    it("open a short position and a smaller long under limit", async () => {
-      // position size is -9.89
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
+  //   it("open a short position and a smaller long under limit", async () => {
+  //     // position size is -9.89
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-    });
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //   });
 
-    it("open two short positions under limit", async () => {
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
+  //   it("open two short positions under limit", async () => {
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
 
-      await expect(
-        await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-    });
+  //     await expect(
+  //       await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //   });
 
-    it("change position size upper bound and open positions", async () => {
-      await amm.setCap(toFullDigitBN(20), toFullDigitBN(0));
+  //   it("change position size upper bound and open positions", async () => {
+  //     await amm.setCap(toFullDigitBN(20), toFullDigitBN(0));
 
-      // position size is 20
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-      await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
+  //     // position size is 20
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //     await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
 
-      // position size is -19.05
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(160), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.emit(clearingHouse, "PositionChanged");
-    });
+  //     // position size is -19.05
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(160), toFullDigitBN(10), toFullDigitBN(0), true)
+  //     ).to.emit(clearingHouse, "PositionChanged");
+  //   });
 
-    it("force error, open a long position and over the limit", async () => {
-      // position size is 10.7
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //   it("force error, open a long position and over the limit", async () => {
+  //     // position size is 10.7
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    it("force error, open long positions and over the limit", async () => {
-      // position size is 10.7
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   it("force error, open long positions and over the limit", async () => {
+  //     // position size is 10.7
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(1), toFullDigitBN(0), true);
 
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(60), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    it("force error, open a short position and over the limit", async () => {
-      // position size is -10.5
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(95), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //   it("force error, open a short position and over the limit", async () => {
+  //     // position size is -10.5
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(95), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    it("force error, open short positions and over the limit", async () => {
-      // position size is -10.5
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   it("force error, open short positions and over the limit", async () => {
+  //     // position size is -10.5
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(45), toFullDigitBN(1), toFullDigitBN(0), true);
 
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(1), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    it("force error, open a long and a larger reverse short and over the limit", async () => {
-      // position size is 9.09
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+  //   it("force error, open a long and a larger reverse short and over the limit", async () => {
+  //     // position size is 9.09
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
 
-      // position size would be -10.2, revert
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //     // position size would be -10.2, revert
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    it("force error, open a short and a larger reverse long and over the limit", async () => {
-      // position size is -9.89
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(10), toFullDigitBN(0), true);
+  //   it("force error, open a short and a larger reverse long and over the limit", async () => {
+  //     // position size is -9.89
+  //     await clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(10), toFullDigitBN(0), true);
 
-      // position size would be 10.7, revert
-      await expect(
-        clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(210), toFullDigitBN(10), toFullDigitBN(0), true)
-      ).to.be.revertedWith("CH_OPUB");
-    });
+  //     // position size would be 10.7, revert
+  //     await expect(
+  //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(210), toFullDigitBN(10), toFullDigitBN(0), true)
+  //     ).to.be.revertedWith("CH_OPUB");
+  //   });
 
-    describe("whitelisting", () => {
-      it("add whitelists, and open a long which larger than the limit", async () => {
-        await clearingHouse.setWhitelist(alice.address);
+  //   // describe("whitelisting", () => {
+  //   //   it("add whitelists, and open a long which larger than the limit", async () => {
+  //   //     await clearingHouse.setWhitelist(alice.address);
 
-        // position size is 10.7
-        await expect(
-          clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true)
-        ).to.emit(clearingHouse, "PositionChanged");
-      });
+  //   //     // position size is 10.7
+  //   //     await expect(
+  //   //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true)
+  //   //     ).to.emit(clearingHouse, "PositionChanged");
+  //   //   });
 
-      it("add whitelists, and open a short, a larger reverse long", async () => {
-        await clearingHouse.setWhitelist(alice.address);
-        // position size is -9.89
-        await clearingHouse
-          .connect(alice)
-          .openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(10), toFullDigitBN(0), true);
+  //   //   it("add whitelists, and open a short, a larger reverse long", async () => {
+  //   //     await clearingHouse.setWhitelist(alice.address);
+  //   //     // position size is -9.89
+  //   //     await clearingHouse
+  //   //       .connect(alice)
+  //   //       .openPosition(amm.address, Side.SELL, toFullDigitBN(90), toFullDigitBN(10), toFullDigitBN(0), true);
 
-        // position size would be 10.7, revert
-        await expect(
-          clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(210), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.emit(clearingHouse, "PositionChanged");
-      });
+  //   //     // position size would be 10.7, revert
+  //   //     await expect(
+  //   //       clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(210), toFullDigitBN(10), toFullDigitBN(0), true)
+  //   //     ).to.emit(clearingHouse, "PositionChanged");
+  //   //   });
 
-      it("remove from whitelist, open a long and a larger reverse short", async () => {
-        await clearingHouse.setWhitelist(alice.address);
-        // position size is 10.7
-        await clearingHouse
-          .connect(alice)
-          .openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   //   it("remove from whitelist, open a long and a larger reverse short", async () => {
+  //   //     await clearingHouse.setWhitelist(alice.address);
+  //   //     // position size is 10.7
+  //   //     await clearingHouse
+  //   //       .connect(alice)
+  //   //       .openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true);
 
-        await clearingHouse.setWhitelist("0x0000000000000000000000000000000000000000");
-        // position size would be -14.9, revert
-        await expect(
-          clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.be.revertedWith("CH_OPUB");
-      });
+  //   //     await clearingHouse.setWhitelist("0x0000000000000000000000000000000000000000");
+  //   //     // position size would be -14.9, revert
+  //   //     await expect(
+  //   //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
+  //   //     ).to.be.revertedWith("CH_OPUB");
+  //   //   });
 
-      it("remove from whitelist and add back", async () => {
-        await clearingHouse.setWhitelist(alice.address);
-        // position size is 10.7
-        await clearingHouse
-          .connect(alice)
-          .openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true);
+  //   //   it("remove from whitelist and add back", async () => {
+  //   //     await clearingHouse.setWhitelist(alice.address);
+  //   //     // position size is 10.7
+  //   //     await clearingHouse
+  //   //       .connect(alice)
+  //   //       .openPosition(amm.address, Side.BUY, toFullDigitBN(120), toFullDigitBN(1), toFullDigitBN(0), true);
 
-        await clearingHouse.setWhitelist("0x0000000000000000000000000000000000000000");
-        // position size would be -14.9, revert
-        await expect(
-          clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.be.revertedWith("CH_OPUB");
+  //   //     await clearingHouse.setWhitelist("0x0000000000000000000000000000000000000000");
+  //   //     // position size would be -14.9, revert
+  //   //     await expect(
+  //   //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
+  //   //     ).to.be.revertedWith("CH_OPUB");
 
-        await clearingHouse.setWhitelist(alice.address);
-        await expect(
-          clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
-        ).to.emit(clearingHouse, "PositionChanged");
-      });
-    });
-  });
+  //   //     await clearingHouse.setWhitelist(alice.address);
+  //   //     await expect(
+  //   //       clearingHouse.connect(alice).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true)
+  //   //     ).to.emit(clearingHouse, "PositionChanged");
+  //   //   });
+  //   // });
+  // });
 
   describe("fee calculation", () => {
     beforeEach(async () => {
       await amm.setTollRatio(toFullDigitBN(0.05));
       await amm.setSpreadRatio(toFullDigitBN(0.05));
-      await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+      // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
     });
 
     it("open position when total fee is 10%", async () => {
@@ -1697,7 +1697,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // 10% fee
       await amm.setTollRatio(toFullDigitBN(0.1));
       await amm.setSpreadRatio(toFullDigitBN(0));
-      await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+      // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
     });
 
     describe("open position", () => {

@@ -44,6 +44,10 @@ contract L2PriceFeedMock is IPriceFeed {
         return latestTimestamp;
     }
 
+    function decimals(bytes32) external pure returns (uint8) {
+        return 18;
+    }
+
     event PriceFeedDataSet(bytes32 key, uint256 price, uint256 timestamp, uint256 roundId);
 
     function setLatestData(

@@ -43,7 +43,7 @@ interface IAmm {
             uint256 tollFee
         );
 
-    function repegCheck(uint256 budget, bool adjustK)
+    function repegCheck(uint256 budget)
         external
         returns (
             bool,
@@ -61,8 +61,7 @@ interface IAmm {
         returns (
             int256 premiumFractionLong,
             int256 premiumFractionShort,
-            int256 fundingPayment,
-            int256 uncappedFundingPayment
+            int256 fundingPayment
         );
 
     // function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
@@ -137,9 +136,9 @@ interface IAmm {
 
     function getCumulativeNotional() external view returns (int256);
 
-    function getMaxHoldingBaseAsset() external view returns (uint256);
+    // function getMaxHoldingBaseAsset() external view returns (uint256);
 
-    function getOpenInterestNotionalCap() external view returns (uint256);
+    // function getOpenInterestNotionalCap() external view returns (uint256);
 
     function getBaseAssetDelta() external view returns (int256);
 

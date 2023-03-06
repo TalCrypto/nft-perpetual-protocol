@@ -4,14 +4,14 @@ pragma solidity 0.8.9;
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { IntMath } from "./utils/IntMath.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 
-contract Amm is IAmm, OwnableUpgradeable, BlockContext {
+contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
 
@@ -24,15 +24,11 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         QUOTE_IN,
         QUOTE_OUT
     }
-    // internal usage
-    enum TwapCalcOption {
-        RESERVE_ASSET,
-        INPUT_ASSET
-    }
 
     struct ReserveSnapshot {
         uint256 quoteAssetReserve;
         uint256 baseAssetReserve;
+        uint256 cumulativeTWPBefore; // cumulative time weighted price of market before the current block, used for TWAP calculation
         uint256 timestamp;
         uint256 blockNumber;
     }
@@ -46,8 +42,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     }
 
     struct TwapPriceCalcParams {
-        TwapCalcOption opt;
-        uint256 snapshotIndex;
+        uint16 snapshotIndex;
         TwapInputAsset asset;
     }
 
@@ -75,10 +70,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     uint256 public longPositionSize;
     uint256 public shortPositionSize;
 
-    // latest funding rate
-    int256 public fundingRateLong;
-    int256 public fundingRateShort;
-
     int256 private cumulativeNotional;
 
     uint256 private settlementPrice;
@@ -90,15 +81,19 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     // owner can update
     uint256 public tollRatio;
     uint256 public spreadRatio;
-    uint256 private maxHoldingBaseAsset;
-    uint256 private openInterestNotionalCap;
+    // uint256 private maxHoldingBaseAsset;
+    // uint256 private openInterestNotionalCap;
 
     uint256 public spotPriceTwapInterval;
     uint256 public fundingPeriod;
     uint256 public fundingBufferPeriod;
     uint256 public nextFundingTime;
     bytes32 public priceFeedKey;
-    ReserveSnapshot[] public reserveSnapshots;
+    // this storage variable is used for TWAP calcualtion
+    // let's use 15 mins and 3 hr twap as example
+    // if the price is being updated 1 secs, then needs 900 and 10800 historical data for 15mins and 3hr twap.
+    ReserveSnapshot[65536] public reserveSnapshots; // 2**16=65536
+    uint16 public latestReserveSnapshotIndex;
 
     address private counterParty;
     address public globalShutdown;
@@ -173,6 +168,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 _quoteAsset != address(0),
             "AMM_III"
         ); //initial with invalid input
+        _requireRatio(_fluctuationLimitRatio);
+        _requireRatio(_tollRatio);
+        _requireRatio(_spreadRatio);
+        _requireRatio(_tradeLimitRatio);
+        (bool success, bytes memory data) = _quoteAsset.call(abi.encodeWithSelector(bytes4(keccak256("decimals()"))));
+        require(success && abi.decode(data, (uint8)) == 18, "AMM_NMD"); // not match decimal
+        require(_priceFeed.decimals(_priceFeedKey) == 18, "AMM_NMD"); // not match decimal
+
         __Ownable_init();
 
         repegPriceGapRatio = 0.05 ether; // 5%
@@ -191,7 +194,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         priceFeedKey = _priceFeedKey;
         quoteAsset = IERC20(_quoteAsset);
         priceFeed = _priceFeed;
-        reserveSnapshots.push(ReserveSnapshot(quoteAssetReserve, baseAssetReserve, _blockTimestamp(), _blockNumber()));
+        reserveSnapshots[0] = ReserveSnapshot(quoteAssetReserve, baseAssetReserve, 0, _blockTimestamp(), _blockNumber());
         emit ReserveSnapshotted(quoteAssetReserve, baseAssetReserve, _blockTimestamp());
     }
 
@@ -310,7 +313,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @return premiumFractionLong premium fraction for long of this period in 18 digits
      * @return premiumFractionShort premium fraction for short of this period in 18 digits
      * @return fundingPayment profit of insurance fund in funding payment
-     * @return uncappedFundingPayment imbalance cost of funding payment without cap
      */
     function settleFunding(uint256 _cap)
         external
@@ -320,8 +322,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         returns (
             int256 premiumFractionLong,
             int256 premiumFractionShort,
-            int256 fundingPayment,
-            int256 uncappedFundingPayment
+            int256 fundingPayment
         )
     {
         require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
@@ -332,8 +333,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         // timeFraction = fundingPeriod(3 hour) / 1 day
         // premiumFraction = premium * timeFraction
         uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        int256 premium = getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt();
-        int256 premiumFraction = (premium * fundingPeriod.toInt()) / int256(1 days);
+        int256 premiumFraction = ((getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt()) * fundingPeriod.toInt()) /
+            int256(1 days);
         int256 positionSize = getBaseAssetDelta();
         // funding payment = premium fraction * position
         // eg. if alice takes 10 long position, totalPositionSize = 10
@@ -352,8 +353,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
         if (normalFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is revenue and daynamic rate is available, system takes profit partially
-            uncappedFundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
-            fundingPayment = uncappedFundingPayment;
+            fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
             int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
             premiumFractionLong =
                 int256(
@@ -375,33 +375,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 sign;
         } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
             // when the normal funding payment is cost and daynamic rate is available, system covers partially
-            uncappedFundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
+            fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
             int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
-            if (uint256(-uncappedFundingPayment) > _cap) {
-                // when the funding payment that system covers is greater than the cap, then cap it
-                fundingPayment = int256(_cap) * (-1);
-                // fundingPayment = normalFundingPayment * newCoverRate => newCoverRate = fundingPayment / normalFundingPayment
-                int256 newCoverRate = fundingPayment.divD(normalFundingPayment);
-                premiumFractionLong =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_shortPositionSize * 2 + positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
-                premiumFractionShort =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_longPositionSize * 2 - positionSize.mulD(newCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
+            if (uint256(-fundingPayment) > _cap) {
+                // when the funding payment that system covers is greater than the cap, then not pay funding and shutdown amm
+                fundingPayment = 0;
+                _implShutdown();
             } else {
-                fundingPayment = uncappedFundingPayment;
                 premiumFractionLong =
                     int256(
                         Math.mulDiv(
@@ -422,24 +402,23 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     sign;
             }
         } else {
-            uncappedFundingPayment = normalFundingPayment;
-            // if expense of funding payment is greater than cap amount, then cap it
-            if (uncappedFundingPayment < 0 && uint256(-uncappedFundingPayment) > _cap) {
-                fundingPayment = int256(_cap) * (-1);
-                premiumFractionLong = fundingPayment.divD(positionSize);
-                premiumFractionShort = premiumFractionLong;
+            fundingPayment = normalFundingPayment;
+            // if expense of funding payment is greater than cap amount, then not pay funding and shutdown amm
+            if (fundingPayment < 0 && uint256(-fundingPayment) > _cap) {
+                fundingPayment = 0;
+                _implShutdown();
             } else {
-                fundingPayment = uncappedFundingPayment;
                 premiumFractionLong = premiumFraction;
                 premiumFractionShort = premiumFraction;
             }
         }
-
-        // update funding rate = premiumFraction / twapIndexPrice
-        fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
-        fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
         // positive fundingPayment is revenue to system, otherwise cost to system
-        emit FundingRateUpdated(fundingRateLong, fundingRateShort, underlyingPrice, fundingPayment);
+        emit FundingRateUpdated(
+            premiumFractionLong.divD(underlyingPrice.toInt()),
+            premiumFractionShort.divD(underlyingPrice.toInt()),
+            underlyingPrice,
+            fundingPayment
+        );
 
         // in order to prevent multiple funding settlement during very short time after network congestion
         uint256 minNextValidFundingTime = _blockTimestamp() + fundingBufferPeriod;
@@ -454,16 +433,14 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
     /**
      * @notice check if repeg can be done and get the cost and reserves of formulaic repeg
      * @param _budget the budget available for repeg
-     * @param _adjustK if true, repeg curve with adjusting K
      * @return isAdjustable if true, curve can be adjustable by repeg
      * @return cost the amount of cost of repeg, negative means profit of system
      * @return newQuoteAssetReserve the new quote asset reserve by repeg
      * @return newBaseAssetReserve the new base asset reserve by repeg
      */
-    function repegCheck(uint256 _budget, bool _adjustK)
+    function repegCheck(uint256 _budget)
         external
         override
-        onlyOpen
         onlyCounterParty
         returns (
             bool isAdjustable,
@@ -472,19 +449,19 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             uint256 newBaseAssetReserve
         )
     {
-        uint256 _repegFlag = repegFlag;
-        (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
-        if (result) {
-            _repegFlag += 1;
-        } else {
-            _repegFlag = 0;
-        }
-        if (adjustable) {
+        if (open && adjustable) {
+            uint256 _repegFlag = repegFlag;
+            (bool result, uint256 marketPrice, uint256 oraclePrice) = isOverSpreadLimit();
+            if (result) {
+                _repegFlag += 1;
+            } else {
+                _repegFlag = 0;
+            }
             int256 _positionSize = getBaseAssetDelta();
             uint256 targetPrice;
             if (_positionSize == 0) {
                 targetPrice = oraclePrice;
-            } else if (open && _repegFlag >= MIN_NUM_REPEG_FLAG) {
+            } else if (_repegFlag >= MIN_NUM_REPEG_FLAG) {
                 targetPrice = oraclePrice > marketPrice
                     ? oraclePrice.mulD(1 ether - repegPriceGapRatio)
                     : oraclePrice.mulD(1 ether + repegPriceGapRatio);
@@ -506,25 +483,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                     newBaseAssetReserve
                 );
                 if (cost > 0 && uint256(cost) > _budget) {
-                    if (_adjustK && canLowerK) {
-                        // scale down K by 1% that returns a profit of clearing house
-                        newQuoteAssetReserve = (_quoteAssetReserve * 99) / 100;
-                        newBaseAssetReserve = (_baseAssetReserve * 99) / 100;
-                        cost = AmmMath.calcCostForAdjustReserves(
-                            _quoteAssetReserve,
-                            _baseAssetReserve,
-                            _positionSize,
-                            newQuoteAssetReserve,
-                            newBaseAssetReserve
-                        );
-                        isAdjustable = true;
-                    }
+                    isAdjustable = false;
                 } else {
                     isAdjustable = true;
                 }
             }
+            repegFlag = uint8(_repegFlag);
         }
-        repegFlag = uint8(_repegFlag);
     }
 
     /**
@@ -555,6 +520,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _counterParty address of counter party
      */
     function setCounterParty(address _counterParty) external onlyOwner {
+        _requireNonZeroAddress(_counterParty);
         counterParty = _counterParty;
     }
 
@@ -564,6 +530,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _globalShutdown address of `globalShutdown`
      */
     function setGlobalShutdown(address _globalShutdown) external onlyOwner {
+        _requireNonZeroAddress(_globalShutdown);
         globalShutdown = _globalShutdown;
     }
 
@@ -573,6 +540,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _fluctuationLimitRatio fluctuation limit rate in 18 digits, 0 means skip the checking
      */
     function setFluctuationLimitRatio(uint256 _fluctuationLimitRatio) external onlyOwner {
+        _requireRatio(_fluctuationLimitRatio);
         fluctuationLimitRatio = _fluctuationLimitRatio;
     }
 
@@ -582,7 +550,8 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _interval time interval in seconds
      */
     function setSpotPriceTwapInterval(uint256 _interval) external onlyOwner {
-        require(_interval != 0, "AMM_ZI"); //zero interval
+        require(_interval != 0, "AMM_ZI"); // zero interval
+        require(_interval <= 24 * 3600, "AMM_GTO"); // greater than 1 day
         spotPriceTwapInterval = _interval;
     }
 
@@ -626,6 +595,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _tollRatio new toll ratio in 18 digits
      */
     function setTollRatio(uint256 _tollRatio) external onlyOwner {
+        _requireRatio(_tollRatio);
         tollRatio = _tollRatio;
     }
 
@@ -635,20 +605,21 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _spreadRatio new toll spread in 18 digits
      */
     function setSpreadRatio(uint256 _spreadRatio) external onlyOwner {
+        _requireRatio(_spreadRatio);
         spreadRatio = _spreadRatio;
     }
 
-    /**
-     * @notice set new cap during guarded period, which is max position size that traders can hold
-     * @dev only owner can call. assume this will be removes soon once the guarded period has ended. must be set before opening amm
-     * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
-     * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
-     */
-    function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
-        maxHoldingBaseAsset = _maxHoldingBaseAsset;
-        openInterestNotionalCap = _openInterestNotionalCap;
-        emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
-    }
+    // /**
+    //  * @notice set new cap during guarded period, which is max position size that traders can hold
+    //  * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
+    //  * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
+    //  * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
+    //  */
+    // function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
+    //     maxHoldingBaseAsset = _maxHoldingBaseAsset;
+    //     openInterestNotionalCap = _openInterestNotionalCap;
+    //     emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
+    // }
 
     /**
      * @notice set priceFee address
@@ -656,20 +627,23 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @param _priceFeed new price feed for this AMM
      */
     function setPriceFeed(IPriceFeed _priceFeed) external onlyOwner {
-        require(address(_priceFeed) != address(0), "AMM_ZAPF"); //zero address of price feed
+        _requireNonZeroAddress(address(_priceFeed));
         priceFeed = _priceFeed;
         emit PriceFeedUpdated(address(priceFeed));
     }
 
     function setRepegPriceGapRatio(uint256 _ratio) external onlyOwner {
+        _requireRatio(_ratio);
         repegPriceGapRatio = _ratio;
     }
 
     function setFundingCostCoverRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
         fundingCostCoverRate = _rate;
     }
 
     function setFundingRevenueTakeRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
         fundingRevenueTakeRate = _rate;
     }
 
@@ -709,16 +683,18 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
             if (scaleNum == scaleDenom || scaleDenom == 0 || scaleNum == 0) {
                 isAdjustable = false;
             } else {
-                isAdjustable = true;
                 newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, scaleNum, scaleDenom);
                 newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
-                cost = AmmMath.calcCostForAdjustReserves(
-                    _quoteAssetReserve,
-                    _baseAssetReserve,
-                    _positionSize,
-                    newQuoteAssetReserve,
-                    newBaseAssetReserve
-                );
+                isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                if (isAdjustable) {
+                    cost = AmmMath.calcCostForAdjustReserves(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        newQuoteAssetReserve,
+                        newBaseAssetReserve
+                    );
+                }
             }
         }
     }
@@ -812,7 +788,7 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
      * @notice get twap price
      */
     function getTwapPrice(uint256 _intervalInSeconds) public view returns (uint256) {
-        return _implGetReserveTwapPrice(_intervalInSeconds);
+        return _calcTwap(_intervalInSeconds);
     }
 
     /**
@@ -823,10 +799,6 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return (quoteAssetReserve, baseAssetReserve);
     }
 
-    function getSnapshotLen() public view returns (uint256) {
-        return reserveSnapshots.length;
-    }
-
     function getCumulativeNotional() public view override returns (int256) {
         return cumulativeNotional;
     }
@@ -835,18 +807,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         return settlementPrice;
     }
 
-    // // DEPRECATED only for backward compatibility before we upgrade ClearingHouse
-    // function getBaseAssetDeltaThisFundingPeriod() external view override returns (int256) {
-    //     return baseAssetDeltaThisFundingPeriod;
+    // function getMaxHoldingBaseAsset() public view override returns (uint256) {
+    //     return maxHoldingBaseAsset;
     // }
 
-    function getMaxHoldingBaseAsset() public view override returns (uint256) {
-        return maxHoldingBaseAsset;
-    }
-
-    function getOpenInterestNotionalCap() public view override returns (uint256) {
-        return openInterestNotionalCap;
-    }
+    // function getOpenInterestNotionalCap() public view override returns (uint256) {
+    //     return openInterestNotionalCap;
+    // }
 
     function getBaseAssetDelta() public view override returns (int256) {
         return longPositionSize.toInt() - shortPositionSize.toInt();
@@ -972,13 +939,27 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
 
     function _addReserveSnapshot() internal {
         uint256 currentBlock = _blockNumber();
-        ReserveSnapshot storage latestSnapshot = reserveSnapshots[reserveSnapshots.length - 1];
+        uint16 _latestReserveSnapshotIndex = latestReserveSnapshotIndex;
+        ReserveSnapshot storage latestSnapshot = reserveSnapshots[_latestReserveSnapshotIndex];
         // update values in snapshot if in the same block
         if (currentBlock == latestSnapshot.blockNumber) {
             latestSnapshot.quoteAssetReserve = quoteAssetReserve;
             latestSnapshot.baseAssetReserve = baseAssetReserve;
         } else {
-            reserveSnapshots.push(ReserveSnapshot(quoteAssetReserve, baseAssetReserve, _blockTimestamp(), currentBlock));
+            // _latestReserveSnapshotIndex is uint16, so overflow means 65535+1=0
+            unchecked {
+                _latestReserveSnapshotIndex++;
+            }
+            latestReserveSnapshotIndex = _latestReserveSnapshotIndex;
+            reserveSnapshots[_latestReserveSnapshotIndex] = ReserveSnapshot(
+                quoteAssetReserve,
+                baseAssetReserve,
+                latestSnapshot.cumulativeTWPBefore +
+                    latestSnapshot.quoteAssetReserve.divD(latestSnapshot.baseAssetReserve) *
+                    (_blockTimestamp() - latestSnapshot.timestamp),
+                _blockTimestamp(),
+                currentBlock
+            );
         }
         emit ReserveSnapshotted(quoteAssetReserve, baseAssetReserve, _blockTimestamp());
     }
@@ -1026,47 +1007,30 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         uint256 _interval
     ) internal view returns (uint256) {
         TwapPriceCalcParams memory params;
-        params.opt = TwapCalcOption.INPUT_ASSET;
-        params.snapshotIndex = reserveSnapshots.length - 1;
+        params.snapshotIndex = latestReserveSnapshotIndex;
         params.asset.dir = _dirOfQuote;
         params.asset.assetAmount = _assetAmount;
         params.asset.inOrOut = _inOut;
-        return _calcTwap(params, _interval);
+        return _calcAssetTwap(params, _interval);
     }
 
-    function _implGetReserveTwapPrice(uint256 _interval) internal view returns (uint256) {
-        TwapPriceCalcParams memory params;
-        params.opt = TwapCalcOption.RESERVE_ASSET;
-        params.snapshotIndex = reserveSnapshots.length - 1;
-        return _calcTwap(params, _interval);
-    }
-
-    function _calcTwap(TwapPriceCalcParams memory _params, uint256 _interval) internal view returns (uint256) {
-        uint256 currentPrice = _getPriceWithSpecificSnapshot(_params);
-        if (_interval == 0) {
-            return currentPrice;
-        }
-
+    function _calcAssetTwap(TwapPriceCalcParams memory _params, uint256 _interval) internal view returns (uint256) {
         uint256 baseTimestamp = _blockTimestamp() - _interval;
-        ReserveSnapshot memory currentSnapshot = reserveSnapshots[_params.snapshotIndex];
-        // return the latest snapshot price directly
-        // if only one snapshot or the timestamp of latest snapshot is earlier than asking for
-        if (reserveSnapshots.length == 1 || currentSnapshot.timestamp <= baseTimestamp) {
-            return currentPrice;
-        }
-
-        uint256 previousTimestamp = currentSnapshot.timestamp;
-        uint256 period = _blockTimestamp() - previousTimestamp;
-        uint256 weightedPrice = currentPrice * period;
-        while (true) {
-            // if snapshot history is too short
-            if (_params.snapshotIndex == 0) {
-                return weightedPrice / period;
-            }
-
-            _params.snapshotIndex = _params.snapshotIndex - 1;
+        uint256 previousTimestamp = _blockTimestamp();
+        uint256 i;
+        ReserveSnapshot memory currentSnapshot;
+        uint256 currentPrice;
+        uint256 period;
+        uint256 weightedPrice;
+        uint256 timeFraction;
+        // runs at most 900, due to have 15mins interval
+        for (i; i < 65536; ) {
             currentSnapshot = reserveSnapshots[_params.snapshotIndex];
-            currentPrice = _getPriceWithSpecificSnapshot(_params);
+            // not enough history
+            if (currentSnapshot.timestamp == 0) {
+                return period == 0 ? currentPrice : weightedPrice / period;
+            }
+            currentPrice = _getAssetPriceWithSpecificSnapshot(currentSnapshot, _params);
 
             // check if current round timestamp is earlier than target timestamp
             if (currentSnapshot.timestamp <= baseTimestamp) {
@@ -1077,53 +1041,133 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
                 weightedPrice = weightedPrice + (currentPrice * (previousTimestamp - baseTimestamp));
                 break;
             }
-
-            uint256 timeFraction = previousTimestamp - currentSnapshot.timestamp;
+            timeFraction = previousTimestamp - currentSnapshot.timestamp;
             weightedPrice = weightedPrice + (currentPrice * timeFraction);
             period = period + timeFraction;
             previousTimestamp = currentSnapshot.timestamp;
+            unchecked {
+                _params.snapshotIndex = _params.snapshotIndex - 1;
+                i++;
+            }
         }
-        return weightedPrice / _interval;
+        // if snapshot history is too short
+        if (i == 256) {
+            return weightedPrice / period;
+        } else {
+            return weightedPrice / _interval;
+        }
     }
 
-    function _getPriceWithSpecificSnapshot(TwapPriceCalcParams memory params) internal view virtual returns (uint256) {
-        ReserveSnapshot memory snapshot = reserveSnapshots[params.snapshotIndex];
-
-        // RESERVE_ASSET means price comes from quoteAssetReserve/baseAssetReserve
-        // INPUT_ASSET means getInput/Output price with snapshot's reserve
-        if (params.opt == TwapCalcOption.RESERVE_ASSET) {
-            return snapshot.quoteAssetReserve.divD(snapshot.baseAssetReserve);
-        } else if (params.opt == TwapCalcOption.INPUT_ASSET) {
-            if (params.asset.assetAmount == 0) {
-                return 0;
-            }
-            if (params.asset.inOrOut == QuoteAssetDir.QUOTE_IN) {
-                return
-                    getQuotePriceWithReserves(
-                        params.asset.dir,
-                        params.asset.assetAmount,
-                        snapshot.quoteAssetReserve,
-                        snapshot.baseAssetReserve
-                    );
-            } else if (params.asset.inOrOut == QuoteAssetDir.QUOTE_OUT) {
-                return
-                    getBasePriceWithReserves(
-                        params.asset.dir,
-                        params.asset.assetAmount,
-                        snapshot.quoteAssetReserve,
-                        snapshot.baseAssetReserve
-                    );
-            }
+    function _getAssetPriceWithSpecificSnapshot(ReserveSnapshot memory snapshot, TwapPriceCalcParams memory params)
+        internal
+        pure
+        virtual
+        returns (uint256)
+    {
+        if (params.asset.assetAmount == 0) {
+            return 0;
+        }
+        if (params.asset.inOrOut == QuoteAssetDir.QUOTE_IN) {
+            return
+                getQuotePriceWithReserves(
+                    params.asset.dir,
+                    params.asset.assetAmount,
+                    snapshot.quoteAssetReserve,
+                    snapshot.baseAssetReserve
+                );
+        } else if (params.asset.inOrOut == QuoteAssetDir.QUOTE_OUT) {
+            return
+                getBasePriceWithReserves(params.asset.dir, params.asset.assetAmount, snapshot.quoteAssetReserve, snapshot.baseAssetReserve);
         }
         revert("AMM_NOMP"); //not supported option for market price for a specific snapshot
     }
 
+    function _calcTwap(uint256 interval) internal view returns (uint256) {
+        ReserveSnapshot memory latestSnapshot = reserveSnapshots[latestReserveSnapshotIndex];
+        uint256 currentTimestamp = _blockTimestamp();
+        uint256 targetTimestamp = currentTimestamp - interval;
+        ReserveSnapshot memory beforeOrAt = _getBeforeOrAtReserveSnapshots(targetTimestamp);
+        uint256 currentCumulativePrice = latestSnapshot.cumulativeTWPBefore +
+            latestSnapshot.quoteAssetReserve.divD(latestSnapshot.baseAssetReserve) *
+            (currentTimestamp - latestSnapshot.timestamp);
+
+        //
+        //                   beforeOrAt
+        //      ------------------+-------------+---------------
+        //                <-------|             |
+        // case 1       targetTimestamp         |
+        // case 2                          targetTimestamp
+        //
+        uint256 targetCumulativePrice;
+        // case1. not enough historical data or just enough (`==` case)
+        if (targetTimestamp <= beforeOrAt.timestamp) {
+            targetTimestamp = beforeOrAt.timestamp;
+            targetCumulativePrice = beforeOrAt.cumulativeTWPBefore;
+        }
+        // case2. enough historical data
+        else {
+            uint256 targetTimeDelta = targetTimestamp - beforeOrAt.timestamp;
+            targetCumulativePrice =
+                beforeOrAt.cumulativeTWPBefore +
+                beforeOrAt.quoteAssetReserve.divD(beforeOrAt.baseAssetReserve) *
+                targetTimeDelta;
+        }
+        if (currentTimestamp == targetTimestamp) {
+            return beforeOrAt.quoteAssetReserve.divD(beforeOrAt.baseAssetReserve);
+        } else {
+            return (currentCumulativePrice - targetCumulativePrice) / (currentTimestamp - targetTimestamp);
+        }
+    }
+
+    /**
+     * @dev searches the reserve snapshot array and returns the snapshot of which timestamp is just before or equals to the target timestamp
+     * if no such one exists, returns the oldest snapshot
+     * time complexity O(log n) due to binary search algorithm, max len of array is 2**16, so max loops is 16
+     */
+    function _getBeforeOrAtReserveSnapshots(uint256 targetTimestamp) internal view returns (ReserveSnapshot memory beforeOrAt) {
+        uint256 _latestReserveSnapshotIndex = uint256(latestReserveSnapshotIndex);
+        uint256 low = _latestReserveSnapshotIndex + 1;
+        uint256 high = _latestReserveSnapshotIndex | (uint256(1) << 16);
+        uint256 mid;
+        if (reserveSnapshots[uint16(low)].timestamp == 0) {
+            low = 0;
+            high = high ^ (uint256(1) << 16);
+        }
+
+        while (low < high) {
+            unchecked {
+                mid = (low + high) / 2;
+            }
+
+            // Note that mid will always be strictly less than high (i.e. it will be a valid array index)
+            // because it is derived from integer division.
+            if (reserveSnapshots[uint16(mid)].timestamp > targetTimestamp) {
+                high = mid;
+            } else {
+                unchecked {
+                    low = mid + 1;
+                }
+            }
+        }
+
+        if (low > 0 && low != _latestReserveSnapshotIndex + 1 && reserveSnapshots[uint16(low)].timestamp > targetTimestamp) {
+            beforeOrAt = reserveSnapshots[uint16(low - 1)];
+        } else {
+            beforeOrAt = reserveSnapshots[uint16(low)];
+        }
+    }
+
     function _getPriceBoundariesOfLastBlock() internal view returns (uint256, uint256) {
-        uint256 len = reserveSnapshots.length;
-        ReserveSnapshot memory latestSnapshot = reserveSnapshots[len - 1];
-        // if the latest snapshot is the same as current block, get the previous one
-        if (latestSnapshot.blockNumber == _blockNumber() && len > 1) {
-            latestSnapshot = reserveSnapshots[len - 2];
+        uint16 _latestReserveSnapshotIndex = latestReserveSnapshotIndex;
+        ReserveSnapshot memory latestSnapshot = reserveSnapshots[_latestReserveSnapshotIndex];
+        // if the latest snapshot is the same as current block and it is not the initial snapshot, get the previous one
+        if (latestSnapshot.blockNumber == _blockNumber()) {
+            // underflow means 0-1=65535
+            unchecked {
+                _latestReserveSnapshotIndex--;
+            }
+            if (reserveSnapshots[_latestReserveSnapshotIndex].timestamp != 0)
+                latestSnapshot = reserveSnapshots[_latestReserveSnapshotIndex];
         }
 
         uint256 lastPrice = latestSnapshot.quoteAssetReserve.divD(latestSnapshot.baseAssetReserve);
@@ -1192,5 +1236,13 @@ contract Amm is IAmm, OwnableUpgradeable, BlockContext {
         }
         open = false;
         emit Shutdown(settlementPrice);
+    }
+
+    function _requireRatio(uint256 _ratio) private pure {
+        require(_ratio <= 1 ether, "AMM_IR"); //invalid ratio
+    }
+
+    function _requireNonZeroAddress(address _input) private pure {
+        require(_input != address(0), "AMM_ZA");
     }
 }

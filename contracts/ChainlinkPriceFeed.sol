@@ -2,11 +2,11 @@
 pragma solidity 0.8.9;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 
-contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
+contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext {
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -72,7 +72,6 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view override returns (uint256) {
         AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
         _requireNonEmptyAddress(address(aggregator));
-        require(_interval != 0, "CL_ZIT"); //zero interval for twap
 
         // 3 different timestamps, `previous`, `current`, `target`
         // `base` = now - _interval
@@ -89,20 +88,25 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         //         base           current previous now
 
         (uint80 round, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData(aggregator);
-        uint256 baseTimestamp = _blockTimestamp() - _interval;
-        // if latest updated timestamp is earlier than target timestamp, return the latest price.
-        if (latestTimestamp < baseTimestamp || round == 0) {
+        uint256 timestamp = _blockTimestamp();
+        uint256 baseTimestamp = timestamp - _interval;
+        // if the latest timestamp <= base timestamp, which means there's no new price, return the latest price
+        if (_interval == 0 || round == 0 || latestTimestamp <= baseTimestamp) {
             return latestPrice;
         }
 
         // rounds are like snapshots, latestRound means the latest price snapshot. follow chainlink naming
         uint256 previousTimestamp = latestTimestamp;
-        uint256 cumulativeTime = _blockTimestamp() - previousTimestamp;
+        uint256 cumulativeTime = timestamp - previousTimestamp;
         uint256 weightedPrice = latestPrice * cumulativeTime;
+        uint256 timeFraction;
+        uint64 aggregatorRoundId;
         while (true) {
-            if (round == 0) {
-                // if cumulative time is less than requested interval, return current twap price
-                return weightedPrice / cumulativeTime;
+            aggregatorRoundId = uint64(round); // The id starts at 1
+            // if this round is the start of new aggregator, then don't get the previous data
+            if (aggregatorRoundId == 1) {
+                // to prevent from div 0 error, return the latest price if `cumulativeTime == 0`
+                return cumulativeTime == 0 ? latestPrice : weightedPrice / cumulativeTime;
             }
 
             round = round - 1;
@@ -117,13 +121,12 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
                 weightedPrice = weightedPrice + currentPrice * (previousTimestamp - baseTimestamp);
                 break;
             }
-
-            uint256 timeFraction = previousTimestamp - currentTimestamp;
+            timeFraction = previousTimestamp - currentTimestamp;
             weightedPrice = weightedPrice + currentPrice * timeFraction;
             cumulativeTime = cumulativeTime + timeFraction;
             previousTimestamp = currentTimestamp;
         }
-        return weightedPrice / _interval;
+        return weightedPrice == 0 ? latestPrice : weightedPrice / _interval;
     }
 
     function getPreviousPrice(bytes32 _priceFeedKey, uint256 _numOfRoundBack) external view override returns (uint256) {
@@ -131,7 +134,8 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         _requireNonEmptyAddress(address(aggregator));
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
-        require(round > 0 && round >= _numOfRoundBack, "CL_NEH"); //Not enough history
+        uint64 aggregatorRoundId = uint64(round); // starts at 1
+        require(aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , , ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return uint256(previousPrice);
@@ -142,10 +146,17 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         _requireNonEmptyAddress(address(aggregator));
 
         (uint80 round, , , , ) = aggregator.latestRoundData();
-        require(round > 0 && round >= _numOfRoundBack, "CL_NEH"); //Not enough history
+        uint64 aggregatorRoundId = uint64(round); // starts at 1
+        require(aggregatorRoundId > _numOfRoundBack, "CL_NEH"); //Not enough history
         (, int256 previousPrice, , uint256 previousTimestamp, ) = aggregator.getRoundData(round - uint80(_numOfRoundBack));
         _requirePositivePrice(previousPrice);
         return previousTimestamp;
+    }
+
+    function decimals(bytes32 _priceFeedKey) external view override returns (uint8) {
+        AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
+        _requireNonEmptyAddress(address(aggregator));
+        return aggregator.decimals();
     }
 
     //
@@ -163,7 +174,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     {
         (uint80 round, int256 latestPrice, , uint256 latestTimestamp, ) = _aggregator.latestRoundData();
         finalPrice = uint256(latestPrice);
-        if (latestPrice < 0) {
+        if (latestPrice <= 0) {
             _requireEnoughHistory(round);
             (round, finalPrice, latestTimestamp) = _getRoundData(_aggregator, round - 1);
         }
@@ -180,7 +191,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
         )
     {
         (uint80 round, int256 latestPrice, , uint256 latestTimestamp, ) = _aggregator.getRoundData(_round);
-        while (latestPrice < 0) {
+        while (latestPrice <= 0) {
             _requireEnoughHistory(round);
             round = round - 1;
             (, latestPrice, , latestTimestamp, ) = _aggregator.getRoundData(round);
@@ -197,7 +208,8 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeable, BlockContext {
     }
 
     function _requireEnoughHistory(uint80 _round) internal pure {
-        require(_round > 0, "CL_NEH"); //not enough history
+        uint64 aggregatorRoundId = uint64(_round); // starts at 1
+        require(aggregatorRoundId > 1, "CL_NEH"); //not enough history
     }
 
     function _requirePositivePrice(int256 _price) internal pure {

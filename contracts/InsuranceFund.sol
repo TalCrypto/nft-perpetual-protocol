@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 
-contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, ReentrancyGuardUpgradeable {
+contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
     using TransferHelper for IERC20;
 
@@ -74,23 +74,23 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
         }
     }
 
-    /**
-     * @dev only owner can call. no need to call
-     * @param _amm IAmm address
-     */
-    function removeAmm(IAmm _amm) external onlyOwner {
-        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
-        ammMap[address(_amm)] = false;
-        uint256 ammLength = amms.length;
-        for (uint256 i = 0; i < ammLength; i++) {
-            if (amms[i] == _amm) {
-                amms[i] = amms[ammLength - 1];
-                amms.pop();
-                emit AmmRemoved(address(_amm));
-                break;
-            }
-        }
-    }
+    // /**
+    //  * @dev only owner can call. no need to call
+    //  * @param _amm IAmm address
+    //  */
+    // function removeAmm(IAmm _amm) external onlyOwner {
+    //     require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
+    //     ammMap[address(_amm)] = false;
+    //     uint256 ammLength = amms.length;
+    //     for (uint256 i = 0; i < ammLength; i++) {
+    //         if (amms[i] == _amm) {
+    //             amms[i] = amms[ammLength - 1];
+    //             amms.pop();
+    //             emit AmmRemoved(address(_amm));
+    //             break;
+    //         }
+    //     }
+    // }
 
     /**
      * @notice shutdown all Amms when fatal error happens
@@ -103,28 +103,28 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeable, BlockContext, Reen
         emit ShutdownAllAmms(block.number);
     }
 
-    function removeToken(IERC20 _token) external onlyOwner {
-        require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
+    // function removeToken(IERC20 _token) external onlyOwner {
+    //     require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
 
-        quoteTokenMap[address(_token)] = false;
-        uint256 quoteTokensLength = getQuoteTokenLength();
-        for (uint256 i = 0; i < quoteTokensLength; i++) {
-            if (quoteTokens[i] == _token) {
-                if (i < quoteTokensLength - 1) {
-                    quoteTokens[i] = quoteTokens[quoteTokensLength - 1];
-                }
-                quoteTokens.pop();
-                break;
-            }
-        }
+    //     quoteTokenMap[address(_token)] = false;
+    //     uint256 quoteTokensLength = getQuoteTokenLength();
+    //     for (uint256 i = 0; i < quoteTokensLength; i++) {
+    //         if (quoteTokens[i] == _token) {
+    //             if (i < quoteTokensLength - 1) {
+    //                 quoteTokens[i] = quoteTokens[quoteTokensLength - 1];
+    //             }
+    //             quoteTokens.pop();
+    //             break;
+    //         }
+    //     }
 
-        // transfer the quoteToken to owner.
-        if (balanceOf(_token) > 0) {
-            _token.safeTransfer(owner(), balanceOf(_token));
-        }
+    //     // transfer the quoteToken to owner.
+    //     if (balanceOf(_token) > 0) {
+    //         _token.safeTransfer(owner(), balanceOf(_token));
+    //     }
 
-        emit TokenRemoved(address(_token));
-    }
+    //     emit TokenRemoved(address(_token));
+    // }
 
     /**
      * @notice withdraw token to caller

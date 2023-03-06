@@ -1188,7 +1188,7 @@ describe("Amm Unit Test", () => {
           .to.emit(amm, "FundingRateUpdated")
           .withArgs("-9114583333333333", "-9114583333333333", toFullDigitBN(20), "-3645833333333333320");
       });
-      it("funding payment is capped when the cost is negative and its absolute value is greater than cap", async () => {
+      it("amm is closed when the cost is negative and its absolute value is greater than cap", async () => {
         await gotoNextFundingTimestamp();
         await priceFeed.setTwapPrice(toFullDigitBN(20));
         // mark_twap = 15.625
@@ -1199,8 +1199,17 @@ describe("Amm Unit Test", () => {
         // funding rate = -(0.1 / 20) = -0.005
         await expect(tx)
           .to.emit(amm, "FundingRateUpdated")
-          .withArgs(toFullDigitBN(-0.005), toFullDigitBN(-0.005), toFullDigitBN(20), toFullDigitBN(-0.1 * 20));
+          .withArgs(toFullDigitBN(0), toFullDigitBN(0), toFullDigitBN(20), toFullDigitBN(0));
+        expect(await amm.open()).eq(false);
       });
+    });
+  });
+
+  describe("ownership renounce", async () => {
+    it("not allowed to renounce ownership by admin", async () => {
+      await expect(amm.connect(admin).renounceOwnership()).to.be.revertedWith(
+        "OS_NR"
+      );
     });
   });
 });

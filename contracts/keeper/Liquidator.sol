@@ -2,32 +2,26 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IClearingHouse.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../utils/TransferHelper.sol";
+import "../ClearingHouse.sol";
+import "../OwnableUpgradeableSafe.sol";
 
-contract Liquidator is Ownable {
-    using SafeERC20 for IERC20;
+contract Liquidator is OwnableUpgradeableSafe {
+    using TransferHelper for IERC20;
 
-    IClearingHouse clearingHouse;
-
-    uint256 public mmRatio;
+    ClearingHouse clearingHouse;
 
     event PositionLiquidated(address amm, address[] traders, bool[] results, string[] reasons);
 
-    constructor(IClearingHouse _clearingHouse, uint256 _mmRatio) {
+    function initialize(ClearingHouse _clearingHouse) public initializer {
+        __Ownable_init();
         clearingHouse = _clearingHouse;
-        mmRatio = _mmRatio;
     }
 
     receive() external payable {}
 
-    function setMMRatio(uint256 _mmRatio) external onlyOwner {
-        mmRatio = _mmRatio;
-    }
-
     function setClearingHouse(address _addrCH) external onlyOwner {
-        clearingHouse = IClearingHouse(_addrCH);
+        clearingHouse = ClearingHouse(_addrCH);
     }
 
     function withdrawERC20(IERC20 _token) external onlyOwner {
@@ -60,6 +54,7 @@ contract Liquidator is Ownable {
     }
 
     function isLiquidatable(IAmm _amm, address[] memory _traders) external view returns (bool[] memory) {
+        uint256 mmRatio = clearingHouse.maintenanceMarginRatio();
         bool[] memory results = new bool[](_traders.length);
         for (uint256 i = 0; i < _traders.length; i++) {
             try clearingHouse.getMarginRatio(_amm, _traders[i]) returns (int256 ratio) {

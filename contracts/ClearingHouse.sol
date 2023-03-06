@@ -104,9 +104,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // only admin
     uint256 public partialLiquidationRatio;
 
-    // key by amm address. will be deprecated or replaced after guarded period.
-    // it's not an accurate open interest, just a rough way to control the unexpected loss at the beginning
-    mapping(address => uint256) public openInterestNotionalMap;
+    // // key by amm address. will be deprecated or replaced after guarded period.
+    // // it's not an accurate open interest, just a rough way to control the unexpected loss at the beginning
+    // mapping(address => uint256) public openInterestNotionalMap;
 
     // key by amm address
     mapping(address => AmmMap) internal ammMap;
@@ -118,8 +118,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     IInsuranceFund public insuranceFund;
     IMultiTokenRewardRecipient public tollPool;
 
-    // designed for arbitragers who can hold unlimited positions. will be removed after guarded period
-    address internal whitelist;
+    // // designed for arbitragers who can hold unlimited positions. will be used only for admin to manage system and will be removed after guarded period
+    // address internal whitelist;
 
     mapping(address => bool) public backstopLiquidityProviderMap;
 
@@ -163,7 +163,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     /// @param amm IAmm address
     /// @param margin margin
     /// @param positionNotional margin * leverage
-    /// @param exchangedPositionSize position size, e.g. ETHUSDC or LINKUSDC
+    /// @param exchangedPositionSize position size
     /// @param fee transaction fee
     /// @param positionSizeAfter position size after this transaction, might be increased or decreased
     /// @param realizedPnl realized pnl after this position changed
@@ -224,10 +224,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         uint256 _liquidationFeeRatio,
         IInsuranceFund _insuranceFund
     ) public initializer {
-        require(address(_insuranceFund) != address(0), "CH_ZAIF"); //zero addres of IF
+        _requireNonZeroAddress(address(_insuranceFund));
         _requireNonZeroInput(_initMarginRatio);
         _requireNonZeroInput(_maintenanceMarginRatio);
         _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_initMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
+        _requireRatio(_liquidationFeeRatio);
         __OwnerPausable_init();
 
         //comment these out for reducing bytecode size
@@ -249,18 +252,21 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
      */
     function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
+        _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_liquidationFeeRatio);
         liquidationFeeRatio = _liquidationFeeRatio;
-        //emit LiquidationFeeRatioChanged(liquidationFeeRatio.toUint());
     }
 
     /**
-     * @notice set maintenance margin ratio
+     * @notice set maintenance margin ratio, should be smaller than initMarginRatio
      * @dev only owner can call
      * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
      */
     function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_maintenanceMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
+        require(_maintenanceMarginRatio < initMarginRatio, "CH_WMMR"); // wrong maintenance margin ratio
         maintenanceMarginRatio = _maintenanceMarginRatio;
-        //emit MarginRatioChanged(maintenanceMarginRatio.toUint());
     }
 
     /**
@@ -268,17 +274,19 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @dev only owner can call
      */
     function setTollPool(address _tollPool) external onlyOwner {
+        _requireNonZeroAddress(_tollPool);
         tollPool = IMultiTokenRewardRecipient(_tollPool);
     }
 
-    /**
-     * @notice add an address in the whitelist. People in the whitelist can hold unlimited positions.
-     * @dev only owner can call
-     * @param _whitelist an address
-     */
-    function setWhitelist(address _whitelist) external onlyOwner {
-        whitelist = _whitelist;
-    }
+    // /**
+    //  * @notice add an address in the whitelist. People in the whitelist can hold unlimited positions.
+    //  * @dev only owner can call
+    //  * @param _whitelist an address
+    //  */
+    // function setWhitelist(address _whitelist) external onlyOwner {
+    //     _requireNonZeroAddress(_whitelist);
+    //     whitelist = _whitelist;
+    // }
 
     /**
      * @notice set backstop liquidity provider
@@ -287,6 +295,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @param isProvider wether the account is a backstop liquidity provider
      */
     function setBackstopLiquidityProvider(address account, bool isProvider) external onlyOwner {
+        _requireNonZeroAddress(account);
         backstopLiquidityProviderMap[account] = isProvider;
         emit BackstopLiquidityProviderChanged(account, isProvider);
     }
@@ -296,7 +305,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      * @dev only owner can call
      */
     function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
-        require(_ratio <= 1 ether, "CH_IPLR"); //invalid partial liquidation ratio
+        _requireRatio(_ratio);
         partialLiquidationRatio = _ratio;
     }
 
@@ -639,19 +648,20 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment, int256 fundingImbalanceCost) = _amm.settleFunding(
+        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment) = _amm.settleFunding(
             insuranceBudgets[address(_amm)]
         );
         ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
         ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
         // positive funding payment means profit so reverse it to pass into apply cost function
         _applyAdjustmentCost(_amm, -1 * fundingPayment);
-        // include uncapped funding payment into the k-adjustment calculation
-        netRevenuesSinceLastFunding[address(_amm)] += fundingImbalanceCost;
+        // include funding payment into the k-adjustment calculation
+        netRevenuesSinceLastFunding[address(_amm)] += fundingPayment;
         _formulaicRepegAmm(_amm);
         _formulaicUpdateK(_amm);
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
+        _enterRestrictionMode(_amm);
     }
 
     // /**
@@ -971,15 +981,15 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
-        _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt());
-        // if the trader is not in the whitelist, check max position size
-        if (params.trader != whitelist) {
-            uint256 maxHoldingBaseAsset = params.amm.getMaxHoldingBaseAsset();
-            if (maxHoldingBaseAsset > 0) {
-                // total position size should be less than `positionUpperBound`
-                require(newSize.abs() <= maxHoldingBaseAsset, "CH_OPUB"); //over position size upper bound
-            }
-        }
+        // _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt());
+        // // if the trader is not in the whitelist, check max position size
+        // if (params.trader != whitelist) {
+        //     uint256 maxHoldingBaseAsset = params.amm.getMaxHoldingBaseAsset();
+        //     if (maxHoldingBaseAsset > 0) {
+        //         // total position size should be less than `positionUpperBound`
+        //         require(newSize.abs() <= maxHoldingBaseAsset, "CH_OPUB"); //over position size upper bound
+        //     }
+        // }
 
         int256 increaseMarginRequirement = positionResp.exchangedQuoteAssetAmount.divD(params.leverage).toInt();
         (
@@ -1027,7 +1037,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 params.isQuote,
                 params.canOverFluctuationLimit
             );
-            _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
+            // _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
             // realizedPnl = unrealizedPnl * closedRatio
             // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
             if (oldPosition.size != 0) {
@@ -1143,8 +1153,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 _canOverFluctuationLimit
             );
 
-        // bankrupt position's bad debt will be also consider as a part of the open interest
-        _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
+        // // bankrupt position's bad debt will be also consider as a part of the open interest
+        // _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
     }
 
     function _checkSlippage(
@@ -1199,7 +1209,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // transfer toll to tollPool
         if (_tollFee > 0) {
-            require(address(tollPool) != address(0), "CH_ZATP"); // zero address of toll pool
+            _requireNonZeroAddress(address(tollPool));
             quoteAsset.safeTransferFrom(_from, address(tollPool), _tollFee);
         }
     }
@@ -1269,31 +1279,30 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         quoteToken.safeTransfer(address(insuranceFund), _amount);
     }
 
-    /**
-     * @dev assume this will be removes soon once the guarded period has ended. caller need to ensure amm exist
-     */
-    function _updateOpenInterestNotional(IAmm _amm, int256 _amount) internal {
-        // when cap = 0 means no cap
-        uint256 cap = _amm.getOpenInterestNotionalCap();
-        address ammAddr = address(_amm);
-        if (cap > 0) {
-            int256 updatedOpenInterestNotional = _amount + openInterestNotionalMap[ammAddr].toInt();
-            // the reduced open interest can be larger than total when profit is too high and other position are bankrupt
-            if (updatedOpenInterestNotional < 0) {
-                updatedOpenInterestNotional = 0;
-            }
-            if (_amount > 0) {
-                // whitelist won't be restrict by open interest cap
-                require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "CH_ONOL"); // open notional is over limit
-            }
-            openInterestNotionalMap[ammAddr] = updatedOpenInterestNotional.abs();
-        }
-    }
+    // /**
+    //  * @dev assume this will be removes soon once the guarded period has ended. caller need to ensure amm exist
+    //  */
+    // function _updateOpenInterestNotional(IAmm _amm, int256 _amount) internal {
+    //     // when cap = 0 means no cap
+    //     uint256 cap = _amm.getOpenInterestNotionalCap();
+    //     address ammAddr = address(_amm);
+    //     if (cap > 0) {
+    //         int256 updatedOpenInterestNotional = _amount + openInterestNotionalMap[ammAddr].toInt();
+    //         // the reduced open interest can be larger than total when profit is too high and other position are bankrupt
+    //         if (updatedOpenInterestNotional < 0) {
+    //             updatedOpenInterestNotional = 0;
+    //         }
+    //         if (_amount > 0) {
+    //             // whitelist won't be restrict by open interest cap
+    //             require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "CH_ONOL"); // open notional is over limit
+    //         }
+    //         openInterestNotionalMap[ammAddr] = updatedOpenInterestNotional.abs();
+    //     }
+    // }
 
     function _formulaicRepegAmm(IAmm _amm) private {
         (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
-            insuranceBudgets[address(_amm)],
-            true
+            insuranceBudgets[address(_amm)]
         );
         if (isAdjustable) {
             _applyAdjustmentCost(_amm, cost);
@@ -1302,6 +1311,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             // negative cost means revenue
             netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        } else if (cost > 0) {
+            // consider repeg cost in k-adjustment even if not doing repeg
+            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
         }
     }
 
@@ -1452,5 +1464,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     ) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
+    }
+
+    function _requireRatio(uint256 _ratio) private pure {
+        require(_ratio <= 1 ether, "CH_IR"); //invalid ratio
+    }
+
+    function _requireNonZeroAddress(address _input) private pure {
+        require(_input != address(0), "CH_ZA");
     }
 }

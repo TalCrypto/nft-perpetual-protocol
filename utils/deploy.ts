@@ -139,7 +139,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
   await amm.setFundingCostCoverRate(toFullDigitBN(1));
   await amm.setFundingRevenueTakeRate(toFullDigitBN(1));
 
-  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 
@@ -209,7 +209,7 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
 
   await amm.setOpen(true);
 
-  const liquidator = await deployLiquidator(sender!, clearingHouse.address, toFullDigitBN(0.05));
+  const liquidator = await deployLiquidator(sender!, clearingHouse.address);
 
   await clearingHouse.setBackstopLiquidityProvider(liquidator.address, true);
 

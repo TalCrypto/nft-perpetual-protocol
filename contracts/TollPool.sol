@@ -2,13 +2,16 @@
 pragma solidity 0.8.9;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { AddressArray } from "./utils/AddressArray.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
+import { TransferHelper } from "./utils/TransferHelper.sol";
+import { IMultiTokenRewardRecipient } from "./interfaces/IMultiTokenRewardRecipient.sol";
 
-contract TollPool is OwnableUpgradeable {
+contract TollPool is IMultiTokenRewardRecipient, OwnableUpgradeableSafe {
     using UIntMath for uint256;
     using AddressArray for address[];
+    using TransferHelper for IERC20;
 
     uint256 public constant TOKEN_AMOUNT_LIMIT = 20;
 
@@ -54,6 +57,11 @@ contract TollPool is OwnableUpgradeable {
         require(address(_clearingHouse) != address(0), "TP_NCH"); //not clearinghouse
         __Ownable_init();
         clearingHouse = _clearingHouse;
+    }
+
+    // this function will be used for upcoming staking system
+    function notifyTokenAmount(IERC20, uint256) external pure {
+        revert("TP_NSY"); // not supported yet
     }
 
     function transferToFeeTokenPoolDispatcher() external {
@@ -114,7 +122,7 @@ contract TollPool is OwnableUpgradeable {
 
         if (balance != 0) {
             //_approve(_token, address(clientBridge), balance);
-            _token.transfer(address(feeTokenPoolDispatcher), balance);
+            _token.safeTransfer(address(feeTokenPoolDispatcher), balance);
             //clientBridge.erc20Transfer(_token, address(feeTokenPoolDispatcherL1), balance);
             emit TokenTransferred(address(_token), balance);
             return true;

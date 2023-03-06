@@ -175,15 +175,17 @@ contract CHFundingTest is Test {
             (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
+
+        if (fractionLong == 0 && fractionShort == 0) {
+            assertFalse(amm.open());
+        }
     }
 
     function testDynamicFundingAsNotCoverTakeWhenCost(
-        uint256 _longPositionSize,
-        uint256 _shortPositionSize,
+        uint64 _longPositionSize,
+        uint64 _shortPositionSize,
         uint80 _budget
     ) public {
-        vm.assume(_longPositionSize <= 45 ether);
-        vm.assume(_shortPositionSize <= 45 ether);
         vm.assume(_longPositionSize > 1e9);
         vm.assume(_shortPositionSize > 1e9);
         amm.setFundingCostCoverRate(0 ether);
@@ -233,12 +235,10 @@ contract CHFundingTest is Test {
     }
 
     function testDynamicFundingAsNotCoverTakeWhenRevenue(
-        uint256 _longPositionSize,
-        uint256 _shortPositionSize,
+        uint64 _longPositionSize,
+        uint64 _shortPositionSize,
         uint80 _budget
     ) public {
-        vm.assume(_longPositionSize <= 45 ether);
-        vm.assume(_shortPositionSize <= 45 ether);
         vm.assume(_longPositionSize > 1e9);
         vm.assume(_shortPositionSize > 1e9);
         amm.setFundingCostCoverRate(0 ether);
@@ -435,6 +435,7 @@ contract CHFundingTest is Test {
 
     function moveToNextFundingTimestamp() private {
         amm.mock_setBlockTimestamp(amm.mock_getCurrentTimestamp() + 3600);
+        clearingHouse.mock_setBlockNumber(clearingHouse.mock_getCurrentBlockNumber() + 1);
         priceFeed.setLatestTimestamp(amm.mock_getCurrentTimestamp() + 3600);
     }
 

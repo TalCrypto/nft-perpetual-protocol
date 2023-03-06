@@ -111,7 +111,7 @@ describe("ClearingHouse add/remove margin Test", () => {
     await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
     await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
 
-    await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     await syncAmmPriceToOracle();
   });

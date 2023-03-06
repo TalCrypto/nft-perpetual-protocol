@@ -52,7 +52,7 @@ describe("ClearingHouse Fee Pool Test", () => {
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(insuranceFund.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
 
-    await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
+    // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
     return { clearingHouse, amm, insuranceFund, quoteToken, mockPriceFeed };
   }
