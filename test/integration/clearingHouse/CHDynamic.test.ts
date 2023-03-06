@@ -211,7 +211,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //   });
   // });
 
-  describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short) and fee pool > 0", () => {
+  describe("payFunding: when alice.size = 20 & bob.size = -45 (long < short) and when budget is enough", () => {
     beforeEach(async () => {
       await amm.setSpreadRatio(toFullDigitBN(0.5));
       // given alice takes 2x long position (20B) with 125 margin
@@ -317,7 +317,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     });
   });
 
-  describe("payFunding: when alice.size = 37.5 & bob.size = -17.5 (long > short) and fee pool = 0", () => {
+  describe("payFunding: when alice.size = 37.5 & bob.size = -17.5 (long > short) when budget is not enough", () => {
     beforeEach(async () => {
       // given alice takes 2x long position (37.5B) with 300 margin
       await approve(alice, clearingHouse.address, 600);
@@ -343,7 +343,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(15.725));
       });
-      it("should decrease K and funding payment 0", async () => {
+      it("amm is closed and k-adjustment doesn't occur", async () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         // uncapped funding imbalance cost = -2
@@ -352,8 +352,9 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0));
         const baseAssetReserve = ethers.utils.formatEther(await amm.baseAssetReserve());
         const quoteAssetReserve = ethers.utils.formatEther(await amm.quoteAssetReserve());
-        expect(Number(baseAssetReserve) / 80).below(1);
-        expect(Number(quoteAssetReserve) / 1250).below(1);
+        expect(Number(baseAssetReserve) / 80).eq(1);
+        expect(Number(quoteAssetReserve) / 1250).eq(1);
+        expect(await amm.open()).eq(false);
       });
     });
 
@@ -376,7 +377,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     });
   });
 
-  describe("payFunding: when alice.size = 0.019996 & bob.size = -0.009997", () => {
+  describe("payFunding: when alice.size = 0.019996 & bob.size = -0.009997 when budget is not enough", () => {
     let quoteAssetReserveBefore: BigNumber;
     let baseAssetReserveBefore: BigNumber;
     beforeEach(async () => {
@@ -401,20 +402,20 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       beforeEach(async () => {
         await mockPriceFeed.setTwapPrice(toFullDigitBN(10.1));
       });
-      it("decrease K and funding payment 0", async () => {
+      it("amm is closed and k-adjustment doesn't occur", async () => {
         await gotoNextFundingTime();
         expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(0));
         await clearingHouse.payFunding(amm.address);
         const fraction = await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address);
-        const positionSize = await amm.getBaseAssetDelta();
-        expect(fraction.mul(positionSize)).eq(toFullDigitBN(0));
+        expect(fraction).eq(toFullDigitBN(0));
         const baseAssetReserve = await amm.baseAssetReserve();
         const quoteAssetReserve = await amm.quoteAssetReserve();
-        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).below(toFullDigitBN(1));
-        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).below(toFullDigitBN(1));
+        expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(toFullDigitBN(1));
+        expect(quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(1));
         expect(baseAssetReserve.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(
           quoteAssetReserve.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)
         );
+        expect(await amm.open()).eq(false);
       });
     });
 

@@ -175,6 +175,10 @@ contract CHFundingTest is Test {
             (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
+
+        if (fractionLong == 0 && fractionShort == 0) {
+            assertFalse(amm.open());
+        }
     }
 
     function testDynamicFundingAsNotCoverTakeWhenCost(
