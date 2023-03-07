@@ -258,13 +258,14 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     /**
-     * @notice set maintenance margin ratio
+     * @notice set maintenance margin ratio, should be smaller than initMarginRatio
      * @dev only owner can call
      * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
      */
     function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
         _requireNonZeroInput(_maintenanceMarginRatio);
         _requireRatio(_maintenanceMarginRatio);
+        require(_maintenanceMarginRatio < initMarginRatio, "CH_WMMR"); // wrong maintenance margin ratio
         maintenanceMarginRatio = _maintenanceMarginRatio;
     }
 
