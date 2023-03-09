@@ -43,7 +43,7 @@ interface IAmm {
             uint256 tollFee
         );
 
-    function repegCheck(uint256 budget, bool adjustK)
+    function repegCheck(uint256 budget)
         external
         returns (
             bool,
@@ -61,8 +61,7 @@ interface IAmm {
         returns (
             int256 premiumFractionLong,
             int256 premiumFractionShort,
-            int256 fundingPayment,
-            int256 uncappedFundingPayment
+            int256 fundingPayment
         );
 
     // function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
@@ -129,6 +128,12 @@ interface IAmm {
     function open() external view returns (bool);
 
     function adjustable() external view returns (bool);
+
+    function canLowerK() external view returns (bool);
+
+    function ptcKIncreaseMax() external view returns (uint256);
+
+    function ptcKDecreaseMax() external view returns (uint256);
 
     // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);
