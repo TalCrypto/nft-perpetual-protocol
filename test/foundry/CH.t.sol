@@ -110,7 +110,7 @@ contract CHFundingTest is Test {
         assertEq(fractionLong, fractionShort, "funding premium fractions should be same between long and short");
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
         assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
+            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
     }
@@ -172,7 +172,7 @@ contract CHFundingTest is Test {
         assertEq(fractionLong, fractionShort, "funding premium fractions should be same between long and short");
         assertTrue(systemFundingPayment <= 0, "system funding payment should be cost");
         assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
+            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
 
@@ -321,7 +321,7 @@ contract CHFundingTest is Test {
 
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
         assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
+            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
     }
@@ -375,7 +375,7 @@ contract CHFundingTest is Test {
 
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
         assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
+            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
     }
@@ -428,7 +428,7 @@ contract CHFundingTest is Test {
 
         assertTrue(systemFundingPayment <= 0, "system funding payment should be cost");
         assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore)) < 1e2,
+            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
             "difference between actual and theoretical should be 0"
         );
     }
