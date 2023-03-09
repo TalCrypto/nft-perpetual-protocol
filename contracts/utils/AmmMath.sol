@@ -8,8 +8,15 @@ import { UIntMath } from "./UIntMath.sol";
 library AmmMath {
     using UIntMath for uint256;
     using IntMath for int256;
-    uint256 constant K_DECREASE_MAX = 0.99 ether; // 99% (1%) decrease
-    uint256 constant K_INCREASE_MAX = 1.005 ether; // 100.5% (0.5%) increase
+
+    struct BudgetedKScaleCalcParams {
+        uint256 quoteAssetReserve;
+        uint256 baseAssetReserve;
+        int256 budget;
+        int256 positionSize;
+        uint256 ptcKIncreaseMax;
+        uint256 ptcKDecreaseMax;
+    }
 
     /**
      * @notice calculate reserves after repegging with preserving K
@@ -80,49 +87,48 @@ library AmmMath {
         }
     }
 
-    function calculateBudgetedKScale(
-        uint256 _quoteAssetReserve,
-        uint256 _baseAssetReserve,
-        int256 _budget,
-        int256 _positionSize
-    ) internal pure returns (uint256, uint256) {
-        if (_positionSize == 0 && _budget > 0) {
-            return (K_INCREASE_MAX, 1 ether);
-        } else if (_positionSize == 0 && _budget < 0) {
-            return (K_DECREASE_MAX, 1 ether);
+    function calculateBudgetedKScale(BudgetedKScaleCalcParams memory params) internal pure returns (uint256, uint256) {
+        if (params.positionSize == 0 && params.budget > 0) {
+            return (params.ptcKIncreaseMax, 1 ether);
+        } else if (params.positionSize == 0 && params.budget < 0) {
+            return (params.ptcKDecreaseMax, 1 ether);
         }
-        int256 x = _baseAssetReserve.toInt();
-        int256 y = _quoteAssetReserve.toInt();
-        int256 x_d = x + _positionSize;
-        int256 num1 = y.mulD(_positionSize).mulD(_positionSize);
-        int256 num2 = _positionSize.mulD(x_d).mulD(_budget);
-        int256 denom2 = x.mulD(x_d).mulD(_budget);
-        int256 denom1 = num1;
-        int256 numerator = num1 + num2;
-        int256 denominator = denom1 - denom2;
-        if (_budget > 0 && denominator < 0) {
-            return (K_INCREASE_MAX, 1 ether);
-        } else if (_budget < 0 && numerator < 0) {
-            return (K_DECREASE_MAX, 1 ether);
+        int256 numerator;
+        int256 denominator;
+        {
+            int256 x = params.baseAssetReserve.toInt();
+            int256 y = params.quoteAssetReserve.toInt();
+            int256 x_d = x + params.positionSize;
+            int256 num1 = y.mulD(params.positionSize).mulD(params.positionSize);
+            int256 num2 = params.positionSize.mulD(x_d).mulD(params.budget);
+            int256 denom2 = x.mulD(x_d).mulD(params.budget);
+            int256 denom1 = num1;
+            numerator = num1 + num2;
+            denominator = denom1 - denom2;
+        }
+        if (params.budget > 0 && denominator < 0) {
+            return (params.ptcKIncreaseMax, 1 ether);
+        } else if (params.budget < 0 && numerator < 0) {
+            return (params.ptcKDecreaseMax, 1 ether);
         }
         // if (numerator > 0 != denominator > 0 || denominator == 0 || numerator == 0) {
-        //     return (_budget > 0 ? K_INCREASE_MAX : K_DECREASE_MAX, 1 ether);
+        //     return (_budget > 0 ? params.ptcKIncreaseMax : params.ptcKDecreaseMax, 1 ether);
         // }
         uint256 absNum = numerator.abs();
         uint256 absDen = denominator.abs();
         if (absNum > absDen) {
             uint256 curChange = absNum.divD(absDen);
-            uint256 maxChange = K_INCREASE_MAX.divD(1 ether);
+            uint256 maxChange = params.ptcKIncreaseMax.divD(1 ether);
             if (curChange > maxChange) {
-                return (K_INCREASE_MAX, 1 ether);
+                return (params.ptcKIncreaseMax, 1 ether);
             } else {
                 return (absNum, absDen);
             }
         } else {
             uint256 curChange = absNum.divD(absDen);
-            uint256 maxChange = K_DECREASE_MAX.divD(1 ether);
+            uint256 maxChange = params.ptcKDecreaseMax.divD(1 ether);
             if (curChange < maxChange) {
-                return (K_DECREASE_MAX, 1 ether);
+                return (params.ptcKDecreaseMax, 1 ether);
             } else {
                 return (absNum, absDen);
             }

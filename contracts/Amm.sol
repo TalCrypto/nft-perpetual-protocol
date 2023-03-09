@@ -101,12 +101,15 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     IPriceFeed public priceFeed;
     bool public override open;
     bool public override adjustable;
-    bool public canLowerK;
+    bool public override canLowerK;
     uint8 public repegFlag;
     uint256 public repegPriceGapRatio;
 
     uint256 public fundingCostCoverRate; // system covers pct of normal funding payment when cost, 1 means normal funding rate
     uint256 public fundingRevenueTakeRate; // system takes ptc of normal funding payment when revenue, 1 means normal funding rate
+
+    uint256 public override ptcKIncreaseMax;
+    uint256 public override ptcKDecreaseMax;
 
     uint256[50] private __gap;
 
@@ -181,6 +184,9 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         repegPriceGapRatio = 0.05 ether; // 5%
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
         fundingRevenueTakeRate = 1 ether; // system take 100% of normal funding payment when revenue
+
+        ptcKIncreaseMax = 1.005 ether; // 100.5% (0.5%) increase
+        ptcKDecreaseMax = 0.99 ether; // 99% (1%) decrease
 
         quoteAssetReserve = _quoteAssetReserve;
         baseAssetReserve = _baseAssetReserve;
@@ -647,6 +653,16 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         fundingRevenueTakeRate = _rate;
     }
 
+    function setKIncreaseMax(uint256 _rate) external onlyOwner {
+        require(_rate > 1 ether, "AMM_IIR"); // invalid increase ratio
+        ptcKIncreaseMax = _rate;
+    }
+
+    function setKDecreaseMax(uint256 _rate) external onlyOwner {
+        require(_rate < 1 ether && _rate > 0, "AMM_IDR"); // invalid decrease ratio
+        ptcKDecreaseMax = _rate;
+    }
+
     //
     // VIEW FUNCTIONS
     //
@@ -675,10 +691,14 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
             uint256 _baseAssetReserve = baseAssetReserve; //to optimize gas cost
             int256 _positionSize = getBaseAssetDelta(); //to optimize gas cost
             (uint256 scaleNum, uint256 scaleDenom) = AmmMath.calculateBudgetedKScale(
-                _quoteAssetReserve,
-                _baseAssetReserve,
-                _budget,
-                _positionSize
+                AmmMath.BudgetedKScaleCalcParams({
+                    quoteAssetReserve: _quoteAssetReserve,
+                    baseAssetReserve: _baseAssetReserve,
+                    budget: _budget,
+                    positionSize: _positionSize,
+                    ptcKIncreaseMax: ptcKIncreaseMax,
+                    ptcKDecreaseMax: ptcKDecreaseMax
+                })
             );
             if (scaleNum == scaleDenom || scaleDenom == 0 || scaleNum == 0) {
                 isAdjustable = false;

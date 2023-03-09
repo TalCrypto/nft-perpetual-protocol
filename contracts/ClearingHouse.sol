@@ -648,17 +648,100 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment) = _amm.settleFunding(
-            insuranceBudgets[address(_amm)]
-        );
+        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
+        uint256 budget = insuranceBudgets[address(_amm)];
+        bool isAdjustable;
+        int256 cost;
+        uint256 newQuoteAssetReserve;
+        uint256 newBaseAssetReserve;
+        int256 maxDecreaseRevenue;
+        if (_amm.adjustable() && _amm.canLowerK()) {
+            uint256 ptcKDecreaseMax = _amm.ptcKDecreaseMax();
+            (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+            int256 positionSize = _amm.getBaseAssetDelta();
+            if (positionSize >= 0 || baseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
+                // this var is always positive(revenue) because the decreasing cost is negative
+                maxDecreaseRevenue =
+                    (-1) *
+                    AmmMath.calcCostForAdjustReserves(
+                        quoteAssetReserve,
+                        baseAssetReserve,
+                        positionSize,
+                        quoteAssetReserve.mulD(ptcKDecreaseMax),
+                        baseAssetReserve.mulD(ptcKDecreaseMax)
+                    );
+            }
+            // isAdjustable is always true when repeg is needed because of max budget
+            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.repegCheck(type(uint256).max);
+            if (isAdjustable) {
+                int256 tempRevenue;
+                // recalculate the max decrease revenue when repeg is possible because k adjustment is done after repeg
+                if (positionSize >= 0 || newBaseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
+                    tempRevenue =
+                        (-1) *
+                        AmmMath.calcCostForAdjustReserves(
+                            newQuoteAssetReserve,
+                            newBaseAssetReserve,
+                            positionSize,
+                            newQuoteAssetReserve.mulD(ptcKDecreaseMax),
+                            newBaseAssetReserve.mulD(ptcKDecreaseMax)
+                        );
+                }
+                // choose the smaller decrease revenue as the max because repeg may not happen due to insufficient budget
+                if (tempRevenue < maxDecreaseRevenue) {
+                    maxDecreaseRevenue = tempRevenue;
+                }
+            }
+        }
+        uint256 totalReserve = budget + maxDecreaseRevenue.abs();
+        // ------------------- funding payment ---------------------//
+        // pay funding considering the revenue from k decreasing
+        // if fundingPayment <= totalReserve, funding pay is done, otherwise amm is shut down and fundingPayment = 0
+        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment) = _amm.settleFunding(totalReserve);
         ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
         ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
-        // positive funding payment means profit so reverse it to pass into apply cost function
-        _applyAdjustmentCost(_amm, -1 * fundingPayment);
-        // include funding payment into the k-adjustment calculation
-        netRevenuesSinceLastFunding[address(_amm)] += fundingPayment;
-        _formulaicRepegAmm(_amm);
-        _formulaicUpdateK(_amm);
+        // positive funding payment means profit, so reverse it
+        int256 adjustmentCost = -1 * fundingPayment;
+        // --------------------------------------------------------//
+
+        // -------------------      repeg     ---------------------//
+        // if amm was not shut down by funding pay and repeg is needed,
+        // and the repeg cost is smaller than the "total reserve + funding revenue", then repeg is done
+        // "totalReserve + fundingPayment >= 0", otherwise amm is shutdown
+        if (_amm.open() && isAdjustable && (totalReserve.toInt() + fundingPayment > cost)) {
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            adjustmentCost += cost;
+            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+        // --------------------------------------------------------//
+
+        // -------------------    update K    ---------------------//
+        // totalReserve = budget + maxDecreaseRevenue >  adjustmentCost, which comes from the above workflow --- (1)
+        // if adjustmentCost > budget => (adjustmentCost - budget) should be recovered through K decreasing, so max k decreasing is done
+        // else business as usual
+        if (adjustmentCost > budget.toInt()) {
+            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult((-1) * maxDecreaseRevenue);
+        } else {
+            int256 budgetForUpdateK = netRevenue - adjustmentCost;
+            if (budgetForUpdateK > 0) {
+                // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
+                budgetForUpdateK = budgetForUpdateK / 4;
+            } else {
+                // if the overall sum is a COST to the system, take back half of the COST in k decrease
+                budgetForUpdateK = budgetForUpdateK / 2;
+            }
+            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budgetForUpdateK);
+        }
+
+        if (isAdjustable) {
+            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        }
+        // --------------------------------------------------------//
+
+        // apply all cost/revenue
+        _applyAdjustmentCost(_amm, adjustmentCost + cost);
+
         // init netRevenuesSinceLastFunding for the next funding period's revenue
         netRevenuesSinceLastFunding[address(_amm)] = 0;
         _enterRestrictionMode(_amm);
@@ -1299,44 +1382,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     //         openInterestNotionalMap[ammAddr] = updatedOpenInterestNotional.abs();
     //     }
     // }
-
-    function _formulaicRepegAmm(IAmm _amm) private {
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.repegCheck(
-            insuranceBudgets[address(_amm)]
-        );
-        if (isAdjustable) {
-            _applyAdjustmentCost(_amm, cost);
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            // consider repeg cost in k-adjustment
-            // negative cost means revenue
-            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
-            emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        } else if (cost > 0) {
-            // consider repeg cost in k-adjustment even if not doing repeg
-            netRevenuesSinceLastFunding[address(_amm)] = netRevenuesSinceLastFunding[address(_amm)] - cost;
-        }
-    }
-
-    // if fundingImbalance is positive, clearing house receives funds
-    function _formulaicUpdateK(IAmm _amm) private {
-        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-        int256 budget;
-        if (netRevenue > 0) {
-            // If the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
-            budget = netRevenue / 4;
-        } else {
-            // If the overall sum is a COST to the system, take back half of the COST in k decrease
-            budget = netRevenue / 2;
-        }
-        (bool isAdjustable, int256 cost, uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
-            budget
-        );
-        if (isAdjustable) {
-            _applyAdjustmentCost(_amm, cost);
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-        }
-    }
 
     /**
      * @notice apply cost for funding payment, repeg and k-adjustment

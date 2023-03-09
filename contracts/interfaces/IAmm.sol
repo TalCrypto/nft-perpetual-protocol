@@ -129,6 +129,12 @@ interface IAmm {
 
     function adjustable() external view returns (bool);
 
+    function canLowerK() external view returns (bool);
+
+    function ptcKIncreaseMax() external view returns (uint256);
+
+    function ptcKDecreaseMax() external view returns (uint256);
+
     // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);
 
