@@ -53,7 +53,6 @@ contract AmmTest is Test {
         (uint256 oldQReserve, uint256 oldBReserve) = amm.getReserve();
         (bool isAdjustable, int256 cost, uint256 newQReserve, uint256 newBReserve) = amm.getFormulaicUpdateKResult(int256(budget));
         if (budget > 0) {
-            // #long > #short
             assertTrue(isAdjustable);
             // increase K
             assertGe(newQReserve, oldQReserve, "not quote increase");
@@ -61,9 +60,9 @@ contract AmmTest is Test {
             // max increase 100.5%
             assertLe(newQReserve.divD(oldQReserve), 1.005 ether, "exceeds quote increase limit");
             assertLe(newBReserve.divD(oldBReserve), 1.005 ether, "exceeds base increase limit");
+            assertGe(cost, 0, "cost is not positive");
             assertLe(cost / int256(PRECISION), budget / int256(PRECISION), "bigger than positive budget");
         } else if (budget < 0) {
-            // #long < #short
             assertTrue(isAdjustable);
             // decrease K
             assertLe(newQReserve, oldQReserve, "not quote decrease");
@@ -71,6 +70,7 @@ contract AmmTest is Test {
             // max decrease 99%
             assertGe((newQReserve + 1).divD(oldQReserve), 0.99 ether, "exceeds quote decrease limit");
             assertGe((newBReserve + 1).divD(oldBReserve), 0.99 ether, "exceeds base decrease limit");
+            assertLe(cost, 0, "cost is not negative");
             assertGe(cost / int256(PRECISION), budget / int256(PRECISION), "smaller than negative budget");
         } else {
             assertFalse(isAdjustable);
