@@ -386,15 +386,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         _setPosition(
             _amm,
             trader,
-            Position({
-                size: 0,
-                margin: 0,
-                openNotional: 0,
-                lastUpdatedCumulativePremiumFraction: 0,
-                blockNumber: _blockNumber()
-                // liquidityHistoryIndex: 0
-            })
+            Position({ size: 0, margin: 0, openNotional: 0, lastUpdatedCumulativePremiumFraction: 0, blockNumber: _blockNumber() })
         );
+        // liquidityHistoryIndex: 0
         // calculate settledValue
         // If Settlement Price = 0, everyone takes back her collateral.
         // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
@@ -648,94 +642,119 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
         uint256 budget = insuranceBudgets[address(_amm)];
         bool isAdjustable;
         int256 cost;
         uint256 newQuoteAssetReserve;
         uint256 newBaseAssetReserve;
-        int256 maxDecreaseRevenue;
-        if (_amm.adjustable() && _amm.canLowerK()) {
-            uint256 ptcKDecreaseMax = _amm.ptcKDecreaseMax();
-            (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-            int256 positionSize = _amm.getBaseAssetDelta();
-            if (positionSize >= 0 || baseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
-                // this var is always positive(revenue) because the decreasing cost is negative
-                maxDecreaseRevenue =
-                    (-1) *
-                    AmmMath.calcCostForAdjustReserves(
-                        quoteAssetReserve,
-                        baseAssetReserve,
-                        positionSize,
-                        quoteAssetReserve.mulD(ptcKDecreaseMax),
-                        baseAssetReserve.mulD(ptcKDecreaseMax)
-                    );
-            }
-            // isAdjustable is always true when repeg is needed because of max budget
-            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.repegCheck(type(uint256).max);
-            if (isAdjustable) {
-                int256 tempRevenue;
-                // recalculate the max decrease revenue when repeg is possible because k adjustment is done after repeg
-                if (positionSize >= 0 || newBaseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
-                    tempRevenue =
+        int256 kRevenueWithRepeg; // k revenue after having done repeg
+        int256 kRevenueWithoutRepeg; // k revenue without repeg
+
+        // ------------------- funding payment ---------------------//
+        int256 fundingPayment;
+        {
+            uint256 totalReserveForFunding = budget; // reserve allocated for the funding payment
+            if (_amm.adjustable() && _amm.canLowerK()) {
+                uint256 ptcKDecreaseMax = _amm.ptcKDecreaseMax();
+                (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
+                int256 positionSize = _amm.getBaseAssetDelta();
+
+                if (positionSize >= 0 || baseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
+                    // this var is always positive(revenue) because the decreasing cost is negative
+                    kRevenueWithoutRepeg =
                         (-1) *
                         AmmMath.calcCostForAdjustReserves(
-                            newQuoteAssetReserve,
-                            newBaseAssetReserve,
+                            quoteAssetReserve,
+                            baseAssetReserve,
                             positionSize,
-                            newQuoteAssetReserve.mulD(ptcKDecreaseMax),
-                            newBaseAssetReserve.mulD(ptcKDecreaseMax)
+                            quoteAssetReserve.mulD(ptcKDecreaseMax),
+                            baseAssetReserve.mulD(ptcKDecreaseMax)
                         );
                 }
-                // choose the smaller decrease revenue as the max because repeg may not happen due to insufficient budget
-                if (tempRevenue < maxDecreaseRevenue) {
-                    maxDecreaseRevenue = tempRevenue;
+                totalReserveForFunding = budget + kRevenueWithoutRepeg.abs();
+
+                // isAdjustable is always true when repeg is needed because of max budget
+                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.repegCheck(type(uint256).max);
+                if (isAdjustable) {
+                    if (positionSize >= 0 || newBaseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
+                        // this var is always positive(revenue) because the decreasing cost is negative
+                        kRevenueWithRepeg =
+                            (-1) *
+                            AmmMath.calcCostForAdjustReserves(
+                                newQuoteAssetReserve,
+                                newBaseAssetReserve,
+                                positionSize,
+                                newQuoteAssetReserve.mulD(ptcKDecreaseMax),
+                                newBaseAssetReserve.mulD(ptcKDecreaseMax)
+                            );
+                    }
+                    if (kRevenueWithRepeg - cost > kRevenueWithoutRepeg) {
+                        // in this case,
+                        // if the funding payment is not enough with budget+kRevenueWithRepeg-cost, then it is also not enough without repeg, hence amm is shut down in all cases
+                        // if it is enough, then repeg also will be done later, as a result have no budget error
+                        totalReserveForFunding = budget + (kRevenueWithRepeg - cost).abs();
+                    }
+                    // in the other case where "kRevenueWithRepeg-cost <= kRevenueWithoutRepeg"
+                    // if the funding payment is not enough with budget+kRevenueWithoutRepeg, then it is also not enough with repeg, hence amm is shut down in all cases
+                    // if it is enough, then repeg is optional. if budget+kRevenueWithRepeg-fundingcost >= cost, repeg is done, otherwise repeg is not done
                 }
             }
+
+            int256 premiumFractionLong;
+            int256 premiumFractionShort;
+            // pay funding considering the revenue from k decreasing
+            // if fundingPayment <= totalReserveForFunding, funding pay is done, otherwise amm is shut down and fundingPayment = 0
+            (premiumFractionLong, premiumFractionShort, fundingPayment) = _amm.settleFunding(totalReserveForFunding);
+            ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
+            ammMap[address(_amm)].latestCumulativePremiumFractionShort =
+                premiumFractionShort +
+                getLatestCumulativePremiumFractionShort(_amm);
         }
-        uint256 totalReserve = budget + maxDecreaseRevenue.abs();
-        // ------------------- funding payment ---------------------//
-        // pay funding considering the revenue from k decreasing
-        // if fundingPayment <= totalReserve, funding pay is done, otherwise amm is shut down and fundingPayment = 0
-        (int256 premiumFractionLong, int256 premiumFractionShort, int256 fundingPayment) = _amm.settleFunding(totalReserve);
-        ammMap[address(_amm)].latestCumulativePremiumFractionLong = premiumFractionLong + getLatestCumulativePremiumFractionLong(_amm);
-        ammMap[address(_amm)].latestCumulativePremiumFractionShort = premiumFractionShort + getLatestCumulativePremiumFractionShort(_amm);
+
         // positive funding payment means profit, so reverse it
         int256 adjustmentCost = -1 * fundingPayment;
         // --------------------------------------------------------//
 
         // -------------------      repeg     ---------------------//
         // if amm was not shut down by funding pay and repeg is needed,
-        // and the repeg cost is smaller than the "total reserve + funding revenue", then repeg is done
-        // "totalReserve + fundingPayment >= 0", otherwise amm is shutdown
-        if (_amm.open() && isAdjustable && (totalReserve.toInt() + fundingPayment > cost)) {
+        // and the repeg cost is smaller than the "budget+kRevenueWithRepeg+fundingPayment", then repeg is done
+        if (_amm.open() && isAdjustable && (budget.toInt() + kRevenueWithRepeg + fundingPayment >= cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             adjustmentCost += cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+        } else {
+            isAdjustable = false;
         }
         // --------------------------------------------------------//
 
         // -------------------    update K    ---------------------//
-        // totalReserve = budget + maxDecreaseRevenue >  adjustmentCost, which comes from the above workflow --- (1)
-        // if adjustmentCost > budget => (adjustmentCost - budget) should be recovered through K decreasing, so max k decreasing is done
-        // else business as usual
-        if (adjustmentCost > budget.toInt()) {
-            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult((-1) * maxDecreaseRevenue);
-        } else {
-            int256 budgetForUpdateK = netRevenue - adjustmentCost;
-            if (budgetForUpdateK > 0) {
-                // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
-                budgetForUpdateK = budgetForUpdateK / 4;
+        {
+            // budget + k revenue >=  adjustmentCost, which comes from the above workflow
+            // (budget - netRevenue) + k renveue >= totalCost
+            // if totalCost > 0, only half of it is recovered from k decreasing in BAU,
+            // so the remain cost "totalCost - totalCost / 2" should be smaller than the budget-netRevenue
+            // if it doesn't, max k decreasing is done
+            int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
+            int256 totalCost = adjustmentCost - netRevenue;
+            if (totalCost - totalCost / 2 > budget.toInt() - netRevenue) {
+                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
+                    isAdjustable ? -kRevenueWithRepeg : -kRevenueWithoutRepeg
+                );
             } else {
-                // if the overall sum is a COST to the system, take back half of the COST in k decrease
-                budgetForUpdateK = budgetForUpdateK / 2;
+                if (totalCost < 0) {
+                    // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
+                    totalCost = totalCost / 4;
+                } else {
+                    // if the overall sum is a COST to the system, take back half of the COST in k decrease
+                    totalCost = totalCost / 2;
+                }
+                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(-totalCost);
             }
-            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budgetForUpdateK);
-        }
 
-        if (isAdjustable) {
-            _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-            emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+            if (isAdjustable) {
+                _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
+                emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
+            }
         }
         // --------------------------------------------------------//
 
@@ -803,9 +822,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // }
 
     /**
-     *@notice inject WETH to the insurance fund half of which is used for the adjustment
-     *@param _amm the target vamm to inject WETH
-     *@param _amount the amount to be injected
+     * @notice inject WETH to the insurance fund half of which is used for the adjustment
+     * @param _amm the target vamm to inject WETH
+     * @param _amount the amount to be injected
      */
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
         insuranceBudgets[address(_amm)] = insuranceBudgets[address(_amm)] + _amount;
@@ -916,11 +935,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         emit RestrictionModeEntered(address(_amm), blockNumber);
     }
 
-    function _setPosition(
-        IAmm _amm,
-        address _trader,
-        Position memory _position
-    ) internal {
+    function _setPosition(IAmm _amm, address _trader, Position memory _position) internal {
         Position storage positionStorage = ammMap[address(_amm)].positionMap[_trader];
         positionStorage.size = _position.size;
         positionStorage.margin = _position.margin;
@@ -1199,11 +1214,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         return positionResp;
     }
 
-    function _closePosition(
-        IAmm _amm,
-        address _trader,
-        bool _canOverFluctuationLimit
-    ) internal returns (PositionResp memory positionResp) {
+    function _closePosition(IAmm _amm, address _trader, bool _canOverFluctuationLimit) internal returns (PositionResp memory positionResp) {
         // check conditions
         Position memory oldPosition = getPosition(_amm, _trader);
         _requirePositionSize(oldPosition.size);
@@ -1240,13 +1251,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
     }
 
-    function _checkSlippage(
-        Side _side,
-        uint256 _quote,
-        uint256 _base,
-        uint256 _oppositeAmountBound,
-        bool _isQuote
-    ) internal pure {
+    function _checkSlippage(Side _side, uint256 _quote, uint256 _base, uint256 _oppositeAmountBound, bool _isQuote) internal pure {
         // skip when _oppositeAmountBound is zero
         if (_oppositeAmountBound == 0) {
             return;
@@ -1274,12 +1279,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
-    function _transferFee(
-        address _from,
-        IAmm _amm,
-        uint256 _spreadFee,
-        uint256 _tollFee
-    ) internal {
+    function _transferFee(address _from, IAmm _amm, uint256 _spreadFee, uint256 _tollFee) internal {
         IERC20 quoteAsset = _amm.quoteAsset();
 
         // transfer spread to market in order to use it to make market better
@@ -1297,21 +1297,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
-    function _deposit(
-        IAmm _amm,
-        address _sender,
-        uint256 _amount
-    ) internal {
+    function _deposit(IAmm _amm, address _sender, uint256 _amount) internal {
         vaults[address(_amm)] += _amount;
         IERC20 quoteToken = _amm.quoteAsset();
         quoteToken.safeTransferFrom(_sender, address(this), _amount);
     }
 
-    function _withdraw(
-        IAmm _amm,
-        address _receiver,
-        uint256 _amount
-    ) internal {
+    function _withdraw(IAmm _amm, address _receiver, uint256 _amount) internal {
         // if withdraw amount is larger than the balance of given Amm's vault
         // means this trader's profit comes from other under collateral position's future loss
         // and the balance of given Amm's vault is not enough
@@ -1404,16 +1396,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         Position memory _oldPosition,
         int256 _marginDelta,
         bool isLong
-    )
-        internal
-        view
-        returns (
-            int256 remainMargin,
-            uint256 badDebt,
-            int256 fundingPayment,
-            int256 latestCumulativePremiumFraction
-        )
-    {
+    ) internal view returns (int256 remainMargin, uint256 badDebt, int256 fundingPayment, int256 latestCumulativePremiumFraction) {
         // calculate funding payment
         latestCumulativePremiumFraction = isLong
             ? getLatestCumulativePremiumFractionLong(_amm)
@@ -1432,11 +1415,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     }
 
     /// @param _marginWithFundingPayment margin + funding payment - bad debt
-    function _calcFreeCollateral(
-        IAmm _amm,
-        address _trader,
-        int256 _marginWithFundingPayment
-    ) internal view returns (int256) {
+    function _calcFreeCollateral(IAmm _amm, address _trader, int256 _marginWithFundingPayment) internal view returns (int256) {
         Position memory pos = getPosition(_amm, _trader);
         (int256 unrealizedPnl, uint256 positionNotional) = _getPreferencePositionNotionalAndUnrealizedPnl(
             _amm,
@@ -1466,6 +1445,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         (uint256 spotPositionNotional, int256 spotPricePnl) = (
             getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE)
         );
+
         (uint256 twapPositionNotional, int256 twapPricePnl) = (getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.TWAP));
 
         // if MAX_PNL
@@ -1502,11 +1482,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         }
     }
 
-    function _requireMoreMarginRatio(
-        int256 _marginRatio,
-        uint256 _baseMarginRatio,
-        bool _largerThanOrEqualTo
-    ) private pure {
+    function _requireMoreMarginRatio(int256 _marginRatio, uint256 _baseMarginRatio, bool _largerThanOrEqualTo) private pure {
         int256 remainingMarginRatio = _marginRatio - _baseMarginRatio.toInt();
         require(_largerThanOrEqualTo ? remainingMarginRatio >= 0 : remainingMarginRatio < 0, "CH_MRNC"); //Margin ratio not meet criteria
     }
