@@ -643,7 +643,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         uint256 budget = insuranceBudgets[address(_amm)];
-        bool isAdjustable;
+        bool repegable;
         int256 cost;
         uint256 newQuoteAssetReserve;
         uint256 newBaseAssetReserve;
@@ -674,8 +674,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                 totalReserveForFunding = budget + kRevenueWithoutRepeg.abs();
 
                 // isAdjustable is always true when repeg is needed because of max budget
-                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.repegCheck(type(uint256).max);
-                if (isAdjustable) {
+                (repegable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.repegCheck(type(uint256).max);
+                if (repegable) {
                     if (positionSize >= 0 || newBaseAssetReserve.mulD(ptcKDecreaseMax) > positionSize.abs()) {
                         // this var is always positive(revenue) because the decreasing cost is negative
                         kRevenueWithRepeg =
@@ -718,12 +718,12 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // -------------------      repeg     ---------------------//
         // if amm was not shut down by funding pay and repeg is needed,
         // and the repeg cost is smaller than the "budget+kRevenueWithRepeg+fundingPayment", then repeg is done
-        if (_amm.open() && isAdjustable && (budget.toInt() + kRevenueWithRepeg + fundingPayment >= cost)) {
+        if (_amm.open() && repegable && (budget.toInt() + kRevenueWithRepeg + fundingPayment >= cost)) {
             _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
             adjustmentCost += cost;
             emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
         } else {
-            isAdjustable = false;
+            repegable = false;
         }
         // --------------------------------------------------------//
 
@@ -736,21 +736,23 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             // if it doesn't, max k decreasing is done
             int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
             int256 totalCost = adjustmentCost - netRevenue;
-            if (totalCost - totalCost / 2 > budget.toInt() - netRevenue) {
-                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
-                    isAdjustable ? -kRevenueWithRepeg : -kRevenueWithoutRepeg
-                );
+            int256 budgetForUpdateK;
+            if (totalCost < 0) {
+                // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
+                budgetForUpdateK = -totalCost / 4;
             } else {
-                if (totalCost < 0) {
-                    // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
-                    totalCost = totalCost / 4;
-                } else {
-                    // if the overall sum is a COST to the system, take back half of the COST in k decrease
-                    totalCost = totalCost / 2;
-                }
-                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(-totalCost);
+                // if the overall sum is a COST to the system, take back half of the COST in k decrease
+                budgetForUpdateK = -totalCost / 2;
             }
-
+            bool isAdjustable;
+            (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budgetForUpdateK);
+            // adjustmentCost + cost should be smaller than insurance fund budget
+            // otherwise do max decrease K
+            if (adjustmentCost + cost > budget.toInt()) {
+                (isAdjustable, cost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
+                    repegable ? -kRevenueWithRepeg : -kRevenueWithoutRepeg
+                );
+            }
             if (isAdjustable) {
                 _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
                 emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
