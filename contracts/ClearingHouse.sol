@@ -704,25 +704,18 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // -------------------    update K    ---------------------//
         {
-            // budget + k revenue >=  adjustmentCost, which comes from the above workflow
-            // (budget - netRevenue) + k renveue >= totalCost
-            // if totalCost > 0, only half of it is recovered from k decreasing in BAU,
-            // so the remain cost "totalCost - totalCost / 2" should be smaller than the budget-netRevenue
-            // if it doesn't, max k decreasing is done
-            int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-            int256 totalCost = repegCost - fundingPayment - netRevenue; // consider repegCost regardless whether it happens or not
-            int256 budgetForUpdateK;
-            if (totalCost < 0) {
+            int256 budgetForUpdateK = netRevenuesSinceLastFunding[address(_amm)] + fundingPayment - repegCost; // consider repegCost regardless whether it happens or not
+            if (budgetForUpdateK > 0) {
                 // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
-                budgetForUpdateK = -totalCost / 4;
+                budgetForUpdateK = budgetForUpdateK / 4;
             } else {
                 // if the overall sum is a COST to the system, take back half of the COST in k decrease
-                budgetForUpdateK = -totalCost / 2;
+                budgetForUpdateK = budgetForUpdateK / 2;
             }
             bool isAdjustable;
             int256 kAdjustmentCost;
             (isAdjustable, kAdjustmentCost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(budgetForUpdateK);
-            // adjustmentCost + cost should be smaller than insurance fund budget
+            // adjustmentCost + kAdjustmentCost should be smaller than insurance fund budget
             // otherwise do max decrease K
             if (adjustmentCost + kAdjustmentCost > budget.toInt()) {
                 (isAdjustable, kAdjustmentCost, newQuoteAssetReserve, newBaseAssetReserve) = _amm.getFormulaicUpdateKResult(
