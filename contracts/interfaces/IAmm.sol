@@ -80,6 +80,8 @@ interface IAmm {
             uint256 newBaseAssetReserve
         );
 
+    function getMaxKDecreaseRevenue(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external view returns (int256 revenue);
+
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 
     // function calcBaseAssetAfterLiquidityMigration(

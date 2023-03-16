@@ -719,6 +719,25 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         }
     }
 
+    function getMaxKDecreaseRevenue(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external view override returns (int256 revenue) {
+        if (open && adjustable && canLowerK) {
+            uint256 _ptcKDecreaseMax = ptcKDecreaseMax;
+            int256 _positionSize = getBaseAssetDelta();
+            if (_positionSize >= 0 || _baseAssetReserve.mulD(_ptcKDecreaseMax) > _positionSize.abs()) {
+                // decreasing cost is always negative (profit)
+                revenue =
+                    (-1) *
+                    AmmMath.calcCostForAdjustReserves(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        _quoteAssetReserve.mulD(_ptcKDecreaseMax),
+                        _baseAssetReserve.mulD(_ptcKDecreaseMax)
+                    );
+            }
+        }
+    }
+
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view override returns (bool) {
         // Skip the check if the limit is 0
         if (fluctuationLimitRatio == 0) {
