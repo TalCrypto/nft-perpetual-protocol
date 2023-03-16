@@ -710,7 +710,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             // so the remain cost "totalCost - totalCost / 2" should be smaller than the budget-netRevenue
             // if it doesn't, max k decreasing is done
             int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-            int256 totalCost = adjustmentCost - netRevenue;
+            int256 totalCost = repegCost - fundingPayment - netRevenue; // consider repegCost regardless whether it happens or not
             int256 budgetForUpdateK;
             if (totalCost < 0) {
                 // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
