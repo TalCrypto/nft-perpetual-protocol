@@ -12,7 +12,7 @@ import {
   TraderWallet,
   L2PriceFeedMock,
 } from "../../../typechain-types";
-import { PnlCalcOption, Side } from "../../../utils/contract";
+import { deployL2PriceFeed, PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
 import { toFullDigitBN } from "../../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -143,9 +143,304 @@ describe("ClearingHouse Test", () => {
       const alicePosition = await clearingHouseViewer.getPersonalPositionWithFundingPayment(amm.address, alice.address);
       expect(alicePosition.size).to.eq(toFullDigitBN(-150));
       expect(alicePosition.margin).to.eq(toFullDigitBN(-15));
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      console.log(positionInfo);
     });
   });
 
+  describe("getTraderPositionInfo", () => {
+    it("returns exact infos", async () => {
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(2), toFullDigitBN(37.5), true);
+
+      // given bob takes 1x short position (-187.5B) with 1200 margin
+      await approve(bob, clearingHouse.address, 1800);
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5), true);
+
+      // given the underlying twap price is 1.59, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
+
+      // when the new fundingRate is 1% which means underlyingPrice < snapshotPrice
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.01));
+      expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.01));
+
+      // then alice need to pay 1% of her position size as fundingPayment
+      // {balance: 37.5, margin: 300} => {balance: 37.5, margin: 299.625}
+      const alicePosition = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(alicePosition.positionSize).to.eq(toFullDigitBN(37.5));
+      expect(alicePosition.openMargin.add(alicePosition.fundingPayment)).to.eq(toFullDigitBN(299.625));
+      console.log("alice", alicePosition);
+      // then bob will get 1% of her position size as fundingPayment
+      // {balance: -187.5, margin: 1200} => {balance: -187.5, margin: 1201.875}
+      const bobPosition = await clearingHouseViewer.getTraderPositionInfo(amm.address, bob.address);
+      expect(bobPosition.positionSize).to.eq(toFullDigitBN(-187.5));
+      expect(bobPosition.openMargin.add(bobPosition.fundingPayment)).to.eq(toFullDigitBN(1201.875));
+    });
+    it("empty position returns 0 in all fields", async () => {
+      const carolPositioin = await clearingHouseViewer.getTraderPositionInfo(amm.address, carol.address);
+      expect(carolPositioin.positionSize).eq(BigNumber.from(0));
+      expect(carolPositioin.openMargin).eq(BigNumber.from(0));
+      expect(carolPositioin.margin).eq(BigNumber.from(0));
+      expect(carolPositioin.unrealizedPnl).eq(BigNumber.from(0));
+      expect(carolPositioin.fundingPayment).eq(BigNumber.from(0));
+      expect(carolPositioin.marginRatio).eq(BigNumber.from(0));
+      expect(carolPositioin.liquidationPrice).eq(BigNumber.from(0));
+      expect(carolPositioin.openLeverage).eq(BigNumber.from(0));
+      expect(carolPositioin.leverage).eq(BigNumber.from(0));
+      expect(carolPositioin.openNotional).eq(BigNumber.from(0));
+      expect(carolPositioin.positionNotional).eq(BigNumber.from(0));
+      expect(carolPositioin.entryPrice).eq(BigNumber.from(0));
+    });
+  });
+
+  describe("getMarginAdjustmentEstimation", () => {
+    beforeEach(async () => {
+      await approve(alice, clearingHouse.address, 2000);
+      await approve(bob, clearingHouse.address, 2000);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(10), toFullDigitBN(37.5), true);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+    });
+
+    it("add margin estimation", async () => {
+      const estimation = await clearingHouseViewer.getMarginAdjustmentEstimation(amm.address, alice.address, toFullDigitBN(80));
+      await clearingHouse.connect(alice).addMargin(amm.address, toFullDigitBN(80));
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(estimation.entryPrice).eq(positionInfo.entryPrice);
+      expect(estimation.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(estimation.leverage).eq(positionInfo.leverage);
+      expect(estimation.liquidationPrice).eq(positionInfo.liquidationPrice);
+      expect(estimation.margin).eq(positionInfo.margin);
+      expect(estimation.marginRatio).eq(positionInfo.marginRatio);
+      expect(estimation.openLeverage).eq(positionInfo.openLeverage);
+      expect(estimation.openMargin).eq(positionInfo.openMargin);
+      expect(estimation.openNotional).eq(positionInfo.openNotional);
+      expect(estimation.positionNotional).eq(positionInfo.positionNotional);
+      expect(estimation.positionSize).eq(positionInfo.positionSize);
+      expect(estimation.spotPrice).eq(positionInfo.spotPrice);
+      expect(estimation.unrealizedPnl).eq(positionInfo.unrealizedPnl);
+    });
+
+    it("remove margin estimation", async () => {
+      const estimation = await clearingHouseViewer.getMarginAdjustmentEstimation(amm.address, alice.address, toFullDigitBN(-10));
+      await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(10));
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(estimation.entryPrice).eq(positionInfo.entryPrice);
+      expect(estimation.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(estimation.leverage).eq(positionInfo.leverage);
+      expect(estimation.liquidationPrice).eq(positionInfo.liquidationPrice);
+      expect(estimation.margin).eq(positionInfo.margin);
+      expect(estimation.marginRatio).eq(positionInfo.marginRatio);
+      expect(estimation.openLeverage).eq(positionInfo.openLeverage);
+      expect(estimation.openMargin).eq(positionInfo.openMargin);
+      expect(estimation.openNotional).eq(positionInfo.openNotional);
+      expect(estimation.positionNotional).eq(positionInfo.positionNotional);
+      expect(estimation.positionSize).eq(positionInfo.positionSize);
+      expect(estimation.spotPrice).eq(positionInfo.spotPrice);
+      expect(estimation.unrealizedPnl).eq(positionInfo.unrealizedPnl);
+    });
+  });
+
+  describe("getOpenPositionEstimation", () => {
+    beforeEach(async () => {
+      await approve(alice, clearingHouse.address, 2000);
+      await approve(bob, clearingHouse.address, 2000);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+    });
+    it("open position estimation", async () => {
+      const estimation = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        bob.address,
+        Side.BUY,
+        toFullDigitBN(100),
+        toFullDigitBN(10)
+      );
+      const positionEst = estimation.positionInfo;
+      const tx = await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, bob.address);
+      expect(positionEst.positionSize).eq(positionInfo.positionSize);
+      expect(positionEst.positionNotional).eq("100000000000000000000");
+      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(positionEst.leverage).eq("10000000000000000000");
+      expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
+      expect(positionEst.margin).eq("10000000000000000000");
+      expect(positionEst.marginRatio).eq("100000000000000000");
+      expect(positionEst.openLeverage).eq(positionInfo.openLeverage);
+      expect(positionEst.openMargin).eq(positionInfo.openMargin);
+      expect(positionEst.openNotional).eq(positionInfo.openNotional);
+      expect(positionEst.spotPrice).eq(positionInfo.spotPrice);
+      expect(positionEst.unrealizedPnl).eq(0);
+      expect(tx)
+        .emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          bob.address,
+          amm.address,
+          positionEst.openMargin,
+          estimation.exchangedQuoteAssetAmount,
+          estimation.exchangedPositionSize,
+          estimation.tollFee.sub(estimation.spreadFee),
+          positionEst.positionSize,
+          estimation.realizedPnl,
+          positionEst.unrealizedPnl,
+          estimation.badDebt,
+          0,
+          positionEst.spotPrice,
+          positionEst.fundingPayment
+        );
+      expect(estimation.marginToVault).eq(toFullDigitBN(10));
+    });
+
+    it("increase position estimation", async () => {
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+      const estimation = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        alice.address,
+        Side.BUY,
+        toFullDigitBN(100),
+        toFullDigitBN(10)
+      );
+      const positionEst = estimation.positionInfo;
+      const tx = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(positionEst.positionSize).eq(positionInfo.positionSize);
+      expect(positionEst.positionNotional).eq("218032786885245901637");
+      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(positionEst.leverage).eq("5732758620689655172");
+      expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
+      expect(positionEst.margin).eq("38032786885245901637");
+      expect(positionEst.marginRatio).eq(positionInfo.marginRatio);
+      expect(positionEst.openLeverage).eq(positionInfo.openLeverage);
+      expect(positionEst.openMargin).eq(positionInfo.openMargin);
+      expect(positionEst.openNotional).eq(positionInfo.openNotional);
+      expect(positionEst.spotPrice).eq(positionInfo.spotPrice);
+      expect(positionEst.unrealizedPnl).eq("18032786885245901637");
+      expect(tx)
+        .emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          alice.address,
+          amm.address,
+          positionEst.openMargin,
+          estimation.exchangedQuoteAssetAmount,
+          estimation.exchangedPositionSize,
+          estimation.tollFee.sub(estimation.spreadFee),
+          positionEst.positionSize,
+          estimation.realizedPnl,
+          positionEst.unrealizedPnl,
+          estimation.badDebt,
+          0,
+          positionEst.spotPrice,
+          positionEst.fundingPayment
+        );
+      expect(estimation.marginToVault).eq(toFullDigitBN(10));
+    });
+
+    it("reduce position estimation", async () => {
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+      const estimation = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        alice.address,
+        Side.SELL,
+        toFullDigitBN(50),
+        toFullDigitBN(10)
+      );
+      const positionEst = estimation.positionInfo;
+      const tx = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(50), toFullDigitBN(10), toFullDigitBN(0), true);
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(positionEst.positionSize).eq(positionInfo.positionSize);
+      expect(positionEst.positionNotional).eq("68032786885245901637");
+      expect(positionEst.openNotional).eq(positionInfo.openNotional);
+      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(positionEst.leverage).eq("2426900584795321637");
+      expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
+      expect(positionEst.margin).eq("28032786885245901637");
+      expect(positionEst.marginRatio).eq(positionInfo.marginRatio);
+      expect(positionEst.openLeverage).eq(positionInfo.openLeverage);
+      expect(positionEst.openMargin).eq(positionInfo.openMargin);
+      expect(positionEst.spotPrice).eq(positionInfo.spotPrice);
+      expect(positionEst.unrealizedPnl).eq("10845806604894274172");
+      expect(tx)
+        .emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          alice.address,
+          amm.address,
+          positionEst.openMargin,
+          estimation.exchangedQuoteAssetAmount,
+          estimation.exchangedPositionSize,
+          estimation.tollFee.sub(estimation.spreadFee),
+          positionEst.positionSize,
+          estimation.realizedPnl,
+          positionEst.unrealizedPnl,
+          estimation.badDebt,
+          0,
+          positionEst.spotPrice,
+          positionEst.fundingPayment
+        );
+    });
+
+    it("reverse position estimation", async () => {
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(10), toFullDigitBN(0), true);
+      const estimation = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        alice.address,
+        Side.SELL,
+        toFullDigitBN(150),
+        toFullDigitBN(10)
+      );
+      const positionEst = estimation.positionInfo;
+      const tx = await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(150), toFullDigitBN(10), toFullDigitBN(0), true);
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(positionEst.positionSize).eq("-2813852813852813853");
+      expect(positionEst.positionNotional).eq("31967213114754098363");
+      expect(positionEst.openNotional).eq(positionInfo.openNotional);
+      expect(positionEst.entryPrice).eq("11360655737704918032");
+      expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
+      expect(positionEst.leverage).eq("10000000000000000000");
+      expect(positionEst.liquidationPrice).eq("11901639344262295080");
+      expect(positionEst.margin).eq("3196721311475409836");
+      expect(positionEst.marginRatio).eq(positionInfo.marginRatio);
+      expect(positionEst.openLeverage).eq(positionInfo.openLeverage);
+      expect(positionEst.openMargin).eq(positionInfo.openMargin);
+      expect(positionEst.spotPrice).eq(positionInfo.spotPrice);
+      expect(positionEst.unrealizedPnl).eq(0);
+      expect(tx)
+        .emit(clearingHouse, "PositionChanged")
+        .withArgs(
+          alice.address,
+          amm.address,
+          positionEst.openMargin,
+          estimation.exchangedQuoteAssetAmount,
+          "-11904761904761904763",
+          estimation.tollFee.sub(estimation.spreadFee),
+          "-2813852813852813854",
+          estimation.realizedPnl,
+          positionEst.unrealizedPnl,
+          estimation.badDebt,
+          0,
+          positionEst.spotPrice,
+          positionEst.fundingPayment
+        );
+      expect(estimation.marginToVault).eq("-24836065573770491801");
+    });
+  });
   // describe("openInterestNotional", () => {
   //   beforeEach(async () => {
   //     await amm.setCap(toFullDigitBN(0), toFullDigitBN(600));
@@ -1423,9 +1718,7 @@ describe("ClearingHouse Test", () => {
 
   describe("ownership renounce", async () => {
     it("not allowed to renounce ownership by admin", async () => {
-      await expect(clearingHouse.connect(admin).renounceOwnership()).to.be.revertedWith(
-        "OS_NR"
-      );
+      await expect(clearingHouse.connect(admin).renounceOwnership()).to.be.revertedWith("OS_NR");
     });
   });
 });
