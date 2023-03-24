@@ -857,17 +857,14 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
-    // /**
-    //  * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
-    //  * @param _quoteAssetAmount quoteAssetAmount
-    //  * @return total tx fee
-    //  */
-    // function calcFee(uint256 _quoteAssetAmount) external view override returns (uint256, uint256) {
-    //     if (_quoteAssetAmount == 0) {
-    //         return (0, 0);
-    //     }
-    //     return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
-    // }
+    /**
+     * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
+     * @param _quoteAssetAmount quoteAssetAmount
+     * @return total tx fee
+     */
+    function calcFee(uint256 _quoteAssetAmount) public view override returns (uint256, uint256) {
+        return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
+    }
 
     /*       plus/minus 1 while the amount is not dividable
      *

@@ -64,7 +64,7 @@ interface IAmm {
             int256 fundingPayment
         );
 
-    // function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
+    function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
 
     //
     // VIEW
