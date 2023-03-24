@@ -1052,7 +1052,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // only called from openPosition and _closeAndOpenReversePosition. caller need to ensure there's enough marginRatio
     function _increasePosition(InternalOpenPositionParams memory params) internal returns (PositionResp memory positionResp) {
         Position memory oldPosition = getPosition(params.amm, params.trader);
-
+        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(params.amm, params.trader, PnlCalcOption.SPOT_PRICE);
         (positionResp.exchangedQuoteAssetAmount, positionResp.exchangedPositionSize, positionResp.spreadFee, positionResp.tollFee) = params
             .amm
             .swapInput(
@@ -1081,8 +1081,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             int256 fundingPayment,
             int256 latestCumulativePremiumFraction
         ) = _calcRemainMarginWithFundingPayment(params.amm, oldPosition, increaseMarginRequirement, params.side == Side.BUY);
-
-        (, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(params.amm, params.trader, PnlCalcOption.SPOT_PRICE);
 
         // update positionResp
         positionResp.badDebt = badDebt;
