@@ -89,7 +89,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -100,7 +100,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         assertEq(int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore), int256(vaultBefore) - int256(vaultAfter));
         // positive means revenue
@@ -149,7 +149,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -162,7 +162,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         assertEq(int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore), int256(vaultBefore) - int256(vaultAfter));
 
@@ -216,7 +216,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -224,7 +224,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
@@ -262,7 +262,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -270,7 +270,7 @@ contract CHFundingTest is Test {
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
         uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
@@ -306,14 +306,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
@@ -358,14 +358,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
@@ -413,14 +413,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getBudgetAllocatedFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getBudgetAllocatedFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
