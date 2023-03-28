@@ -26,6 +26,9 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     // contract dependencies;
     address private beneficiary;
 
+    // amm => budget of the insurance fund, allocated to each market
+    mapping(IAmm => uint256) public budgetsAllocated;
+
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -67,7 +70,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
 
         // add token if it's new one
         IERC20 token = _amm.quoteAsset();
-        if (!isQuoteTokenExisted(token)) {
+        if (!_isQuoteTokenExisted(token)) {
             quoteTokens.push(token);
             quoteTokenMap[address(token)] = true;
             emit TokenAdded(address(token));
@@ -104,7 +107,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     }
 
     function removeToken(IERC20 _token) external onlyOwner {
-        require(isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
+        require(_isQuoteTokenExisted(_token), "IF_TNE"); //token not existed
 
         quoteTokenMap[address(_token)] = false;
         uint256 quoteTokensLength = getQuoteTokenLength();
@@ -119,8 +122,8 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         }
 
         // transfer the quoteToken to owner.
-        if (balanceOf(_token) > 0) {
-            _token.safeTransfer(owner(), balanceOf(_token));
+        if (_balanceOf(_token) > 0) {
+            _token.safeTransfer(owner(), _balanceOf(_token));
         }
 
         emit TokenRemoved(address(_token));
@@ -132,14 +135,26 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
      */
     function withdraw(IERC20 _quoteToken, uint256 _amount) external override {
         require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
-        require(isQuoteTokenExisted(_quoteToken), "IF_ANS"); //asset not supported
+        require(_isQuoteTokenExisted(_quoteToken), "IF_ANS"); //asset not supported
 
-        uint256 quoteBalance = balanceOf(_quoteToken);
+        uint256 quoteBalance = _balanceOf(_quoteToken);
 
         require(quoteBalance >= _amount, "IF_FNE"); //Fund not enough
 
         _quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
+    }
+
+    function increaseBudgetFor(IAmm _amm, uint256 _amount) public override {
+        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
+        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
+        _increaseBudgetFor(_amm, _amount);
+    }
+
+    function decreaseBudgetFor(IAmm _amm, uint256 _amount) public override {
+        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
+        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
+        _decreaseBudgetFor(_amm, _amount);
     }
 
     //
@@ -165,11 +180,31 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         return amms;
     }
 
-    function isQuoteTokenExisted(IERC20 _token) internal view returns (bool) {
+    function getBudgetAllocatedFor(IAmm _amm) external view override returns (uint256 budget) {
+        budget = budgetsAllocated[_amm];
+    }
+
+    //
+    // private
+    //
+
+    function _increaseBudgetFor(IAmm _amm, uint256 _amount) internal {
+        budgetsAllocated[_amm] += _amount;
+    }
+
+    function _decreaseBudgetFor(IAmm _amm, uint256 _amount) internal {
+        uint256 budget = budgetsAllocated[_amm];
+        require(budget >= _amount, "IF_IIB"); // insufficient insurance budget
+        unchecked {
+            budgetsAllocated[_amm] -= _amount;
+        }
+    }
+
+    function _isQuoteTokenExisted(IERC20 _token) internal view returns (bool) {
         return quoteTokenMap[address(_token)];
     }
 
-    function balanceOf(IERC20 _quoteToken) internal view returns (uint256) {
+    function _balanceOf(IERC20 _quoteToken) internal view returns (uint256) {
         return _quoteToken.balanceOf(address(this));
     }
 }

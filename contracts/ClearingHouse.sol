@@ -126,9 +126,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // vamm => balance of vault
     mapping(address => uint256) public vaults;
 
-    // amm => budget of the insurance fund, allocated to each market
-    mapping(address => uint256) public insuranceBudgets;
-
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(address => int256) public netRevenuesSinceLastFunding;
 
@@ -649,7 +646,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
         int256 netRevenue = netRevenuesSinceLastFunding[address(_amm)];
-        uint256 budget = insuranceBudgets[address(_amm)];
+        uint256 budget = insuranceFund.getBudgetAllocatedFor(_amm);
         bool isAdjustable;
         int256 cost;
         uint256 newQuoteAssetReserve;
@@ -808,7 +805,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      *@param _amount the amount to be injected
      */
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        insuranceBudgets[address(_amm)] = insuranceBudgets[address(_amm)] + _amount;
+        insuranceFund.increaseBudgetFor(_amm, _amount);
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
     }
@@ -1285,7 +1282,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
             quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            insuranceBudgets[address(_amm)] += _spreadFee;
+            insuranceFund.increaseBudgetFor(_amm, _spreadFee);
             // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
         }
@@ -1342,10 +1339,8 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
     // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
-        require(insuranceBudget >= _amount, "CH_IIB"); // insufficient insurance budget
-        insuranceBudgets[address(_amm)] = insuranceBudget - _amount;
         vaults[address(_amm)] += _amount;
+        insuranceFund.decreaseBudgetFor(_amm, _amount);
         IERC20 quoteToken = _amm.quoteAsset();
         insuranceFund.withdraw(quoteToken, _amount);
     }
@@ -1357,7 +1352,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             _amount = vault;
         }
         vaults[address(_amm)] = vault - _amount;
-        insuranceBudgets[address(_amm)] += _amount;
+        insuranceFund.increaseBudgetFor(_amm, _amount);
         IERC20 quoteToken = _amm.quoteAsset();
         quoteToken.safeTransfer(address(insuranceFund), _amount);
     }
