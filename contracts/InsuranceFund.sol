@@ -9,6 +9,7 @@ import { BlockContext } from "./utils/BlockContext.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
+import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
 
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
@@ -185,8 +186,9 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     function deposit(IAmm _amm, uint256 _amount) external override {
         IERC20 quoteToken = _amm.quoteAsset();
         require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
-        quoteToken.safeTransferFrom(_msgSender(), address(this), _amount);
-        budgetsAllocated[_amm] += _amount;
+        uint256 balanceBefore = quoteToken.balanceOf(address(this));
+        IInsuranceFundCallee(_msgSender()).depositCallback(quoteToken, _amount);
+        budgetsAllocated[_amm] += quoteToken.balanceOf(address(this)) - balanceBefore;
     }
 
     //

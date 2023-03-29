@@ -14,8 +14,9 @@ import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 import { IClearingHouse } from "./interfaces/IClearingHouse.sol";
+import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
 
-contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
+contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
     using TransferHelper for IERC20;
@@ -306,9 +307,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         partialLiquidationRatio = _ratio;
     }
 
-    // function setOperator(address _operator) external onlyOwner {
-    //     operator = _operator;
-    // }
+    function depositCallback(IERC20 _token, uint256 _amount) external {
+        require(_msgSender() == address(insuranceFund), "CH_NIF"); // not insurnce fund
+        _token.safeTransfer(address(insuranceFund), _amount);
+    }
 
     /**
      * @notice add margin to increase margin ratio
@@ -807,7 +809,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
         IERC20 quoteAsset = _amm.quoteAsset();
         quoteAsset.safeTransferFrom(_msgSender(), address(this), _amount);
-        quoteAsset.approve(address(insuranceFund), _amount);
         insuranceFund.deposit(_amm, _amount);
     }
 
@@ -1283,7 +1284,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
             quoteAsset.safeTransferFrom(_from, address(this), _spreadFee);
-            quoteAsset.approve(address(insuranceFund), _spreadFee);
             insuranceFund.deposit(_amm, _spreadFee);
             // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
@@ -1352,8 +1352,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             _amount = vault;
         }
         vaults[address(_amm)] = vault - _amount;
-        IERC20 quoteToken = _amm.quoteAsset();
-        quoteToken.approve(address(insuranceFund), _amount);
         insuranceFund.deposit(_amm, _amount);
     }
 
