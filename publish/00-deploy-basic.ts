@@ -114,7 +114,7 @@ async function main() {
   await configAmm(deployConfig, cryptoPunksAmm, AmmInstanceName.CRYPTOPUNKSETH, insuranceFund, clearingHouse);
   await configAmm(deployConfig, meebitsAmm, AmmInstanceName.MEEBITSETH, insuranceFund, clearingHouse);
 
-  await insuranceFund.addBeneficiary(clearingHouse.address);
+  await insuranceFund.setBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(deployConfig.weth);
 
   const liquidator = await deployLiquidator(ledger, clearingHouse.address);
