@@ -68,9 +68,9 @@ describe("ClearingHouse Fee Pool Test", () => {
 
   it("inject into fee pool", async () => {
     await approve(alice, clearingHouse.address, 100);
-    expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eql(toFullDigitBN(0));
+    expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eql(toFullDigitBN(0));
     await clearingHouse.connect(alice).inject2InsuranceFund(amm.address, toFullDigitBN(100));
-    expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eql(toFullDigitBN(100));
+    expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eql(toFullDigitBN(100));
   });
 
   // describe("withdraw from fee pool", () => {

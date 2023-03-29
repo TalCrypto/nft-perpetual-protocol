@@ -131,7 +131,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //     const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
   //     // 125 (alice's margin) + 450 (bob' margin)  = 575
   //     expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
-  //     expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eq(toFullDigitBN(70));
+  //     expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(70));
   //   });
   //   it("fail to repeg because of not a operator", async () => {
   //     await expect(clearingHouse.repegAmm(amm.address, toFullDigitBN(100))).to.revertedWith("CH_NO");
@@ -151,7 +151,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //     await expect(tx)
   //       .to.emit(clearingHouse, "Repeg")
   //       .withArgs(amm.address, "774596669125000000000", "129099444750000000000", "13976752953574231241");
-  //     expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("13976752953574231241")));
+  //     expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("13976752953574231241")));
   //   });
   //   it("fail to decrease mark price with expense more than half of fee pool", async () => {
   //     await clearingHouse.setOperator(admin.address);
@@ -178,7 +178,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //     const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
   //     // 125 (alice's margin) + 450 (bob' margin)  = 575
   //     expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(575));
-  //     expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eq(toFullDigitBN(70));
+  //     expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(70));
   //   });
   //   it("fail to repeg because of not a operator", async () => {
   //     await expect(clearingHouse.adjustK(amm.address, toFullDigitBN(1), toFullDigitBN(1))).to.revertedWith("CH_NO");
@@ -192,7 +192,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //       .withArgs(amm.address, toFullDigitBN(880), toFullDigitBN(137.5), "4444444444444444445");
   //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(880));
   //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(137.5));
-  //     expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("4444444444444444445")));
+  //     expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(70).sub(BigNumber.from("4444444444444444445")));
   //   });
   //   it("success to decrease k with revenue", async () => {
   //     await clearingHouse.setOperator(admin.address);
@@ -203,7 +203,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   //       .withArgs(amm.address, toFullDigitBN(720), toFullDigitBN(112.5), "-5714285714285714285");
   //     expect(await amm.quoteAssetReserve()).eql(toFullDigitBN(720));
   //     expect(await amm.baseAssetReserve()).eql(toFullDigitBN(112.5));
-  //     expect(await insuranceFund.getBudgetAllocatedFor(amm.address)).eq(toFullDigitBN(70).add(BigNumber.from("5714285714285714285")));
+  //     expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(70).add(BigNumber.from("5714285714285714285")));
   //   });
   //   it("fail to increase k with expense more than the insurance budget", async () => {
   //     await clearingHouse.setOperator(admin.address);
