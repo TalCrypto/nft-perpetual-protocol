@@ -133,28 +133,22 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
      * @notice withdraw token to caller
      * @param _amount the amount of quoteToken caller want to withdraw
      */
-    function withdraw(IERC20 _quoteToken, uint256 _amount) external override {
+    function withdraw(IAmm _amm, uint256 _amount) external override {
+        uint256 budget = budgetsAllocated[_amm];
+        IERC20 quoteToken = _amm.quoteAsset();
         require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
-        require(_isQuoteTokenExisted(_quoteToken), "IF_ANS"); //asset not supported
-
-        uint256 quoteBalance = _balanceOf(_quoteToken);
-
-        require(quoteBalance >= _amount, "IF_FNE"); //Fund not enough
-
-        _quoteToken.safeTransfer(_msgSender(), _amount);
+        require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
+        require(budget >= _amount, "IF_FNE"); //Fund not enough
+        budgetsAllocated[_amm] -= _amount;
+        quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
     }
 
-    function increaseBudgetFor(IAmm _amm, uint256 _amount) public override {
-        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
-        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
-        _increaseBudgetFor(_amm, _amount);
-    }
-
-    function decreaseBudgetFor(IAmm _amm, uint256 _amount) public override {
-        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
-        require(isExistedAmm(_amm), "IF_ANE"); //amm not existed
-        _decreaseBudgetFor(_amm, _amount);
+    function deposit(IAmm _amm, uint256 _amount) external override {
+        IERC20 quoteToken = _amm.quoteAsset();
+        require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
+        quoteToken.safeTransferFrom(_msgSender(), address(this), _amount);
+        budgetsAllocated[_amm] += _amount;
     }
 
     //

@@ -805,9 +805,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      *@param _amount the amount to be injected
      */
     function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        insuranceFund.increaseBudgetFor(_amm, _amount);
         IERC20 quoteAsset = _amm.quoteAsset();
-        quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
+        quoteAsset.safeTransferFrom(_msgSender(), address(this), _amount);
+        quoteAsset.approve(address(insuranceFund), _amount);
+        insuranceFund.deposit(_amm, _amount);
     }
 
     //
@@ -1281,8 +1282,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
-            quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            insuranceFund.increaseBudgetFor(_amm, _spreadFee);
+            quoteAsset.safeTransferFrom(_from, address(this), _spreadFee);
+            quoteAsset.approve(address(insuranceFund), _spreadFee);
+            insuranceFund.deposit(_amm, _spreadFee);
             // consider fees in k-adjustment
             netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
         }
@@ -1340,9 +1342,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
         vaults[address(_amm)] += _amount;
-        insuranceFund.decreaseBudgetFor(_amm, _amount);
-        IERC20 quoteToken = _amm.quoteAsset();
-        insuranceFund.withdraw(quoteToken, _amount);
+        insuranceFund.withdraw(_amm, _amount);
     }
 
     // transfer fund from vault to insurance fund
@@ -1352,9 +1352,9 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             _amount = vault;
         }
         vaults[address(_amm)] = vault - _amount;
-        insuranceFund.increaseBudgetFor(_amm, _amount);
         IERC20 quoteToken = _amm.quoteAsset();
-        quoteToken.safeTransfer(address(insuranceFund), _amount);
+        quoteToken.approve(address(insuranceFund), _amount);
+        insuranceFund.deposit(_amm, _amount);
     }
 
     // /**
