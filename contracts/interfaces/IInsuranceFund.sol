@@ -13,5 +13,5 @@ interface IInsuranceFund {
 
     function getAllAmms() external view returns (IAmm[] memory);
 
-    function getBudgetAllocatedFor(IAmm _amm) external view returns (uint256);
+    function getAvailableBudgetFor(IAmm _amm) external view returns (uint256);
 }

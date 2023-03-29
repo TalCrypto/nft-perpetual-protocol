@@ -130,6 +130,10 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         emit TokenRemoved(address(_token));
     }
 
+    function setBeneficiary(address _beneficiary) external onlyOwner {
+        require(_beneficiary != address(0), "IF_ZA");
+        beneficiary = _beneficiary;
+    }
     /**
      * @notice withdraw token to caller, only can be called by the beneficiaries
      */
@@ -158,20 +162,13 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     }
 
     //
-    // SETTER
+    // VIEW
     //
-
-    function setBeneficiary(address _beneficiary) external onlyOwner {
-        beneficiary = _beneficiary;
-    }
 
     function getQuoteTokenLength() public view returns (uint256) {
         return quoteTokens.length;
     }
 
-    //
-    // VIEW
-    //
     function isExistedAmm(IAmm _amm) public view override returns (bool) {
         return ammMap[address(_amm)];
     }
@@ -180,7 +177,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         return amms;
     }
 
-    function getBudgetAllocatedFor(IAmm _amm) external view override returns (uint256 budget) {
+    function getAvailableBudgetFor(IAmm _amm) external view override returns (uint256 budget) {
         budget = budgetsAllocated[_amm];
     }
 
