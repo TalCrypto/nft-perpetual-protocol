@@ -186,18 +186,6 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     // private
     //
 
-    function _increaseBudgetFor(IAmm _amm, uint256 _amount) internal {
-        budgetsAllocated[_amm] += _amount;
-    }
-
-    function _decreaseBudgetFor(IAmm _amm, uint256 _amount) internal {
-        uint256 budget = budgetsAllocated[_amm];
-        require(budget >= _amount, "IF_IIB"); // insufficient insurance budget
-        unchecked {
-            budgetsAllocated[_amm] -= _amount;
-        }
-    }
-
     function _isQuoteTokenExisted(IERC20 _token) internal view returns (bool) {
         return quoteTokenMap[address(_token)];
     }
