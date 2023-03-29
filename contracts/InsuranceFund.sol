@@ -130,8 +130,7 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     }
 
     /**
-     * @notice withdraw token to caller
-     * @param _amount the amount of quoteToken caller want to withdraw
+     * @notice withdraw token to caller, only can be called by the beneficiaries
      */
     function withdraw(IAmm _amm, uint256 _amount) external override {
         uint256 budget = budgetsAllocated[_amm];
@@ -143,6 +142,11 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
     }
+
+    /**
+     * @notice deposit token to this insurance fund
+     * @dev should make sure that enough token is approved before calling
+     */
 
     function deposit(IAmm _amm, uint256 _amount) external override {
         IERC20 quoteToken = _amm.quoteAsset();
