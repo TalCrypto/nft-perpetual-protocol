@@ -24,7 +24,8 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     IERC20[] public quoteTokens;
 
     // contract dependencies;
-    address private beneficiary;
+    mapping(address => bool) private beneficiaryMap;
+    address[] public beneficiaries;
 
     // amm => budget of the insurance fund, allocated to each market
     mapping(IAmm => uint256) public budgetsAllocated;
@@ -48,6 +49,14 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     event ShutdownAllAmms(uint256 blockNumber);
     event AmmAdded(address amm);
     event AmmRemoved(address amm);
+
+    //
+    // MODIFIERS
+    //
+    modifier onlyBeneficiary() {
+        require(beneficiaryMap[_msgSender()], "IF_NB"); // not beneficiary
+        _;
+    }
 
     //
     // FUNCTIONS
@@ -96,6 +105,32 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     }
 
     /**
+     * @dev only owner can call
+     * @param _beneficiary address of clearing house or staking pool (ETH/TTT)
+     */
+    function addBeneficiary(address _beneficiary) public onlyOwner {
+        require(!beneficiaryMap[_beneficiary], "IF_BAA"); // beneficiary already added
+        beneficiaryMap[_beneficiary] = true;
+        beneficiaries.push(_beneficiary);
+    }
+
+    /**
+     * @dev only owner can call, it is sopposed to be called when the staking pool is retired
+     */
+    function removeBeneficiary(address _beneficiary) external onlyOwner {
+        require(beneficiaryMap[_beneficiary], "IF_BNE"); // beneficiary not existed
+        beneficiaryMap[_beneficiary] = false;
+        uint256 length = beneficiaries.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (beneficiaries[i] == _beneficiary) {
+                beneficiaries[i] = beneficiaries[length - 1];
+                beneficiaries.pop();
+                break;
+            }
+        }
+    }
+
+    /**
      * @notice shutdown all Amms when fatal error happens
      * @dev only owner can call. Emit `ShutdownAllAmms` event
      */
@@ -132,10 +167,9 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     /**
      * @notice withdraw token to caller, only can be called by the beneficiaries
      */
-    function withdraw(IAmm _amm, uint256 _amount) external override {
+    function withdraw(IAmm _amm, uint256 _amount) external override onlyBeneficiary {
         uint256 budget = budgetsAllocated[_amm];
         IERC20 quoteToken = _amm.quoteAsset();
-        require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
         require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
         require(budget >= _amount, "IF_FNE"); //Fund not enough
         budgetsAllocated[_amm] -= _amount;
@@ -156,20 +190,13 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     }
 
     //
-    // SETTER
+    // VIEW
     //
-
-    function setBeneficiary(address _beneficiary) external onlyOwner {
-        beneficiary = _beneficiary;
-    }
 
     function getQuoteTokenLength() public view returns (uint256) {
         return quoteTokens.length;
     }
 
-    //
-    // VIEW
-    //
     function isExistedAmm(IAmm _amm) public view override returns (bool) {
         return ammMap[address(_amm)];
     }
