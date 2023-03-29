@@ -131,7 +131,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
   await amm.setGlobalShutdown(insuranceFund.address);
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
-  await insuranceFund.setBeneficiary(clearingHouse.address);
+  await insuranceFund.addBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(quoteToken.address);
 
   await amm.setOpen(true);
@@ -204,7 +204,7 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
   await amm.setGlobalShutdown(insuranceFund.address);
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
-  await insuranceFund.setBeneficiary(clearingHouse.address);
+  await insuranceFund.addBeneficiary(clearingHouse.address);
   await tollPool.addFeeToken(quoteToken.address);
 
   await amm.setOpen(true);

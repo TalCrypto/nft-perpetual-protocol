@@ -45,7 +45,7 @@ contract CHFundingTest is Test {
         clearingHouseViewer = new ClearingHouseViewer(clearingHouse);
 
         insuranceFund.addAmm(amm);
-        insuranceFund.setBeneficiary(address(clearingHouse));
+        insuranceFund.addBeneficiary(address(clearingHouse));
         amm.setGlobalShutdown(address(insuranceFund));
         amm.setCounterParty(address(clearingHouse));
         amm.setOpen(true);
