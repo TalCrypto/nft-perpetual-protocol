@@ -30,6 +30,9 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
     // amm => budget of the insurance fund, allocated to each market
     mapping(IAmm => uint256) public budgetsAllocated;
 
+    address public ethStakingPool;
+
+    address public tttStakingPool;
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -135,6 +138,21 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         beneficiary = _beneficiary;
     }
     /**
+     * @notice activate the usage of ETH staking pool, can be called only by owner
+     * @param _pool the address of the staking pool
+     */
+    function activateETHStakingPool(address _pool) external onlyOwner {
+        require(_pool != address(0), "IF_ZA");
+        ethStakingPool = _pool;
+    }
+
+    /**
+     * @notice deactivate the usage of the ETH staking pool, can be called only by owner
+     */
+    function deactivateETHStakingPool() external onlyOwner {
+        ethStakingPool = address(0);
+    }
+    /**
      * @notice withdraw token to caller, only can be called by the beneficiaries
      */
     function withdraw(IAmm _amm, uint256 _amount) external override {
@@ -179,6 +197,13 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
 
     function getAvailableBudgetFor(IAmm _amm) external view override returns (uint256 budget) {
         budget = budgetsAllocated[_amm];
+        address _ethStakingPool = ethStakingPool;
+        if (_ethStakingPool != address(0)) {
+            IERC20 quoteToken = _amm.quoteAsset();
+            uint256 balanceOfStakingPool = quoteToken.balanceOf(_ethStakingPool);
+            // only half of the staking pool balance is available for backing of IF every time
+            budget += balanceOfStakingPool / 2;
+        }
     }
 
     //
