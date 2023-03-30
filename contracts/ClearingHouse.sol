@@ -894,6 +894,10 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         latest = ammMap[address(_amm)].latestCumulativePremiumFractionShort;
     }
 
+    function getVaultFor(IAmm _amm) external view override returns (uint256 vault) {
+        vault = vaults[_amm];
+    }
+
     // function _getMarginRatioByCalcOption(
     //     IAmm _amm,
     //     address _trader,
