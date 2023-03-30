@@ -10,6 +10,7 @@ import { IAmm } from "./interfaces/IAmm.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
+import { IStakingPool } from "./interfaces/IStakingPool.sol";
 
 contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
@@ -160,7 +161,14 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
         IERC20 quoteToken = _amm.quoteAsset();
         require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
         require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
-        require(budget >= _amount, "IF_FNE"); //Fund not enough
+        if (budget < _amount) {
+            if (ethStakingPool != address(0)) {
+                IStakingPool(ethStakingPool).withdraw(_amm, _amount - budget);
+                budgetsAllocated[_amm] = _amount;
+            } else {
+                revert("IF_FNE"); //fund not enough
+            }
+        }
         budgetsAllocated[_amm] -= _amount;
         quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
