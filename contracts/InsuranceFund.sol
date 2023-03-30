@@ -176,7 +176,6 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, 
 
     /**
      * @notice deposit token to this insurance fund
-     * @dev should make sure that enough token is approved before calling
      */
 
     function deposit(IAmm _amm, uint256 _amount) external override {
