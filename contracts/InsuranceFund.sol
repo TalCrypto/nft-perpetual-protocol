@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.9;
 
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { OwnableUpgradeableSafe } from "./OwnableUpgradeableSafe.sol";
 import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
@@ -12,7 +11,6 @@ import { TransferHelper } from "./utils/TransferHelper.sol";
 import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
 import { IStakingPool } from "./interfaces/IStakingPool.sol";
 
-contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext, ReentrancyGuardUpgradeable {
     using UIntMath for uint256;
     using TransferHelper for IERC20;
 
