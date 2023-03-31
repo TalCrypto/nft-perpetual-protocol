@@ -7,11 +7,16 @@ import { IInsuranceFund } from "./interfaces/IInsuranceFund.sol";
 import { BlockContext } from "./utils/BlockContext.sol";
 import { IAmm } from "./interfaces/IAmm.sol";
 import { UIntMath } from "./utils/UIntMath.sol";
+import { IntMath } from "./utils/IntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
-import { IStakingPool } from "./interfaces/IStakingPool.sol";
+import { IETHStakingPool } from "./interfaces/IETHStakingPool.sol";
+import { IClearingHouse } from "./interfaces/IClearingHouse.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
     using UIntMath for uint256;
+    using IntMath for int256;
     using TransferHelper for IERC20;
 
     //**********************************************************//
@@ -32,6 +37,12 @@ import { IStakingPool } from "./interfaces/IStakingPool.sol";
     address public ethStakingPool;
 
     address public tttStakingPool;
+
+    // used to calculate the minimum insurance fund reserve amount for each collection
+    uint8 public reserveCoeff;
+
+    uint256[50] private __gap;
+
     //**********************************************************//
     //    The above state variables can not change the order    //
     //**********************************************************//
@@ -39,7 +50,6 @@ import { IStakingPool } from "./interfaces/IStakingPool.sol";
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
-    uint256[50] private __gap;
 
     //
     // EVENTS
@@ -58,7 +68,7 @@ import { IStakingPool } from "./interfaces/IStakingPool.sol";
 
     function initialize() public initializer {
         __Ownable_init();
-        __ReentrancyGuard_init();
+        reserveCoeff = 1;
     }
 
     /**
@@ -136,6 +146,7 @@ import { IStakingPool } from "./interfaces/IStakingPool.sol";
         require(_beneficiary != address(0), "IF_ZA");
         beneficiary = _beneficiary;
     }
+
     /**
      * @notice activate the usage of ETH staking pool, can be called only by owner
      * @param _pool the address of the staking pool
@@ -151,37 +162,105 @@ import { IStakingPool } from "./interfaces/IStakingPool.sol";
     function deactivateETHStakingPool() external onlyOwner {
         ethStakingPool = address(0);
     }
+
     /**
-     * @notice withdraw token to caller, only can be called by the beneficiaries
+     * @notice decide how much insurance fund should be bigger, at least 1 times than vault
+     */
+    function setReserveCoeff(uint8 _coeff) external onlyOwner {
+        require(_coeff >= 1, "IF_IC"); //invalid coefficient
+        reserveCoeff = _coeff;
+    }
+
+    /**
+     * @notice withdraw token to vault to cover cost, can be called only by the clearing house
+     * cost is covered as follows if the staking pool has been activated
+     * 1. if there is reward, it is used first
+     * 2. if it is still not enough, this insurance fund is used
+     * 3. if it is also still not enough, the staking principal is used
+     * if the staking pool has not been activated
+     * all is covered by this insurance fund
      */
     function withdraw(IAmm _amm, uint256 _amount) external override {
         uint256 budget = budgetsAllocated[_amm];
         IERC20 quoteToken = _amm.quoteAsset();
         require(beneficiary == _msgSender(), "IF_NB"); //not beneficiary
         require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
-        if (budget < _amount) {
-            if (ethStakingPool != address(0)) {
-                IStakingPool(ethStakingPool).withdraw(_amm, _amount - budget);
-                budgetsAllocated[_amm] = _amount;
-            } else {
-                revert("IF_FNE"); //fund not enough
+        address _ethStakingPool = ethStakingPool;
+        if (_ethStakingPool != address(0) && quoteToken == IETHStakingPool(_ethStakingPool).quoteToken()) {
+            // check reward
+            uint256 amountCoveredByReward;
+            int256 reward = IETHStakingPool(_ethStakingPool).calculateTotalReward();
+            if (reward > 0) {
+                amountCoveredByReward = Math.min(_amount, reward.abs());
             }
+            // check this insurance fund
+            uint256 amountCoveredByIF;
+            if (_amount > amountCoveredByReward && budget > 0) {
+                amountCoveredByIF = Math.min(_amount - amountCoveredByReward, budget);
+                budgetsAllocated[_amm] -= amountCoveredByIF;
+            }
+            // check the eth staking pool
+            uint256 amountCoveredByStakingPrincipal;
+            if (_amount > amountCoveredByReward + amountCoveredByIF) {
+                amountCoveredByStakingPrincipal = _amount - amountCoveredByReward - amountCoveredByIF;
+            }
+
+            if (amountCoveredByReward + amountCoveredByStakingPrincipal > 0) {
+                IETHStakingPool(_ethStakingPool).withdraw(_amm, amountCoveredByReward + amountCoveredByStakingPrincipal);
+            }
+        } else {
+            require(budget >= _amount, "IF_FNE"); //fund not enough
+            budgetsAllocated[_amm] -= _amount;
         }
-        budgetsAllocated[_amm] -= _amount;
         quoteToken.safeTransfer(_msgSender(), _amount);
         emit Withdrawn(_msgSender(), _amount);
     }
 
     /**
-     * @notice deposit token to this insurance fund
+     * @notice deposited token is distributed to this insurance fund and the staking pool as follows
+     * if the staking pool has been activated
+     * 1. staking principal is replenished first
+     * 2. tribe3 reserve (insurance fund) is replenished up to vault * K
+     * 3. the remain amount is distributed as reward
+     * if the staking pool has not been activated
+     * all fund is deposited to this insurance fund
      */
-
     function deposit(IAmm _amm, uint256 _amount) external override {
         IERC20 quoteToken = _amm.quoteAsset();
         require(_isQuoteTokenExisted(quoteToken), "IF_ANS"); //asset not supported
         uint256 balanceBefore = quoteToken.balanceOf(address(this));
         IInsuranceFundCallee(_msgSender()).depositCallback(quoteToken, _amount);
-        budgetsAllocated[_amm] += quoteToken.balanceOf(address(this)) - balanceBefore;
+        _amount = quoteToken.balanceOf(address(this)) - balanceBefore;
+        address _ethStakingPool = ethStakingPool;
+        if (_ethStakingPool != address(0) && quoteToken == IETHStakingPool(_ethStakingPool).quoteToken()) {
+            // replenish the staking principal if it has been activated
+            uint256 amountToStakingPool;
+            int256 reward = IETHStakingPool(_ethStakingPool).calculateTotalReward();
+            if (reward < 0) {
+                amountToStakingPool = Math.min(_amount, reward.abs());
+            }
+            // replenish this insurance fund
+            uint256 amountToInsuranceFund;
+            if (_amount > amountToStakingPool) {
+                uint256 budget = budgetsAllocated[_amm];
+                uint256 reserveAmount = IClearingHouse(beneficiary).getVaultFor(_amm) * reserveCoeff;
+                if (reserveAmount > budget) {
+                    amountToInsuranceFund = Math.min(_amount - amountToStakingPool, reserveAmount - budget);
+                    budgetsAllocated[_amm] += amountToInsuranceFund;
+                }
+            }
+            // distribute the remain amount as reward to the eth staking pool if it has been activated
+            uint256 amountToReward;
+            if (_amount > amountToStakingPool + amountToInsuranceFund) {
+                amountToReward = _amount - amountToStakingPool - amountToInsuranceFund;
+            }
+            // transfer reward and principal replenishment to the eth staking pool
+            if (amountToStakingPool + amountToReward > 0) {
+                quoteToken.safeTransfer(_ethStakingPool, amountToStakingPool + amountToReward);
+            }
+        } else {
+            budgetsAllocated[_amm] += _amount;
+        }
     }
 
     //
