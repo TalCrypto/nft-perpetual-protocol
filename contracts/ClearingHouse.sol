@@ -307,6 +307,9 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         partialLiquidationRatio = _ratio;
     }
 
+    /**
+     * @dev only the insurance fund can call this function
+     */
     function depositCallback(IERC20 _token, uint256 _amount) external {
         require(_msgSender() == address(insuranceFund), "CH_NIF"); // not insurnce fund
         _token.safeTransfer(address(insuranceFund), _amount);
