@@ -804,17 +804,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //     emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     // }
 
-    /**
-     *@notice inject WETH to the insurance fund half of which is used for the adjustment
-     *@param _amm the target vamm to inject WETH
-     *@param _amount the amount to be injected
-     */
-    function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        IERC20 quoteAsset = _amm.quoteAsset();
-        quoteAsset.safeTransferFrom(_msgSender(), address(this), _amount);
-        insuranceFund.deposit(_amm, _amount);
-    }
-
     //
     // VIEW FUNCTIONS
     //
