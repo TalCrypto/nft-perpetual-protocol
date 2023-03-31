@@ -1003,12 +1003,14 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 _setPosition(_amm, _trader, positionResp.position);
             }
 
+            _withdraw(_amm, _msgSender(), feeToLiquidator);
+
             if (feeToInsuranceFund > 0) {
                 _transferToInsuranceFund(_amm, feeToInsuranceFund);
                 // include liquidation fee to the insurance fund into the k-adjustment calculation
                 netRevenuesSinceLastFunding[_amm] += int256(feeToInsuranceFund);
             }
-            _withdraw(_amm, _msgSender(), feeToLiquidator);
+
             _enterRestrictionMode(_amm);
 
             emit PositionLiquidated(
