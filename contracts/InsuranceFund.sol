@@ -283,10 +283,23 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
         budget = budgetsAllocated[_amm];
         address _ethStakingPool = ethStakingPool;
         if (_ethStakingPool != address(0)) {
+            uint256 ammCount = amms.length;
+            uint256 i = 0;
+            uint256 totalOpenInterest = 0;
+            uint256 currentOpenInterest;
+            for (i; i < ammCount; ) {
+                uint256 openInterest = amms[i].getOpenInterest();
+                totalOpenInterest += openInterest;
+                if (amms[i] == _amm) {
+                    currentOpenInterest = openInterest;
+                }
+                unchecked {
+                    i++;
+                }
+            }
             IERC20 quoteToken = _amm.quoteAsset();
             uint256 balanceOfStakingPool = quoteToken.balanceOf(_ethStakingPool);
-            // only half of the staking pool balance is available for backing of IF every time
-            budget += balanceOfStakingPool / 2;
+            budget += Math.mulDiv(balanceOfStakingPool, currentOpenInterest, totalOpenInterest);
         }
     }
 
