@@ -132,12 +132,14 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
     clearingHouse = contracts.clearingHouse;
     tollPool = contracts.tollPool;
     mockPriceFeed = contracts.priceFeed;
+    const ethStakingPool = contracts.ethStakingPool;
+    await ethStakingPool.setTribe3Treasury(admin.address);
 
     // Each of Alice & Bob have 5000 USDC
     await transfer(admin, alice.address, 5000);
     await transfer(admin, bob.address, 5000);
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     await syncAmmPriceToOracle();
   });
@@ -576,7 +578,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       await clearingHouse.connect(alice).closePosition(amm.address, toFullDigitBN(0));
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(0, +(await quoteToken.decimals())));
 
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5024, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(12, +(await quoteToken.decimals())));
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(12, +(await quoteToken.decimals())));
     });
 
@@ -1499,7 +1501,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
       // fee 30, spread 30
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(30, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5030, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(30, +(await quoteToken.decimals())));
     });
 
     it("open short position twice when total fee is 10%", async () => {
@@ -1532,7 +1534,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
 
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(100, +(await quoteToken.decimals())));
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(10, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5010, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(10, +(await quoteToken.decimals())));
     });
 
     it("open and close position when total fee is 10%", async () => {
@@ -1562,7 +1564,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // feePool = 60 (fee of opening the position) + 60 (fee of closing the position)
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(0, +(await quoteToken.decimals())));
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(60, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5060, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(30, +(await quoteToken.decimals())));
     });
 
     it("open position and close manually by opening reverse position(long then short) when fee is 10%", async () => {
@@ -1597,7 +1599,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // 2nd tx fee = 300 * 2 * 5% = 30
       // 2nd tx fee = 300 * 2 * 5% = 30
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(60, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5060, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(30, +(await quoteToken.decimals())));
     });
 
     it("open position and close manually by opening reverse position(short then long) when fee is 10%", async () => {
@@ -1632,7 +1634,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // 2nd tx fee = 300 * 2 * 5% = 30
 
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(60, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5060, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(30, +(await quoteToken.decimals())));
     });
 
     it("close a under collateral position when fee is 10%", async () => {
@@ -1684,7 +1686,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       });
 
       expect(await quoteToken.balanceOf(tollPool.address)).to.eq(toFullDigitBN(0, +(await quoteToken.decimals())));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(5060, +(await quoteToken.decimals())));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq(toFullDigitBN(60, +(await quoteToken.decimals())));
     });
   });
 

@@ -95,13 +95,16 @@ describe("ClearingHouse Liquidation Test", () => {
     const mockPriceFeed = contracts.priceFeed;
     const clearingHouse = contracts.clearingHouse;
     const clearingHouseViewer = contracts.clearingHouseViewer;
+    const ethStakingPool = contracts.ethStakingPool;
     // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+
+    await ethStakingPool.setTribe3Treasury(admin.address);
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -195,7 +198,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // Change from 855695 to 5000855695509312128745 because perp v1 use 6 decimals quote token but we are using 18 decimals
       expect(await quoteToken.balanceOf(carol.address)).to.eq("855695509312128744");
       // Change from 5000855695 to 5000855695509312128745
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5000855695509312128745");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("855695509312128745");
     });
 
     it("partially liquidate a long position with quoteAssetAmountLimit", async () => {
@@ -292,7 +295,7 @@ describe("ClearingHouse Liquidation Test", () => {
       expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).to.eq("45736327859926164");
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(toFullDigitBN(-18.75));
       expect(await quoteToken.balanceOf(carol.address)).to.eq("553234429773617570");
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5000553234429773617571");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("553234429773617571");
     });
 
     it("partially liquidate a short position with quoteAssetAmountLimit", async () => {
@@ -380,7 +383,7 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
       expect(await quoteToken.balanceOf(carol.address)).to.eq("2801120448199546485");
       // 5000 - 0.91 - 2.8
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4996288515407764172333");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
 
     it("a long position is under water, thus liquidating the complete position with quoteAssetAmountLimit", async () => {
@@ -464,7 +467,7 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
       expect(await quoteToken.balanceOf(carol.address)).to.eq("5723443219304733728");
       // 5000 - (liquidationFee-(initial margin + realizedPnl))
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4998214285552884615407");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
 
     it("a short position is under water, thus liquidating the complete position", async () => {
@@ -541,7 +544,7 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
       expect(await quoteToken.balanceOf(carol.address)).to.eq("2793670659724776482");
       // 5000 - 3.49 - 2.79
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4993712676562293104914");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
 
     it("a short position is under water with positive remain margin, thus liquidating the whole position", async () => {
@@ -598,7 +601,7 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
       expect(await quoteToken.balanceOf(carol.address)).to.eq("5482456135387811635");
       // 5000 - (liquidationFee-(initial margin + realizedPnl))
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("4995219298449099722936");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
 
     it("force error, position not liquidatable due to TWAP over maintenance margin", async () => {

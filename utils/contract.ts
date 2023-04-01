@@ -35,6 +35,8 @@ import {
   ChainlinkPriceFeed__factory,
   ChainlinkAggregatorMock,
   ChainlinkAggregatorMock__factory,
+  ETHStakingPool,
+  ETHStakingPool__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -277,4 +279,10 @@ export async function deployChainlinkPriceFeed(signer: Signer): Promise<Chainlin
 
 export async function deployChainlinkAggregatorMock(signer: Signer): Promise<ChainlinkAggregatorMock> {
   return new ChainlinkAggregatorMock__factory(signer).deploy();
+}
+
+export async function deployETHStakingPool(signer: Signer, quoteTokenAddr: string, insuranceFundAddr: string): Promise<ETHStakingPool> {
+  const instance = (await upgrades.deployProxy(new ETHStakingPool__factory(signer), [quoteTokenAddr, insuranceFundAddr])) as ETHStakingPool;
+  await instance.deployed();
+  return instance;
 }

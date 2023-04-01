@@ -11,6 +11,7 @@ import {
   TraderWallet__factory,
   TraderWallet,
   L2PriceFeedMock,
+  ETHStakingPool,
 } from "../../../typechain-types";
 import { PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
@@ -88,13 +89,17 @@ describe("ClearingHouse Test", () => {
     const mockPriceFeed = contracts.priceFeed;
     const clearingHouse = contracts.clearingHouse;
     const clearingHouseViewer = contracts.clearingHouseViewer;
+    const ethStakingPool = contracts.ethStakingPool;
+
     // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+
+    await ethStakingPool.setTribe3Treasury(admin.address);
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -1179,7 +1184,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 45 - 41.951 = 3.048...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5139024390243902439027");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("45000000000000000000");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq("3048780487804878055");
     });
 
@@ -1204,7 +1209,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 40 - 41.951 = -1.95...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5137073170731707317082");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("40000000000000000000");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(0));
     });
   });
