@@ -38,9 +38,11 @@ contract Liquidator is OwnableUpgradeableSafe {
     }
 
     function liquidate(IAmm _amm, address[] memory _traders) external {
-        bool[] memory results = new bool[](_traders.length);
-        string[] memory reasons = new string[](_traders.length);
-        for (uint256 i = 0; i < _traders.length; i++) {
+        uint256 len = _traders.length;
+        bool[] memory results = new bool[](len);
+        string[] memory reasons = new string[](len);
+        uint256 i;
+        for (i; i < len; ) {
             // (success, ret) = clearingHouse.call(abi.encodeWithSelector(IClearingHouse.liquidate.selector, _amm, _traders[i]));
             try clearingHouse.liquidate(_amm, _traders[i]) {
                 results[i] = true;
@@ -48,6 +50,9 @@ contract Liquidator is OwnableUpgradeableSafe {
                 reasons[i] = reason;
             } catch {
                 reasons[i] = "";
+            }
+            unchecked {
+                i++;
             }
         }
         emit PositionLiquidated(address(_amm), _traders, results, reasons);
