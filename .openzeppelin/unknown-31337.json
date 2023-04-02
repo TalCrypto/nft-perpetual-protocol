@@ -2,17 +2,17 @@
   "manifestVersion": "3.2",
   "admin": {
     "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-    "txHash": "0x52b26188dac00bdffc274c21e746b5620e6e5ea2cf585e5fb8d78c2908c3cab6"
+    "txHash": "0xb777ed73d9e7733932e47b64d06a6da63ce982dfb5d1df8f819827831299aa18"
   },
   "proxies": [
     {
       "address": "0x851356ae760d987E095750cCeb3bC6014560891C",
-      "txHash": "0x6a82573c632bbabb1bb974c04acaf3cd31e712f38a018cf2a6fcb4ba3b8fff54",
+      "txHash": "0x1165d493e85dda86de2e959e37138494f3086f97ce808e351d2ce0093fcbb14b",
       "kind": "transparent"
     },
     {
       "address": "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
-      "txHash": "0xe688fc96bebfdbf40631f203f8312768ee87f121b1825fae9cbe8779ce8fe0f3",
+      "txHash": "0x95abe399b34637f8d8bc5f136741849d37a67b267bdd6a578e3f4e26e90ec338",
       "kind": "transparent"
     },
     {
@@ -226,179 +226,25 @@
       "kind": "transparent"
     },
     {
-      "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-      "txHash": "0xe18afdcaff7c2f93d99765cc6c8ecde634a796c492ad22ab229f2eb7bcb96ad5",
+      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "txHash": "0x34fa77c753948ce9f7a1e40c65042e11dd3c43df15b676385486d027f86973f4",
       "kind": "transparent"
     },
     {
       "address": "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
-      "txHash": "0xb7de6e35cfefa70e2d458ea98bdb3ba2d15fc9e892ebdb078439471f6d8b6a33",
+      "txHash": "0xa947606f83c8bb596350d4509a9fc70402cd7f198072ed9f56eb199acfe4288c",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      "txHash": "0xc806a3f314face957bb530383bfe7b510dea38652267e640e0b4077bb3376e2d",
       "kind": "transparent"
     }
   ],
   "impls": {
-    "a0353290ed94dc199055ab39f278f882a7c574595a6b899088f3a11bada2b078": {
-      "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-      "txHash": "0x80b217a3189f1e351021a3530bfe8debae0576bc066dc4288e910258a42fa02a",
-      "layout": {
-        "storage": [
-          {
-            "label": "_initialized",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_uint8",
-            "contract": "Initializable",
-            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
-            "retypedFrom": "bool"
-          },
-          {
-            "label": "_initializing",
-            "offset": 1,
-            "slot": "0",
-            "type": "t_bool",
-            "contract": "Initializable",
-            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
-          },
-          {
-            "label": "__gap",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_array(t_uint256)50_storage",
-            "contract": "ContextUpgradeable",
-            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
-          },
-          {
-            "label": "_owner",
-            "offset": 0,
-            "slot": "51",
-            "type": "t_address",
-            "contract": "OwnableUpgradeable",
-            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
-          },
-          {
-            "label": "__gap",
-            "offset": 0,
-            "slot": "52",
-            "type": "t_array(t_uint256)49_storage",
-            "contract": "OwnableUpgradeable",
-            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
-          },
-          {
-            "label": "__gap",
-            "offset": 0,
-            "slot": "101",
-            "type": "t_array(t_uint256)50_storage",
-            "contract": "BlockContext",
-            "src": "contracts\\utils\\BlockContext.sol:13"
-          },
-          {
-            "label": "quoteToken",
-            "offset": 0,
-            "slot": "151",
-            "type": "t_contract(IERC20)3359",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:16"
-          },
-          {
-            "label": "insuranceFund",
-            "offset": 0,
-            "slot": "152",
-            "type": "t_contract(IInsuranceFund)15349",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:17"
-          },
-          {
-            "label": "totalSupply",
-            "offset": 0,
-            "slot": "153",
-            "type": "t_uint256",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:19"
-          },
-          {
-            "label": "tribe3Treasury",
-            "offset": 0,
-            "slot": "154",
-            "type": "t_address",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:21"
-          },
-          {
-            "label": "guardEndTimestamp",
-            "offset": 0,
-            "slot": "155",
-            "type": "t_uint256",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:23"
-          },
-          {
-            "label": "nextClaimTimestamp",
-            "offset": 0,
-            "slot": "156",
-            "type": "t_uint256",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:25"
-          },
-          {
-            "label": "claimPeriodInSec",
-            "offset": 0,
-            "slot": "157",
-            "type": "t_uint256",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:27"
-          },
-          {
-            "label": "balanceOf",
-            "offset": 0,
-            "slot": "158",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "ETHStakingPool",
-            "src": "contracts\\ETHStakingPool.sol:29"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_array(t_uint256)49_storage": {
-            "label": "uint256[49]",
-            "numberOfBytes": "1568"
-          },
-          "t_array(t_uint256)50_storage": {
-            "label": "uint256[50]",
-            "numberOfBytes": "1600"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          },
-          "t_contract(IERC20)3359": {
-            "label": "contract IERC20",
-            "numberOfBytes": "20"
-          },
-          "t_contract(IInsuranceFund)15349": {
-            "label": "contract IInsuranceFund",
-            "numberOfBytes": "20"
-          },
-          "t_mapping(t_address,t_uint256)": {
-            "label": "mapping(address => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_uint256": {
-            "label": "uint256",
-            "numberOfBytes": "32"
-          },
-          "t_uint8": {
-            "label": "uint8",
-            "numberOfBytes": "1"
-          }
-        }
-      }
-    },
     "35ea90e2f2c3bcedde8065b4442205b94c9189026a7e40905b23c17243ceaf10": {
       "address": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
-      "txHash": "0xa1db1b3e1daa0317468d69b07ef68843e3ab4b7bcf74aeaa7a7fb5d70ab6f2ac",
+      "txHash": "0x8393e367f99cc6e4b09d73dc3081efa0509f1035d01c3691319a78101a6b123a",
       "layout": {
         "storage": [
           {
@@ -471,6 +317,165 @@
           "t_contract(ClearingHouse)5002": {
             "label": "contract ClearingHouse",
             "numberOfBytes": "20"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "1c231e18f8e7ac721fc8c830dd8ab2c1baa31a7284f6140e89217e85727363be": {
+      "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "txHash": "0xcebc3b41ea90af768a86e98ca5c033aab17f933191707298dacdbf773ffd71c6",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "quoteToken",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_contract(IERC20)645",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:16"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_contract(IInsuranceFund)1944",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:17"
+          },
+          {
+            "label": "totalSupply",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:19"
+          },
+          {
+            "label": "tribe3Treasury",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_address",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:21"
+          },
+          {
+            "label": "guardEndTimestamp",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:23"
+          },
+          {
+            "label": "nextClaimTimestamp",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:25"
+          },
+          {
+            "label": "claimPeriodInSec",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:27"
+          },
+          {
+            "label": "balanceOf",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:29"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IERC20)645": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IInsuranceFund)1944": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
           },
           "t_uint256": {
             "label": "uint256",
