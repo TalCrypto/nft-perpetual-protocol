@@ -96,6 +96,19 @@ describe("fund flow test", async () => {
       expect(await quoteToken.balanceOf(ethStakingPool.address)).eq(toFullDigitBN(10));
       expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(6 - 3.75));
     });
+    it("insurance is used when the staking pool is no activated", async () => {
+      await ethStakingPool.stake(toFullDigitBN(10));
+      await insuranceFund.deactivateETHStakingPool();
+      await amm.setSpreadRatio(toFullDigitBN(0.01));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(5), toFullDigitBN(0), true);
+      // x: 62.5, y: 1600, price: 25.6
+      await gotoNextFundingTime();
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(25.7));
+      // funding payment = -0.1 * 37.5 = -3.75
+      await clearingHouse.payFunding(amm.address);
+      expect(await quoteToken.balanceOf(ethStakingPool.address)).eq(toFullDigitBN(10));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(6 - 3.75));
+    });
     it("staking pool is used to cover cost when insurance fund is not enough", async () => {
       await ethStakingPool.stake(toFullDigitBN(10));
       await amm.setSpreadRatio(toFullDigitBN(0.001));
@@ -161,6 +174,15 @@ describe("fund flow test", async () => {
     });
   });
   describe("distribution waterfall/sequence", async () => {
+    it("fee is transferred to insurance fund when staking pool is not activated", async () => {
+      await insuranceFund.deactivateETHStakingPool();
+      await ethStakingPool.stake(toFullDigitBN(10));
+      await amm.setSpreadRatio(toFullDigitBN(0.01));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(10), toFullDigitBN(0), true);
+      expect(await quoteToken.balanceOf(alice.address)).eq(toFullDigitBN(5000 - 66));
+      expect(await quoteToken.balanceOf(ethStakingPool.address)).eq(toFullDigitBN(10));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(6));
+    });
     it("fee is transferred to insurance fund if it is below vault and staking pool is full", async () => {
       await ethStakingPool.stake(toFullDigitBN(10));
       await amm.setSpreadRatio(toFullDigitBN(0.01));
