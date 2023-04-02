@@ -48,6 +48,8 @@ contract ETHStakingPool is IETHStakingPool, OwnableUpgradeableSafe, BlockContext
 
     function initialize(address _quoteToken, address _insuranceFund) public initializer {
         __Ownable_init();
+        _requireNonZeroAddress(_quoteToken);
+        _requireNonZeroAddress(_insuranceFund);
         quoteToken = IERC20(_quoteToken);
         insuranceFund = IInsuranceFund(_insuranceFund);
         claimPeriodInSec = 7 * 24 * 3600;
@@ -110,5 +112,9 @@ contract ETHStakingPool is IETHStakingPool, OwnableUpgradeableSafe, BlockContext
 
     function isClaimable() public view returns (bool) {
         return _blockTimestamp() >= nextClaimTimestamp;
+    }
+
+    function _requireNonZeroAddress(address _input) private pure {
+        require(_input != address(0), "ES_ZA");
     }
 }
