@@ -299,7 +299,9 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
             }
             IERC20 quoteToken = _amm.quoteAsset();
             uint256 balanceOfStakingPool = quoteToken.balanceOf(_ethStakingPool);
-            budget += Math.mulDiv(balanceOfStakingPool, currentOpenInterest, totalOpenInterest);
+            if (totalOpenInterest != 0) {
+                budget += Math.mulDiv(balanceOfStakingPool, currentOpenInterest, totalOpenInterest);
+            }
         }
     }
 
