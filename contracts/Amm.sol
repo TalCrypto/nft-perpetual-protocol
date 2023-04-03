@@ -846,16 +846,16 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         return settlementPrice;
     }
 
-    // function getMaxHoldingBaseAsset() public view override returns (uint256) {
-    //     return maxHoldingBaseAsset;
-    // }
-
-    // function getOpenInterestNotionalCap() public view override returns (uint256) {
-    //     return openInterestNotionalCap;
-    // }
-
     function getBaseAssetDelta() public view override returns (int256) {
         return longPositionSize.toInt() - shortPositionSize.toInt();
+    }
+
+    /**
+     * @notice returns the open interest based on the oralce price, impossible to get it exactly based on spot
+     */
+    function getOpenInterest() public view override returns (uint256) {
+        uint256 oraclePrice = getUnderlyingPrice();
+        return (longPositionSize + shortPositionSize).mulD(oraclePrice);
     }
 
     function isOverSpreadLimit()

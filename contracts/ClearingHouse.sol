@@ -14,8 +14,9 @@ import { UIntMath } from "./utils/UIntMath.sol";
 import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 import { IClearingHouse } from "./interfaces/IClearingHouse.sol";
+import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
 
-contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
+contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
     using IntMath for int256;
     using TransferHelper for IERC20;
@@ -124,13 +125,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     mapping(address => bool) public backstopLiquidityProviderMap;
 
     // vamm => balance of vault
-    mapping(address => uint256) public vaults;
-
-    // amm => budget of the insurance fund, allocated to each market
-    mapping(address => uint256) public insuranceBudgets;
+    mapping(IAmm => uint256) public vaults;
 
     // amm => revenue since last funding, used for calculation of k-adjustment budget
-    mapping(address => int256) public netRevenuesSinceLastFunding;
+    mapping(IAmm => int256) public netRevenuesSinceLastFunding;
 
     // // the address of bot that controls market
     // address public operator;
@@ -309,9 +307,13 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         partialLiquidationRatio = _ratio;
     }
 
-    // function setOperator(address _operator) external onlyOwner {
-    //     operator = _operator;
-    // }
+    /**
+     * @dev only the insurance fund can call this function
+     */
+    function depositCallback(IERC20 _token, uint256 _amount) external {
+        require(_msgSender() == address(insuranceFund), "CH_NIF"); // not insurnce fund
+        _token.safeTransfer(address(insuranceFund), _amount);
+    }
 
     /**
      * @notice add margin to increase margin ratio
@@ -388,7 +390,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
             trader,
             Position({ size: 0, margin: 0, openNotional: 0, lastUpdatedCumulativePremiumFraction: 0, blockNumber: _blockNumber() })
         );
-        // liquidityHistoryIndex: 0
         // calculate settledValue
         // If Settlement Price = 0, everyone takes back her collateral.
         // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
@@ -642,7 +643,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function payFunding(IAmm _amm) external {
         _requireAmm(_amm, true);
-        uint256 budget = insuranceBudgets[address(_amm)];
+        uint256 budget = insuranceFund.getAvailableBudgetFor(_amm);
         bool repegable;
         int256 repegCost;
         uint256 newQuoteAssetReserve;
@@ -704,7 +705,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // -------------------    update K    ---------------------//
         {
-            int256 budgetForUpdateK = netRevenuesSinceLastFunding[address(_amm)] + fundingPayment - repegCost; // consider repegCost regardless whether it happens or not
+            int256 budgetForUpdateK = netRevenuesSinceLastFunding[_amm] + fundingPayment - repegCost; // consider repegCost regardless whether it happens or not
             if (budgetForUpdateK > 0) {
                 // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
                 budgetForUpdateK = budgetForUpdateK / 4;
@@ -733,7 +734,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // --------------------------------------------------------//
 
         // init netRevenuesSinceLastFunding for the next funding period's revenue
-        netRevenuesSinceLastFunding[address(_amm)] = 0;
+        netRevenuesSinceLastFunding[_amm] = 0;
         _enterRestrictionMode(_amm);
     }
 
@@ -791,17 +792,6 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
     //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
     //     emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
     // }
-
-    /**
-     * @notice inject WETH to the insurance fund half of which is used for the adjustment
-     * @param _amm the target vamm to inject WETH
-     * @param _amount the amount to be injected
-     */
-    function inject2InsuranceFund(IAmm _amm, uint256 _amount) external nonReentrant {
-        insuranceBudgets[address(_amm)] = insuranceBudgets[address(_amm)] + _amount;
-        IERC20 quoteAsset = _amm.quoteAsset();
-        quoteAsset.safeTransferFrom(_msgSender(), address(insuranceFund), _amount);
-    }
 
     //
     // VIEW FUNCTIONS
@@ -883,6 +873,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
      */
     function getLatestCumulativePremiumFractionShort(IAmm _amm) public view returns (int256 latest) {
         latest = ammMap[address(_amm)].latestCumulativePremiumFractionShort;
+    }
+
+    function getVaultFor(IAmm _amm) external view override returns (uint256 vault) {
+        vault = vaults[_amm];
     }
 
     // function _getMarginRatioByCalcOption(
@@ -992,18 +986,20 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
                     require(backstopLiquidityProviderMap[_msgSender()], "CH_NBLP"); //not backstop LP
                     _realizeBadDebt(_amm, liquidationBadDebt);
                     // include liquidation bad debt into the k-adjustment calculation
-                    netRevenuesSinceLastFunding[address(_amm)] -= int256(liquidationBadDebt);
+                    netRevenuesSinceLastFunding[_amm] -= int256(liquidationBadDebt);
                 }
                 feeToInsuranceFund = remainMargin;
                 _setPosition(_amm, _trader, positionResp.position);
             }
 
+            _withdraw(_amm, _msgSender(), feeToLiquidator);
+
             if (feeToInsuranceFund > 0) {
                 _transferToInsuranceFund(_amm, feeToInsuranceFund);
                 // include liquidation fee to the insurance fund into the k-adjustment calculation
-                netRevenuesSinceLastFunding[address(_amm)] += int256(feeToInsuranceFund);
+                netRevenuesSinceLastFunding[_amm] += int256(feeToInsuranceFund);
             }
-            _withdraw(_amm, _msgSender(), feeToLiquidator);
+
             _enterRestrictionMode(_amm);
 
             emit PositionLiquidated(
@@ -1272,10 +1268,10 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
         // transfer spread to market in order to use it to make market better
         if (_spreadFee > 0) {
-            quoteAsset.safeTransferFrom(_from, address(insuranceFund), _spreadFee);
-            insuranceBudgets[address(_amm)] += _spreadFee;
+            quoteAsset.safeTransferFrom(_from, address(this), _spreadFee);
+            insuranceFund.deposit(_amm, _spreadFee);
             // consider fees in k-adjustment
-            netRevenuesSinceLastFunding[address(_amm)] += _spreadFee.toInt();
+            netRevenuesSinceLastFunding[_amm] += _spreadFee.toInt();
         }
 
         // transfer toll to tollPool
@@ -1290,7 +1286,7 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         address _sender,
         uint256 _amount
     ) internal {
-        vaults[address(_amm)] += _amount;
+        vaults[_amm] += _amount;
         IERC20 quoteToken = _amm.quoteAsset();
         quoteToken.safeTransferFrom(_sender, address(this), _amount);
     }
@@ -1305,14 +1301,14 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
         // and the balance of given Amm's vault is not enough
         // need money from IInsuranceFund to pay first, and record this prepaidBadDebt
         // in this case, insurance fund loss must be zero
-        uint256 vault = vaults[address(_amm)];
+        uint256 vault = vaults[_amm];
         IERC20 quoteToken = _amm.quoteAsset();
         if (vault < _amount) {
             uint256 balanceShortage = _amount - vault;
             prepaidBadDebts[address(_amm)] += balanceShortage;
             _withdrawFromInsuranceFund(_amm, balanceShortage);
         }
-        vaults[address(_amm)] -= _amount;
+        vaults[_amm] -= _amount;
         quoteToken.safeTransfer(_receiver, _amount);
     }
 
@@ -1330,24 +1326,18 @@ contract ClearingHouse is IClearingHouse, OwnerPausableUpgradeSafe, ReentrancyGu
 
     // withdraw fund from insurance fund to vault
     function _withdrawFromInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        uint256 insuranceBudget = insuranceBudgets[address(_amm)];
-        require(insuranceBudget >= _amount, "CH_IIB"); // insufficient insurance budget
-        insuranceBudgets[address(_amm)] = insuranceBudget - _amount;
-        vaults[address(_amm)] += _amount;
-        IERC20 quoteToken = _amm.quoteAsset();
-        insuranceFund.withdraw(quoteToken, _amount);
+        vaults[_amm] += _amount;
+        insuranceFund.withdraw(_amm, _amount);
     }
 
     // transfer fund from vault to insurance fund
     function _transferToInsuranceFund(IAmm _amm, uint256 _amount) internal {
-        uint256 vault = vaults[address(_amm)];
+        uint256 vault = vaults[_amm];
         if (vault < _amount) {
             _amount = vault;
         }
-        vaults[address(_amm)] = vault - _amount;
-        insuranceBudgets[address(_amm)] += _amount;
-        IERC20 quoteToken = _amm.quoteAsset();
-        quoteToken.safeTransfer(address(insuranceFund), _amount);
+        vaults[_amm] = vault - _amount;
+        insuranceFund.deposit(_amm, _amount);
     }
 
     // /**

@@ -15,6 +15,7 @@ import { IClearingHouse } from "../../contracts/interfaces/IClearingHouse.sol";
 import { AmmMath } from "../../contracts/utils/AmmMath.sol";
 import { UIntMath } from "../../contracts/utils/UIntMath.sol";
 import { IntMath } from "../../contracts/utils/IntMath.sol";
+import { ETHStakingPool } from "../../contracts/ETHStakingPool.sol";
 
 contract CHFundingTest is Test {
     using UIntMath for uint256;
@@ -26,6 +27,7 @@ contract CHFundingTest is Test {
     ClearingHouseFake public clearingHouse;
     ClearingHouseViewer clearingHouseViewer;
     InsuranceFundFake public insuranceFund;
+    ETHStakingPool public ethStakingPool;
     uint256 PRECISION = 1e9;
     address alice;
     address bob;
@@ -40,12 +42,17 @@ contract CHFundingTest is Test {
 
         insuranceFund = new InsuranceFundFake();
 
+        ethStakingPool = new ETHStakingPool();
+        ethStakingPool.initialize(address(token), address(insuranceFund));
+        ethStakingPool.setTribe3Treasury(address(this));
+
         clearingHouse = new ClearingHouseFake(0.2 ether, 0.1 ether, 0.05 ether, insuranceFund, address(0));
 
         clearingHouseViewer = new ClearingHouseViewer(clearingHouse);
 
         insuranceFund.addAmm(amm);
         insuranceFund.setBeneficiary(address(clearingHouse));
+        insuranceFund.activateETHStakingPool(address(ethStakingPool));
         amm.setGlobalShutdown(address(insuranceFund));
         amm.setCounterParty(address(clearingHouse));
         amm.setOpen(true);
@@ -73,8 +80,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 0);
         amm.setFundingCostCoverRate(1 ether);
         amm.setFundingRevenueTakeRate(1 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -88,8 +95,8 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultBefore = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -99,8 +106,8 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultAfter = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         assertEq(int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore), int256(vaultBefore) - int256(vaultAfter));
         // positive means revenue
@@ -126,8 +133,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 0);
         amm.setFundingCostCoverRate(1 ether);
         amm.setFundingRevenueTakeRate(1 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -148,8 +155,8 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultBefore = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
@@ -161,8 +168,8 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultAfter = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         assertEq(int256(insuranceBudgetAfter) - int256(insuranceBudgetBefore), int256(vaultBefore) - int256(vaultAfter));
 
@@ -190,8 +197,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 1e9);
         amm.setFundingCostCoverRate(0 ether);
         amm.setFundingRevenueTakeRate(0 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -215,16 +222,16 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultBefore = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultAfter = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
@@ -243,8 +250,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 1e9);
         amm.setFundingCostCoverRate(0 ether);
         amm.setFundingRevenueTakeRate(0 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -261,16 +268,16 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultBefore = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultBefore = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 vaultAfter = clearingHouse.vaults(address(amm));
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 vaultAfter = clearingHouse.vaults(amm);
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
@@ -291,8 +298,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 0);
         amm.setFundingCostCoverRate(1 ether);
         amm.setFundingRevenueTakeRate(0.75 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -306,14 +313,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
@@ -337,8 +344,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 0);
         amm.setFundingCostCoverRate(1 ether);
         amm.setFundingRevenueTakeRate(0.75 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -358,14 +365,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
@@ -391,8 +398,8 @@ contract CHFundingTest is Test {
         vm.assume(_shortPositionSize > 0);
         amm.setFundingCostCoverRate(1 ether);
         amm.setFundingRevenueTakeRate(0.75 ether);
-        token.approve(address(clearingHouse), _budget);
-        clearingHouse.inject2InsuranceFund(amm, _budget);
+        token.approve(address(ethStakingPool), _budget);
+        ethStakingPool.stake(_budget);
         // alice opens a long position
         vm.prank(alice);
         token.approve(address(clearingHouse), type(uint256).max);
@@ -413,14 +420,14 @@ contract CHFundingTest is Test {
 
         IClearingHouse.Position memory alicePositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionBefore = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetBefore = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetBefore = insuranceFund.getAvailableBudgetFor(amm);
 
         moveToNextFundingTimestamp();
         clearingHouse.payFunding(amm);
 
         IClearingHouse.Position memory alicePositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, alice);
         IClearingHouse.Position memory bobPositionAfter = clearingHouseViewer.getPersonalPositionWithFundingPayment(amm, bob);
-        uint256 insuranceBudgetAfter = clearingHouse.insuranceBudgets(address(amm));
+        uint256 insuranceBudgetAfter = insuranceFund.getAvailableBudgetFor(amm);
 
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -

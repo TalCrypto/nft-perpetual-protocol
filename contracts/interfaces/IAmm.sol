@@ -137,20 +137,15 @@ interface IAmm {
 
     function ptcKDecreaseMax() external view returns (uint256);
 
-    // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);
 
-    // function getBaseAssetDeltaThisFundingPeriod() external view returns (int256);
-
     function getCumulativeNotional() external view returns (int256);
-
-    // function getMaxHoldingBaseAsset() external view returns (uint256);
-
-    // function getOpenInterestNotionalCap() external view returns (uint256);
 
     function getBaseAssetDelta() external view returns (int256);
 
     function getUnderlyingPrice() external view returns (uint256);
+
+    function getOpenInterest() external view returns (uint256);
 
     function isOverSpreadLimit()
         external

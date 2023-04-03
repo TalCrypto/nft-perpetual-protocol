@@ -11,6 +11,7 @@ import {
   TraderWallet__factory,
   TraderWallet,
   L2PriceFeedMock,
+  ETHStakingPool,
 } from "../../../typechain-types";
 import { deployL2PriceFeed, PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
@@ -88,13 +89,17 @@ describe("ClearingHouse Test", () => {
     const mockPriceFeed = contracts.priceFeed;
     const clearingHouse = contracts.clearingHouse;
     const clearingHouseViewer = contracts.clearingHouseViewer;
+    const ethStakingPool = contracts.ethStakingPool;
+
     // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+
+    await ethStakingPool.setTribe3Treasury(admin.address);
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 
@@ -558,7 +563,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(5900));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(5900));
       expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
     });
 
@@ -589,7 +594,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 5900 - 1.5
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1501.5, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5898.5, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5898.5, +(await quoteToken.decimals())));
     });
 
     it("will keep generating the same loss for amm when funding rate is positive and amm hold more long position", async () => {
@@ -613,7 +618,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 6900 - 3
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1503, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5897, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5897, +(await quoteToken.decimals())));
     });
 
     it("funding rate is 1%, 1% then -1%", async () => {
@@ -811,7 +816,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 5900
       const clearingHouseBaseToken = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseBaseToken).to.eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5900, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5900, +(await quoteToken.decimals())));
     });
   });
 
@@ -834,7 +839,7 @@ describe("ClearingHouse Test", () => {
       const clearingHouseBaseTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       // 300 (alice's margin) + 1200 (bob' margin) = 1500
       expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).eq(toFullDigitBN(5000));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(5000));
       expect(await clearingHouse.vaults(amm.address)).eq(toFullDigitBN(1500));
     });
 
@@ -867,7 +872,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 5000 - 0.75
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1500.75, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(4999.25, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(4999.25, +(await quoteToken.decimals())));
     });
 
     it("will keep generating the same loss for amm when dynamic funding rate is positive and amm hold more long position", async () => {
@@ -893,7 +898,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 5000 - 1.5
       const clearingHouseQuoteTokenBalance = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseQuoteTokenBalance).to.eq(toFullDigitBN(1501.5, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(4998.5, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(4998.5, +(await quoteToken.decimals())));
     });
 
     it("normal funding rate is 1%, 1% then -1%", async () => {
@@ -1074,7 +1079,7 @@ describe("ClearingHouse Test", () => {
       // insuranceFund: 5000
       const clearingHouseBaseToken = await quoteToken.balanceOf(clearingHouse.address);
       expect(clearingHouseBaseToken).to.eq(toFullDigitBN(1500, +(await quoteToken.decimals())));
-      expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
+      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5000, +(await quoteToken.decimals())));
     });
   });
 
@@ -1400,7 +1405,7 @@ describe("ClearingHouse Test", () => {
         expect(bobMarginRatio).to.eq("108076923076923076");
 
         // 5350 - 0.1 * 25 * 0.5
-        expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5348.75, +(await quoteToken.decimals())));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5348.75, +(await quoteToken.decimals())));
       });
 
       it("with pnl and dynamic funding rate is negative", async () => {
@@ -1440,7 +1445,7 @@ describe("ClearingHouse Test", () => {
         expect(bobMarginRatio).to.eq("91923076923076923");
 
         // 5000 + 0.1 * 25 * 0.5
-        expect(await clearingHouse.insuranceBudgets(amm.address)).to.eq(toFullDigitBN(5001.25, +(await quoteToken.decimals())));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).to.eq(toFullDigitBN(5001.25, +(await quoteToken.decimals())));
       });
     });
   });
@@ -1474,7 +1479,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 45 - 41.951 = 3.048...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5139024390243902439027");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("45000000000000000000");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq("3048780487804878055");
     });
 
@@ -1499,7 +1504,7 @@ describe("ClearingHouse Test", () => {
       // need to return Bob's margin 20 and PnL 21.951 = 41.951
       // clearingHouse balance: 40 - 41.951 = -1.95...
       await clearingHouse.connect(bob).closePosition(amm.address, toFullDigitBN(0));
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("5137073170731707317082");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("40000000000000000000");
       expect(await quoteToken.balanceOf(clearingHouse.address)).to.eq(toFullDigitBN(0));
     });
   });

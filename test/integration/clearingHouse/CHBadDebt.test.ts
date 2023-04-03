@@ -57,6 +57,7 @@ describe("Bad Debt Test", () => {
     mockPriceFeed = contracts.priceFeed;
     clearingHouse = contracts.clearingHouse;
     clearingHouse = contracts.clearingHouse;
+    const ethStakingPool = contracts.ethStakingPool;
 
     // for manipulating the price
     await quoteToken.transfer(whale.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
@@ -66,8 +67,9 @@ describe("Bad Debt Test", () => {
     await quoteToken.transfer(shrimp.address, toFullDigitBN(15, +(await quoteToken.decimals())));
     await approve(shrimp, clearingHouse.address, 15);
 
-    await approve(admin, clearingHouse.address, 5000);
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+    await ethStakingPool.setTribe3Treasury(admin.address);
+    await approve(admin, ethStakingPool.address, 5000);
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 

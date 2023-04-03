@@ -132,12 +132,13 @@ describe("ClearingHouse - open/close by base asset Test", () => {
     clearingHouse = contracts.clearingHouse;
     tollPool = contracts.tollPool;
     mockPriceFeed = contracts.priceFeed;
-
+    const ethStakingPool = contracts.ethStakingPool;
+    await ethStakingPool.setTribe3Treasury(admin.address);
     // Each of Alice & Bob have 5000 USDC
     await transfer(admin, alice.address, 5000);
     await transfer(admin, bob.address, 5000);
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     await syncAmmPriceToOracle();
   });
