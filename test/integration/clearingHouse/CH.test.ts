@@ -149,7 +149,6 @@ describe("ClearingHouse Test", () => {
       expect(alicePosition.size).to.eq(toFullDigitBN(-150));
       expect(alicePosition.margin).to.eq(toFullDigitBN(-15));
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
-      console.log(positionInfo);
     });
   });
 
@@ -181,7 +180,6 @@ describe("ClearingHouse Test", () => {
       const alicePosition = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
       expect(alicePosition.positionSize).to.eq(toFullDigitBN(37.5));
       expect(alicePosition.openMargin.add(alicePosition.fundingPayment)).to.eq(toFullDigitBN(299.625));
-      console.log("alice", alicePosition);
       // then bob will get 1% of her position size as fundingPayment
       // {balance: -187.5, margin: 1200} => {balance: -187.5, margin: 1201.875}
       const bobPosition = await clearingHouseViewer.getTraderPositionInfo(amm.address, bob.address);

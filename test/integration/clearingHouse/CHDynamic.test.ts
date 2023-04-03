@@ -11,6 +11,7 @@ import {
   TraderWallet__factory,
   TraderWallet,
   L2PriceFeedMock,
+  ETHStakingPool,
 } from "../../../typechain-types";
 import { PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
@@ -31,6 +32,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
   let mockPriceFeed!: L2PriceFeedMock;
   let clearingHouse: ClearingHouseFake;
   let clearingHouseViewer: ClearingHouseViewer;
+  let ethStakingPool: ETHStakingPool;
 
   let traderWallet1: TraderWallet;
   let traderWallet2: TraderWallet;
@@ -87,6 +89,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     const mockPriceFeed = contracts.priceFeed;
     const clearingHouse = contracts.clearingHouse;
     const clearingHouseViewer = contracts.clearingHouseViewer;
+    const ethStakingPool = contracts.ethStakingPool;
 
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
@@ -115,7 +118,10 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     expect(clearingHouseBaseTokenBalance).eq(toFullDigitBN(550));
     expect(await clearingHouse.netRevenuesSinceLastFunding(amm.address)).eq(toFullDigitBN(6.5));
 
-    return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer };
+    await ethStakingPool.setTribe3Treasury(admin.address);
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+
+    return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
   }
 
   beforeEach(async () => {
@@ -129,6 +135,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     mockPriceFeed = fixture.mockPriceFeed;
     clearingHouse = fixture.clearingHouse;
     clearingHouseViewer = fixture.clearingHouseViewer;
+    ethStakingPool = fixture.ethStakingPool;
   });
 
   describe("when repeg is not needed", () => {
@@ -172,15 +179,16 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         // total cost = 3.5
       });
       it("total/2 is recovered through K decreasing when insurance fund is enough to pay half of total cost", async () => {
-        await quoteToken.approve(clearingHouse.address, toFullDigitBN(10));
-        await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(1.76));
-        expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(8.26));
+        await ethStakingPool.stake(toFullDigitBN(1.76));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(8.26));
         // budget = 8.26
         // -3.5/2 = -1.75
-        const ifBalBefore = await quoteToken.balanceOf(insuranceFund.address);
+        const ifBalBefore = await insuranceFund.getAvailableBudgetFor(amm.address);
+        // await quoteToken.balanceOf(insuranceFund.address);
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         const tx = await clearingHouse.payFunding(amm.address);
-        const ifBalAfter = await quoteToken.balanceOf(insuranceFund.address);
+        const ifBalAfter = await insuranceFund.getAvailableBudgetFor(amm.address);
+        //await quoteToken.balanceOf(insuranceFund.address);
         const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
         expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).lt(toFullDigitBN(1));
@@ -190,15 +198,14 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(ifBalAfter.sub(ifBalBefore)).eq("-8250000000000000002"); // =1.75-10
       });
       it("mak k decreasing is done when insurance fund is not enough to pay half of total cost", async () => {
-        await quoteToken.approve(clearingHouse.address, toFullDigitBN(10));
-        await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(1.75));
-        expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(8.25));
+        await ethStakingPool.stake(toFullDigitBN(1.75));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(8.25));
         // budget = 8.25
         // max k decrease revenue = 41.66
-        const ifBalBefore = await quoteToken.balanceOf(insuranceFund.address);
+        const ifBalBefore = await insuranceFund.getAvailableBudgetFor(amm.address);
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         const tx = await clearingHouse.payFunding(amm.address);
-        const ifBalAfter = await quoteToken.balanceOf(insuranceFund.address);
+        const ifBalAfter = await insuranceFund.getAvailableBudgetFor(amm.address);
         const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
         expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(0.5));
@@ -319,8 +326,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(17.625));
           // funding payment = (15.625-17.625)*20 = -40
           // budget = 18.375
-          await quoteToken.approve(clearingHouse.address, toFullDigitBN(13.5));
-          await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(13.5));
+          await ethStakingPool.stake(toFullDigitBN(13.5));
           // total reserve = 18.375 + max(45.860748587566391346-21.300551659460829192, 41.024899564780716437)
         });
         it("funding and repeg is done", async () => {
@@ -343,15 +349,14 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         });
         it("half of total cost (30.6) is recovered through k decreasing when budget is sufficient", async () => {
           // budget = 38.374999999999999998
-          await quoteToken.approve(clearingHouse.address, toFullDigitBN(20));
-          await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(20));
-          console.log(await quoteToken.balanceOf(insuranceFund.address));
+          await ethStakingPool.stake(toFullDigitBN(20));
           const tx = await clearingHouse.payFunding(amm.address);
           const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
             .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-30650275829730414595");
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eq("7724724170269585401"); // 38.37-40-21.3+30.65 = 7.724724170269585401
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eq("0"); // 38.37-40-21.3+30.65 = 7.724724170269585401
+          expect(await quoteToken.balanceOf(ethStakingPool.address)).eq("7724724170269585401");
         });
       });
     });
