@@ -332,8 +332,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         )
     {
         require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
-        uint256 latestPricetimestamp = priceFeed.getLatestTimestamp(priceFeedKey);
-        require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "AMM_OPE"); //oracle price is expired
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(3 hour) / 1 day
