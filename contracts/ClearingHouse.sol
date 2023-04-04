@@ -799,17 +799,19 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
 
     /**
      * @notice get margin ratio, marginRatio = (margin + funding payment + unrealized Pnl) / positionNotional
-     * use spot price to calculate unrealized Pnl
+     * use spot price to calculate unrealized Pnl and positionNotional when the price gap is not over the spread limit
+     * use oracle price to calculate them when the price gap is over the spread limit
      * @param _amm IAmm address
      * @param _trader trader address
      * @return margin ratio in 18 digits
      */
     function getMarginRatio(IAmm _amm, address _trader) public view returns (int256) {
-        Position memory position = getPosition(_amm, _trader);
-        _requirePositionSize(position.size);
-        (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, position, unrealizedPnl, position.size > 0);
-        return remainMargin.divD(positionNotional.toInt());
+        (bool isOverSpread, , ) = _amm.isOverSpreadLimit();
+        if (isOverSpread) {
+            return _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
+        } else {
+            return _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+        }
     }
 
     /**
@@ -879,21 +881,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         vault = vaults[_amm];
     }
 
-    // function _getMarginRatioByCalcOption(
-    //     IAmm _amm,
-    //     address _trader,
-    //     PnlCalcOption _pnlCalcOption
-    // ) internal view returns (int256) {
-    //     Position memory position = getPosition(_amm, _trader);
-    //     _requirePositionSize(position.size);
-    //     (uint256 positionNotional, int256 pnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
-    //     return _getMarginRatio(_amm, position, pnl, positionNotional);
-    // }
-
-    //
-    // INTERNAL FUNCTIONS
-    //
-
     function _enterRestrictionMode(IAmm _amm) internal {
         uint256 blockNumber = _blockNumber();
         ammMap[address(_amm)].lastRestrictionBlock = blockNumber;
@@ -915,16 +902,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
 
     function _liquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
         _requireAmm(_amm, true);
-        int256 marginRatio = getMarginRatio(_amm, _trader);
-        // // once oracle price is updated ervery funding payment, this part has no longer effect
-        // // including oracle-based margin ratio as reference price when amm is over spread limit
-        // if (_amm.isOverSpreadLimit()) {
-        //     int256 marginRatioBasedOnOracle = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
-        //     if (marginRatioBasedOnOracle - marginRatio > 0) {
-        //         marginRatio = marginRatioBasedOnOracle;
-        //     }
-        // }
-        _requireMoreMarginRatio(marginRatio, maintenanceMarginRatio, false);
+        _requireMoreMarginRatio(getMarginRatio(_amm, _trader), maintenanceMarginRatio, false);
 
         PositionResp memory positionResp;
         uint256 liquidationPenalty;
@@ -933,14 +911,14 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             uint256 feeToLiquidator;
             uint256 feeToInsuranceFund;
 
-            // int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+            int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
             uint256 _partialLiquidationRatio = partialLiquidationRatio;
             uint256 _liquidationFeeRatio = liquidationFeeRatio;
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
                 // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatio > int256(_liquidationFeeRatio) && _partialLiquidationRatio < 1 ether && _partialLiquidationRatio != 0
+                marginRatioBasedOnSpot > int256(_liquidationFeeRatio) && _partialLiquidationRatio < 1 ether && _partialLiquidationRatio != 0
             ) {
                 Position memory position = getPosition(_amm, _trader);
                 positionResp = _openReversePosition(
@@ -1376,6 +1354,18 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //
     // INTERNAL VIEW FUNCTIONS
     //
+
+    function _getMarginRatioByCalcOption(
+        IAmm _amm,
+        address _trader,
+        PnlCalcOption _pnlCalcOption
+    ) internal view returns (int256) {
+        Position memory position = getPosition(_amm, _trader);
+        _requirePositionSize(position.size);
+        (uint256 positionNotional, int256 unrealizedPnl) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, _pnlCalcOption);
+        (int256 remainMargin, , , ) = _calcRemainMarginWithFundingPayment(_amm, position, unrealizedPnl, position.size > 0);
+        return remainMargin.divD(positionNotional.toInt());
+    }
 
     function _calcRemainMarginWithFundingPayment(
         IAmm _amm,
