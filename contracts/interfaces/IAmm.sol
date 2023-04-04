@@ -84,12 +84,6 @@ interface IAmm {
 
     function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 
-    // function calcBaseAssetAfterLiquidityMigration(
-    //     int256 _baseAssetAmount,
-    //     uint256 _fromQuoteReserve,
-    //     uint256 _fromBaseReserve
-    // ) external view returns (int256);
-
     function getQuoteTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
     function getBaseTwap(Dir _dir, uint256 _baseAssetAmount) external view returns (uint256);

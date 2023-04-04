@@ -61,12 +61,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     //    The below state variables can not change the order    //
     //**********************************************************//
 
-    // // DEPRECATED
-    // // update during every swap and calculate total amm pnl per funding period
-    // int256 private baseAssetDeltaThisFundingPeriod;
-
-    // update during every swap and used when shutting amm down. it's trader's total base asset size
-    // int256 public totalPositionSize;
     uint256 public longPositionSize;
     uint256 public shortPositionSize;
 
@@ -81,8 +75,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     // owner can update
     uint256 public tollRatio;
     uint256 public spreadRatio;
-    // uint256 private maxHoldingBaseAsset;
-    // uint256 private openInterestNotionalCap;
 
     uint256 public spotPriceTwapInterval;
     uint256 public fundingPeriod;
@@ -128,7 +120,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     event SwapOutput(Dir dirOfQuote, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event FundingRateUpdated(int256 rateLong, int256 rateShort, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
-    // event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
@@ -613,18 +604,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         spreadRatio = _spreadRatio;
     }
 
-    // /**
-    //  * @notice set new cap during guarded period, which is max position size that traders can hold
-    //  * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
-    //  * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
-    //  * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
-    //  */
-    // function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
-    //     maxHoldingBaseAsset = _maxHoldingBaseAsset;
-    //     openInterestNotionalCap = _openInterestNotionalCap;
-    //     emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
-    // }
-
     /**
      * @notice set priceFee address
      * @dev only owner can call
@@ -914,15 +893,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter, Math.Rounding.Up);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
-        // // if the amount is not dividable, return 1 wei less for trader
-        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != 0) {
-        //     if (isAddToAmm) {
-        //         baseAssetBought = baseAssetBought - 1;
-        //     } else {
-        //         baseAssetBought = baseAssetBought + 1;
-        //     }
-        // }
-
         return baseAssetBought;
     }
 
@@ -950,15 +920,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
         quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter, Math.Rounding.Up);
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
-
-        // // if the amount is not dividable, return 1 wei less for trader
-        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != 0) {
-        //     if (isAddToAmm) {
-        //         quoteAssetSold = quoteAssetSold - 1;
-        //     } else {
-        //         quoteAssetSold = quoteAssetSold + 1;
-        //     }
-        // }
 
         return quoteAssetSold;
     }

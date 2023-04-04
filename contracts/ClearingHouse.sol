@@ -105,10 +105,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     // only admin
     uint256 public partialLiquidationRatio;
 
-    // // key by amm address. will be deprecated or replaced after guarded period.
-    // // it's not an accurate open interest, just a rough way to control the unexpected loss at the beginning
-    // mapping(address => uint256) public openInterestNotionalMap;
-
     // key by amm address
     mapping(address => AmmMap) internal ammMap;
 
@@ -119,9 +115,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     IInsuranceFund public insuranceFund;
     IMultiTokenRewardRecipient public tollPool;
 
-    // // designed for arbitragers who can hold unlimited positions. will be used only for admin to manage system and will be removed after guarded period
-    // address internal whitelist;
-
     mapping(address => bool) public backstopLiquidityProviderMap;
 
     // vamm => balance of vault
@@ -129,9 +122,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
 
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(IAmm => int256) public netRevenuesSinceLastFunding;
-
-    // // the address of bot that controls market
-    // address public operator;
 
     uint256[50] private __gap;
 
@@ -147,8 +137,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //
     // EVENTS
     //
-    //event MarginRatioChanged(uint256 marginRatio);
-    //event LiquidationFeeRatioChanged(uint256 liquidationFeeRatio);
     event BackstopLiquidityProviderChanged(address indexed account, bool indexed isProvider);
     event MarginChanged(address indexed sender, address indexed amm, int256 amount, int256 fundingPayment);
     event PositionSettled(address indexed amm, address indexed trader, uint256 valueTransferred);
@@ -206,16 +194,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         uint256 badDebt
     );
 
-    // modifier onlyOperator() {
-    //     // not operator
-    //     require(operator == _msgSender(), "CH_NO");
-    //     _;
-    // }
-
-    // FUNCTIONS
-    //
-    // openzeppelin doesn't support struct input
-    // https://github.com/OpenZeppelin/openzeppelin-sdk/issues/1523
     function initialize(
         uint256 _initMarginRatio,
         uint256 _maintenanceMarginRatio,
@@ -275,16 +253,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         _requireNonZeroAddress(_tollPool);
         tollPool = IMultiTokenRewardRecipient(_tollPool);
     }
-
-    // /**
-    //  * @notice add an address in the whitelist. People in the whitelist can hold unlimited positions.
-    //  * @dev only owner can call
-    //  * @param _whitelist an address
-    //  */
-    // function setWhitelist(address _whitelist) external onlyOwner {
-    //     _requireNonZeroAddress(_whitelist);
-    //     whitelist = _whitelist;
-    // }
 
     /**
      * @notice set backstop liquidity provider
@@ -738,61 +706,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         _enterRestrictionMode(_amm);
     }
 
-    // /**
-    //  * @notice repeg amm according to off-chain calculation for the healthy of market
-    //  * @dev only the operator can call this function
-    //  * @param _amm IAmm address
-    //  * @param _targetPrice target price to be repegged
-    //  */
-    // function repegAmm(IAmm _amm, uint256 _targetPrice) external onlyOperator {
-    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-    //     int256 positionSize = _amm.getBaseAssetDelta();
-    //     (uint256 newQuoteAssetReserve, uint256 newBaseAssetReserve) = AmmMath.calcReservesAfterRepeg(
-    //         quoteAssetReserve,
-    //         baseAssetReserve,
-    //         _targetPrice,
-    //         positionSize
-    //     );
-    //     int256 cost = AmmMath.calcCostForAdjustReserves(
-    //         quoteAssetReserve,
-    //         baseAssetReserve,
-    //         positionSize,
-    //         newQuoteAssetReserve,
-    //         newBaseAssetReserve
-    //     );
-    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-    //     emit Repeg(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    // }
-
-    // /**
-    //  * @notice adjust K of amm according to off-chain calculation for the healthy of market
-    //  * @dev only the operator can call this function
-    //  * @param _amm IAmm address
-    //  * @param _scaleNum the numerator of K scale to be adjusted
-    //  * @param _scaleDenom the denominator of K scale to be adjusted
-    //  */
-    // function adjustK(
-    //     IAmm _amm,
-    //     uint256 _scaleNum,
-    //     uint256 _scaleDenom
-    // ) external onlyOperator {
-    //     (uint256 quoteAssetReserve, uint256 baseAssetReserve) = _amm.getReserve();
-    //     int256 positionSize = _amm.getBaseAssetDelta();
-    //     uint256 newQuoteAssetReserve = Math.mulDiv(quoteAssetReserve, _scaleNum, _scaleDenom);
-    //     uint256 newBaseAssetReserve = Math.mulDiv(baseAssetReserve, _scaleNum, _scaleDenom);
-    //     int256 cost = AmmMath.calcCostForAdjustReserves(
-    //         quoteAssetReserve,
-    //         baseAssetReserve,
-    //         positionSize,
-    //         newQuoteAssetReserve,
-    //         newBaseAssetReserve
-    //     );
-    //     require(_applyAdjustmentCost(_amm, cost), "CH_IAB"); //insufficient adjustment budget
-    //     _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
-    //     emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, cost);
-    // }
-
     //
     // VIEW FUNCTIONS
     //
@@ -1028,16 +941,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
 
         int256 newSize = oldPosition.size + positionResp.exchangedPositionSize;
 
-        // _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt());
-        // // if the trader is not in the whitelist, check max position size
-        // if (params.trader != whitelist) {
-        //     uint256 maxHoldingBaseAsset = params.amm.getMaxHoldingBaseAsset();
-        //     if (maxHoldingBaseAsset > 0) {
-        //         // total position size should be less than `positionUpperBound`
-        //         require(newSize.abs() <= maxHoldingBaseAsset, "CH_OPUB"); //over position size upper bound
-        //     }
-        // }
-
         int256 increaseMarginRequirement = positionResp.exchangedQuoteAssetAmount.divD(params.leverage).toInt();
         (
             int256 remainMargin,
@@ -1082,9 +985,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 params.isQuote,
                 params.canOverFluctuationLimit
             );
-            // _updateOpenInterestNotional(params.amm, positionResp.exchangedQuoteAssetAmount.toInt() * -1);
-            // realizedPnl = unrealizedPnl * closedRatio
-            // closedRatio = positionResp.exchangedPositionSiz / oldPosition.size
             if (oldPosition.size != 0) {
                 positionResp.realizedPnl = unrealizedPnl.mulD(positionResp.exchangedPositionSize.abs().toInt()).divD(
                     oldPosition.size.abs().toInt()
@@ -1197,9 +1097,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 false,
                 _canOverFluctuationLimit
             );
-
-        // // bankrupt position's bad debt will be also consider as a part of the open interest
-        // _updateOpenInterestNotional(_amm, (unrealizedPnl + badDebt.toInt() + oldPosition.openNotional.toInt()) * -1);
     }
 
     function _checkSlippage(
@@ -1317,27 +1214,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         vaults[_amm] = vault - _amount;
         insuranceFund.deposit(_amm, _amount);
     }
-
-    // /**
-    //  * @dev assume this will be removes soon once the guarded period has ended. caller need to ensure amm exist
-    //  */
-    // function _updateOpenInterestNotional(IAmm _amm, int256 _amount) internal {
-    //     // when cap = 0 means no cap
-    //     uint256 cap = _amm.getOpenInterestNotionalCap();
-    //     address ammAddr = address(_amm);
-    //     if (cap > 0) {
-    //         int256 updatedOpenInterestNotional = _amount + openInterestNotionalMap[ammAddr].toInt();
-    //         // the reduced open interest can be larger than total when profit is too high and other position are bankrupt
-    //         if (updatedOpenInterestNotional < 0) {
-    //             updatedOpenInterestNotional = 0;
-    //         }
-    //         if (_amount > 0) {
-    //             // whitelist won't be restrict by open interest cap
-    //             require(updatedOpenInterestNotional.toUint() <= cap || _msgSender() == whitelist, "CH_ONOL"); // open notional is over limit
-    //         }
-    //         openInterestNotionalMap[ammAddr] = updatedOpenInterestNotional.abs();
-    //     }
-    // }
 
     /**
      * @notice apply cost for funding payment, repeg and k-adjustment
