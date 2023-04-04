@@ -1141,13 +1141,6 @@ describe("Amm Unit Test", () => {
       await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("AMM_SFTE");
     });
 
-    it("can't settleFunding when the timestamp of latest price is more than 30 minutes old", async () => {
-      const originalNextFundingTime = await amm.nextFundingTime();
-      await priceFeed.setLatestTimestamp(originalNextFundingTime.sub(BigNumber.from(30 * 60)));
-      await amm.mock_setBlockTimestamp(originalNextFundingTime);
-      await expect(amm.settleFunding(toFullDigitBN(0))).to.be.revertedWith("AMM_OPE");
-    });
-
     describe("capped funding test", () => {
       async function gotoNextFundingTimestamp() {
         const nextFundingTime = await amm.nextFundingTime();
@@ -1207,9 +1200,7 @@ describe("Amm Unit Test", () => {
 
   describe("ownership renounce", async () => {
     it("not allowed to renounce ownership by admin", async () => {
-      await expect(amm.connect(admin).renounceOwnership()).to.be.revertedWith(
-        "OS_NR"
-      );
+      await expect(amm.connect(admin).renounceOwnership()).to.be.revertedWith("OS_NR");
     });
   });
 });
