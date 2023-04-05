@@ -188,7 +188,7 @@ contract ClearingHouseViewer {
         );
         (uint256 quoteAssetReserve, uint256 baseAssetReserve) = amm.getReserve();
         positionInfo.spotPrice = quoteAssetReserve.divD(baseAssetReserve);
-        positionInfo = _fillAdditionalPositionInfo(positionInfo);
+        positionInfo = _fillAdditionalPositionInfo(amm, positionInfo);
     }
 
     function getMarginAdjustmentEstimation(
@@ -203,7 +203,7 @@ contract ClearingHouseViewer {
             positionInfo.openMargin = positionInfo.openMargin + deltaMargin + positionInfo.fundingPayment;
             positionInfo.fundingPayment = 0;
         }
-        positionInfo = _fillAdditionalPositionInfo(positionInfo);
+        positionInfo = _fillAdditionalPositionInfo(amm, positionInfo);
     }
 
     function getOpenPositionEstimation(
@@ -264,7 +264,7 @@ contract ClearingHouseViewer {
         }
         positionEst.badDebt = positionEst.positionInfo.openMargin < 0 ? positionEst.positionInfo.openMargin.abs() : 0;
         positionEst.positionInfo.positionSize = oldPositionInfo.positionSize + exchangedPositionSize;
-        positionEst.positionInfo = _fillAdditionalPositionInfo(positionEst.positionInfo);
+        positionEst.positionInfo = _fillAdditionalPositionInfo(amm, positionEst.positionInfo);
     }
 
     //
@@ -283,16 +283,37 @@ contract ClearingHouseViewer {
                 : (_latestCumulativePremiumFraction - _position.lastUpdatedCumulativePremiumFraction).mulD(_position.size) * -1;
     }
 
-    function _fillAdditionalPositionInfo(PositionInfo memory positionInfo) private view returns (PositionInfo memory) {
+    function _fillAdditionalPositionInfo(IAmm amm, PositionInfo memory positionInfo) private view returns (PositionInfo memory) {
         positionInfo.margin = positionInfo.openMargin + positionInfo.fundingPayment + positionInfo.unrealizedPnl;
-        if (positionInfo.positionNotional == uint256(0)) {
-            positionInfo.marginRatio = 0;
+        (bool isOverSpread, , ) = amm.isOverSpreadLimit();
+        if (isOverSpread) {
+            uint256 oraclePrice = amm.getUnderlyingPrice();
+            uint256 positionNotionalBasedOnOracle = positionInfo.positionSize.abs().mulD(oraclePrice);
+            int256 unrealizedPnlBasedOnOracle = positionInfo.positionSize < 0
+                ? positionInfo.openNotional.toInt() - positionNotionalBasedOnOracle.toInt()
+                : positionNotionalBasedOnOracle.toInt() - positionInfo.openNotional.toInt();
+            if (positionNotionalBasedOnOracle == 0) {
+                positionInfo.marginRatio = 0;
+            } else {
+                positionInfo.marginRatio = (positionInfo.openMargin + positionInfo.fundingPayment + unrealizedPnlBasedOnOracle).divD(
+                    positionNotionalBasedOnOracle.toInt()
+                );
+            }
         } else {
-            positionInfo.marginRatio = positionInfo.margin.divD(int256(positionInfo.positionNotional));
+            if (positionInfo.positionNotional == uint256(0)) {
+                positionInfo.marginRatio = 0;
+            } else {
+                positionInfo.marginRatio = positionInfo.margin.divD(int256(positionInfo.positionNotional));
+            }
         }
+
         positionInfo.entryPrice = positionInfo.positionSize == 0 ? 0 : positionInfo.openNotional.divD(positionInfo.positionSize.abs());
         positionInfo.openLeverage = positionInfo.openMargin <= 0 ? 0 : positionInfo.openNotional.divD(positionInfo.openMargin.abs());
-        positionInfo.leverage = positionInfo.margin <= 0 ? 0 : positionInfo.positionNotional.divD(positionInfo.margin.abs());
+        if (positionInfo.marginRatio <= 0) {
+            positionInfo.leverage = 0;
+        } else {
+            positionInfo.leverage = int256(1 ether).divD(positionInfo.marginRatio).abs();
+        }
         positionInfo.liquidationPrice = _getLiquidationPrice(
             positionInfo.entryPrice,
             positionInfo.positionSize,
