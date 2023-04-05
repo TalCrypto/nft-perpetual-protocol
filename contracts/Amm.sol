@@ -830,6 +830,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     function isOverSpreadLimit()
         public
         view
+        virtual
         override
         returns (
             bool result,

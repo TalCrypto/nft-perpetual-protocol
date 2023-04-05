@@ -322,7 +322,7 @@ describe("ClearingHouse Test", () => {
       expect(positionEst.positionNotional).eq("218032786885245901637");
       expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
-      expect(positionEst.leverage).eq("5732758620689655172");
+      expect(positionEst.leverage).eq("5732758620689655197");
       expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
       expect(positionEst.margin).eq("38032786885245901637");
       expect(positionEst.marginRatio).eq(positionInfo.marginRatio);
@@ -370,7 +370,7 @@ describe("ClearingHouse Test", () => {
       expect(positionEst.openNotional).eq(positionInfo.openNotional);
       expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
-      expect(positionEst.leverage).eq("2426900584795321637");
+      expect(positionEst.leverage).eq("2426900584795321639");
       expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
       expect(positionEst.margin).eq("28032786885245901637");
       expect(positionEst.marginRatio).eq(positionInfo.marginRatio);
@@ -416,7 +416,7 @@ describe("ClearingHouse Test", () => {
       expect(positionEst.openNotional).eq(positionInfo.openNotional);
       expect(positionEst.entryPrice).eq("11360655737704918032");
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
-      expect(positionEst.leverage).eq("10000000000000000000");
+      expect(positionEst.leverage).eq("10000000000000000100");
       expect(positionEst.liquidationPrice).eq("11901639344262295080");
       expect(positionEst.margin).eq("3196721311475409836");
       expect(positionEst.marginRatio).eq(positionInfo.marginRatio);

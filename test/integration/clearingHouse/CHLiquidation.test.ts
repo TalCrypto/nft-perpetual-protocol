@@ -1237,7 +1237,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(admin, clearingHouse.address, 1000);
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
-      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.2));
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.099));
       await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
     });
 
@@ -1342,7 +1342,6 @@ describe("ClearingHouse Liquidation Test", () => {
 
     it("liquidate then liquidate", async () => {
       await makeLiquidatableByShort(alice);
-      await makeLiquidatableByShort(bob);
       await forwardBlockTimestamp(15);
       await syncAmmPriceToOracle();
       await expect(
@@ -1431,7 +1430,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(alice, clearingHouse.address, 1000);
       await approve(bob, clearingHouse.address, 1000);
       await approve(carol, clearingHouse.address, 1000);
-      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.1));
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.05));
       await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(0.25));
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
       // B: 100, Q: 1000

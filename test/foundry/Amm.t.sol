@@ -32,6 +32,7 @@ contract AmmTest is Test {
         amm.setOpen(true);
         amm.setAdjustable(true);
         amm.setCanLowerK(true);
+        amm.mockSetSpreadCheck(true);
     }
 
     function testReserves() public {

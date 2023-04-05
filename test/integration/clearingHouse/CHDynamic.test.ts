@@ -120,6 +120,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
 
     await ethStakingPool.setTribe3Treasury(admin.address);
     await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await amm.mockSetSpreadCheck(true);
 
     return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
   }

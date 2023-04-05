@@ -45,6 +45,7 @@ describe("Amm Unit Test", () => {
     });
     await amm.setCounterParty(admin.address);
     await amm.setFundingCostCoverRate(toFullDigitBN(1));
+    await amm.mockSetSpreadCheck(true);
     await amm.setFundingRevenueTakeRate(toFullDigitBN(1));
     const fundingPeriod = await amm.fundingPeriod();
     const fundingBufferPeriod = await amm.fundingBufferPeriod();
