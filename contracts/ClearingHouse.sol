@@ -482,7 +482,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             // update the position state
             _setPosition(_amm, trader, positionResp.position);
             // if opening the exact position size as the existing one == closePosition, can skip the margin ratio check
-            if (!isNewPosition && positionResp.position.size != 0) {
+            if (positionResp.position.size != 0) {
                 _requireMoreMarginRatio(getMarginRatio(_amm, trader), maintenanceMarginRatio, true);
             }
 
