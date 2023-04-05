@@ -145,8 +145,6 @@ interface IAmm {
 
     function getUnderlyingPrice() external view returns (uint256);
 
-    function getOpenInterest() external view returns (uint256);
-
     function isOverSpreadLimit()
         external
         view

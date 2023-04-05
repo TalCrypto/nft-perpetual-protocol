@@ -283,24 +283,13 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
         budget = budgetsAllocated[_amm];
         address _ethStakingPool = ethStakingPool;
         if (_ethStakingPool != address(0)) {
-            uint256 ammCount = amms.length;
-            uint256 i = 0;
-            uint256 totalOpenInterest = 0;
-            uint256 currentOpenInterest;
-            for (i; i < ammCount; ) {
-                uint256 openInterest = amms[i].getOpenInterest();
-                totalOpenInterest += openInterest;
-                if (amms[i] == _amm) {
-                    currentOpenInterest = openInterest;
-                }
-                unchecked {
-                    i++;
-                }
-            }
+            IClearingHouse clearingHouse = IClearingHouse(beneficiary);
+            uint256 currentVault = clearingHouse.getVaultFor(_amm);
             IERC20 quoteToken = _amm.quoteAsset();
+            uint256 totalVault = quoteToken.balanceOf(address(clearingHouse));
             uint256 balanceOfStakingPool = quoteToken.balanceOf(_ethStakingPool);
-            if (totalOpenInterest != 0) {
-                budget += Math.mulDiv(balanceOfStakingPool, currentOpenInterest, totalOpenInterest);
+            if (totalVault != 0) {
+                budget += Math.mulDiv(balanceOfStakingPool, currentVault, totalVault);
             }
         }
     }

@@ -848,14 +848,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         return longPositionSize.toInt() - shortPositionSize.toInt();
     }
 
-    /**
-     * @notice returns the open interest based on the oralce price, impossible to get it exactly based on spot
-     */
-    function getOpenInterest() public view override returns (uint256) {
-        uint256 oraclePrice = getUnderlyingPrice();
-        return (longPositionSize + shortPositionSize).mulD(oraclePrice);
-    }
-
     function isOverSpreadLimit()
         public
         view
