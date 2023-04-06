@@ -59,7 +59,7 @@ contract Liquidator is OwnableUpgradeableSafe {
     }
 
     function isLiquidatable(IAmm _amm, address[] memory _traders) external view returns (bool[] memory) {
-        uint256 mmRatio = clearingHouse.maintenanceMarginRatio();
+        uint256 mmRatio = _amm.maintenanceMarginRatio();
         bool[] memory results = new bool[](_traders.length);
         for (uint256 i = 0; i < _traders.length; i++) {
             try clearingHouse.getMarginRatio(_amm, _traders[i]) returns (int256 ratio) {

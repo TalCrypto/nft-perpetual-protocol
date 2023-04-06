@@ -39,6 +39,9 @@ contract CHFundingTest is Test {
         token.initializeERC20Fake(20000000 ether, "Test ETH", "TETH", 18);
 
         amm = new AmmFake(10000 ether, 100 ether, 0.9 ether, 3600, priceFeed, stringToBytes32("ETH"), address(token), 0, 0, 0);
+        amm.mockSetIMRatio(0.2 ether);
+        amm.mockSetMMRatio(0.1 ether);
+        amm.mockSetLFRatio(0.05 ether);
 
         insuranceFund = new InsuranceFundFake();
 
@@ -46,7 +49,7 @@ contract CHFundingTest is Test {
         ethStakingPool.initialize(address(token), address(insuranceFund));
         ethStakingPool.setTribe3Treasury(address(this));
 
-        clearingHouse = new ClearingHouseFake(0.2 ether, 0.1 ether, 0.05 ether, insuranceFund, address(0));
+        clearingHouse = new ClearingHouseFake(insuranceFund, address(0));
 
         clearingHouseViewer = new ClearingHouseViewer(clearingHouse);
 

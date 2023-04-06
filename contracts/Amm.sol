@@ -61,6 +61,18 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     //    The below state variables can not change the order    //
     //**********************************************************//
 
+    // only admin
+    uint256 public override initMarginRatio;
+
+    // only admin
+    uint256 public override maintenanceMarginRatio;
+
+    // only admin
+    uint256 public override liquidationFeeRatio;
+
+    // only admin
+    uint256 public override partialLiquidationRatio;
+
     uint256 public longPositionSize;
     uint256 public shortPositionSize;
 
@@ -171,6 +183,11 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         require(_priceFeed.decimals(_priceFeedKey) == 18, "AMM_NMD"); // not match decimal
 
         __Ownable_init();
+
+        initMarginRatio = 0.2 ether; // 5x leverage
+        maintenanceMarginRatio = 0.1 ether; // 10x leverage
+        partialLiquidationRatio = 0.125 ether; // 1/8 of position size
+        liquidationFeeRatio = 0.05 ether; // 5% - 1/2 of maintenance margin
 
         repegPriceGapRatio = 0.05 ether; // 5%
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
@@ -507,6 +524,51 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     function shutdown() external override {
         require(_msgSender() == owner() || _msgSender() == globalShutdown, "AMM_NONG"); //not owner nor globalShutdown
         _implShutdown();
+    }
+
+    /**
+     * @notice set init margin ratio, should be bigger than mm ratio
+     * @dev only owner can call
+     * @param _initMarginRatio new maintenance margin ratio in 18 digits
+     */
+    function setInitMarginRatio(uint256 _initMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_initMarginRatio);
+        _requireRatio(_initMarginRatio);
+        require(maintenanceMarginRatio < _initMarginRatio, "AMM_WIMR"); // wrong init margin ratio
+        initMarginRatio = _initMarginRatio;
+    }
+
+    /**
+     * @notice set maintenance margin ratio, should be smaller than initMarginRatio
+     * @dev only owner can call
+     * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
+     */
+    function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_maintenanceMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
+        require(_maintenanceMarginRatio < initMarginRatio, "AMM_WMMR"); // wrong maintenance margin ratio
+        maintenanceMarginRatio = _maintenanceMarginRatio;
+    }
+
+    /**
+     * @notice set liquidation fee ratio, shouldn't be bigger than mm ratio
+     * @dev only owner can call
+     * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
+     */
+    function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
+        _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_liquidationFeeRatio);
+        require(_liquidationFeeRatio <= maintenanceMarginRatio, "AMM_WLFR"); // wrong liquidation fee ratio
+        liquidationFeeRatio = _liquidationFeeRatio;
+    }
+
+    /**
+     * @notice set the margin ratio after deleveraging
+     * @dev only owner can call
+     */
+    function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
+        _requireRatio(_ratio);
+        partialLiquidationRatio = _ratio;
     }
 
     /**
@@ -1232,5 +1294,9 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     function _requireNonZeroAddress(address _input) private pure {
         require(_input != address(0), "AMM_ZA");
+    }
+
+    function _requireNonZeroInput(uint256 _input) private pure {
+        require(_input != 0, "AMM_ZI"); //zero input
     }
 }

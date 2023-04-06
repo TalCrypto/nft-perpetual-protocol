@@ -1163,7 +1163,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       }
 
       beforeEach(async () => {
-        await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(0.25));
+        await amm.setPartialLiquidationRatio(toFullDigitBN(0.25));
         await approve(alice, clearingHouse.address, 100);
       });
 

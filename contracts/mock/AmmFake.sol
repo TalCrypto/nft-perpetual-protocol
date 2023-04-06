@@ -102,4 +102,16 @@ contract AmmFake is Amm {
     function mockSetSpreadCheck(bool input) public {
         useSpreadCheck = input;
     }
+
+    function mockSetIMRatio(uint256 _ratio) public {
+        initMarginRatio = _ratio;
+    }
+
+    function mockSetMMRatio(uint256 _ratio) public {
+        maintenanceMarginRatio = _ratio;
+    }
+
+    function mockSetLFRatio(uint256 _ratio) public {
+        liquidationFeeRatio = _ratio;
+    }
 }

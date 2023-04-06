@@ -164,7 +164,7 @@ contract ClearingHouseViewer {
         int256 accountValue = unrealizedPnl + position.margin;
         int256 minCollateral = accountValue - position.margin > 0 ? position.margin : accountValue;
 
-        uint256 initMarginRatio = clearingHouse.initMarginRatio();
+        uint256 initMarginRatio = _amm.initMarginRatio();
         int256 marginRequirement = position.size > 0
             ? position.openNotional.toInt().mulD(initMarginRatio.toInt())
             : positionNotional.toInt().mulD(initMarginRatio.toInt());
@@ -315,6 +315,7 @@ contract ClearingHouseViewer {
             positionInfo.leverage = int256(1 ether).divD(positionInfo.marginRatio).abs();
         }
         positionInfo.liquidationPrice = _getLiquidationPrice(
+            amm,
             positionInfo.entryPrice,
             positionInfo.positionSize,
             positionInfo.openMargin,
@@ -324,12 +325,13 @@ contract ClearingHouseViewer {
     }
 
     function _getLiquidationPrice(
+        IAmm amm,
         uint256 entryPrice,
         int256 positionSize,
         int256 margin,
         int256 fundingPayment
     ) private view returns (int256) {
-        uint256 maintenanceMarginRatio = clearingHouse.maintenanceMarginRatio();
+        uint256 maintenanceMarginRatio = amm.maintenanceMarginRatio();
         if (positionSize == 0) {
             return 0;
         } else if (positionSize > 0) {

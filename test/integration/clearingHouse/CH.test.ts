@@ -1666,7 +1666,7 @@ describe("ClearingHouse Test", () => {
     it("force error, exceeding fluctuation limit twice in the same block", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
-      await clearingHouse.setPartialLiquidationRatio(toFullDigitBN(1));
+      await amm.setPartialLiquidationRatio(toFullDigitBN(1));
 
       // when bob create a 20 margin * 5x long position when 9.0909091 quoteAsset = 100 DAI
       // AMM after: 1100 : 90.9090909, price: 12.1000000012

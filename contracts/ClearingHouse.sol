@@ -93,18 +93,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //**********************************************************//
     //string public override versionRecipient;
 
-    // only admin
-    uint256 public initMarginRatio;
-
-    // only admin
-    uint256 public maintenanceMarginRatio;
-
-    // only admin
-    uint256 public liquidationFeeRatio;
-
-    // only admin
-    uint256 public partialLiquidationRatio;
-
     // key by amm address
     mapping(address => AmmMap) internal ammMap;
 
@@ -194,56 +182,19 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         uint256 badDebt
     );
 
-    function initialize(
-        uint256 _initMarginRatio,
-        uint256 _maintenanceMarginRatio,
-        uint256 _liquidationFeeRatio,
-        IInsuranceFund _insuranceFund
-    ) public initializer {
+    function initialize(IInsuranceFund _insuranceFund) public initializer {
         _requireNonZeroAddress(address(_insuranceFund));
-        _requireNonZeroInput(_initMarginRatio);
-        _requireNonZeroInput(_maintenanceMarginRatio);
-        _requireNonZeroInput(_liquidationFeeRatio);
-        _requireRatio(_initMarginRatio);
-        _requireRatio(_maintenanceMarginRatio);
-        _requireRatio(_liquidationFeeRatio);
+
         __OwnerPausable_init();
 
-        //comment these out for reducing bytecode size
         __ReentrancyGuard_init();
 
-        initMarginRatio = _initMarginRatio;
-        maintenanceMarginRatio = _maintenanceMarginRatio;
-        liquidationFeeRatio = _liquidationFeeRatio;
         insuranceFund = _insuranceFund;
     }
 
     //
     // External
     //
-
-    /**
-     * @notice set liquidation fee ratio
-     * @dev only owner can call
-     * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
-     */
-    function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
-        _requireNonZeroInput(_liquidationFeeRatio);
-        _requireRatio(_liquidationFeeRatio);
-        liquidationFeeRatio = _liquidationFeeRatio;
-    }
-
-    /**
-     * @notice set maintenance margin ratio, should be smaller than initMarginRatio
-     * @dev only owner can call
-     * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
-     */
-    function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
-        _requireNonZeroInput(_maintenanceMarginRatio);
-        _requireRatio(_maintenanceMarginRatio);
-        require(_maintenanceMarginRatio < initMarginRatio, "CH_WMMR"); // wrong maintenance margin ratio
-        maintenanceMarginRatio = _maintenanceMarginRatio;
-    }
 
     /**
      * @notice set the toll pool address
@@ -264,15 +215,6 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         _requireNonZeroAddress(account);
         backstopLiquidityProviderMap[account] = isProvider;
         emit BackstopLiquidityProviderChanged(account, isProvider);
-    }
-
-    /**
-     * @notice set the margin ratio after deleveraging
-     * @dev only owner can call
-     */
-    function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
-        _requireRatio(_ratio);
-        partialLiquidationRatio = _ratio;
     }
 
     /**
@@ -434,7 +376,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         _requireAmm(_amm, true);
         _requireNonZeroInput(_amount);
         _requireNonZeroInput(_leverage);
-        _requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), initMarginRatio, true);
+        _requireMoreMarginRatio(int256(1 ether).divD(_leverage.toInt()), _amm.initMarginRatio(), true);
         _requireNotRestrictionMode(_amm);
 
         address trader = _msgSender();
@@ -483,7 +425,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             _setPosition(_amm, trader, positionResp.position);
             // if opening the exact position size as the existing one == closePosition, can skip the margin ratio check
             if (positionResp.position.size != 0) {
-                _requireMoreMarginRatio(getMarginRatio(_amm, trader), maintenanceMarginRatio, true);
+                _requireMoreMarginRatio(getMarginRatio(_amm, trader), _amm.maintenanceMarginRatio(), true);
             }
 
             // to prevent attacker to leverage the bad debt to withdraw extra token from insurance fund
@@ -588,7 +530,9 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         Position memory position = getPosition(_amm, _trader);
         (quoteAssetAmount, isPartialClose) = _liquidate(_amm, _trader);
 
-        uint256 quoteAssetAmountLimit = isPartialClose ? _quoteAssetAmountLimit.mulD(partialLiquidationRatio) : _quoteAssetAmountLimit;
+        uint256 quoteAssetAmountLimit = isPartialClose
+            ? _quoteAssetAmountLimit.mulD(_amm.partialLiquidationRatio())
+            : _quoteAssetAmountLimit;
 
         _checkSlippage(position.size > 0 ? Side.SELL : Side.BUY, quoteAssetAmount, 0, quoteAssetAmountLimit, false);
 
@@ -815,7 +759,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
 
     function _liquidate(IAmm _amm, address _trader) internal returns (uint256 quoteAssetAmount, bool isPartialClose) {
         _requireAmm(_amm, true);
-        _requireMoreMarginRatio(getMarginRatio(_amm, _trader), maintenanceMarginRatio, false);
+        _requireMoreMarginRatio(getMarginRatio(_amm, _trader), _amm.maintenanceMarginRatio(), false);
 
         PositionResp memory positionResp;
         uint256 liquidationPenalty;
@@ -825,8 +769,8 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             uint256 feeToInsuranceFund;
 
             int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
-            uint256 _partialLiquidationRatio = partialLiquidationRatio;
-            uint256 _liquidationFeeRatio = liquidationFeeRatio;
+            uint256 _partialLiquidationRatio = _amm.partialLiquidationRatio();
+            uint256 _liquidationFeeRatio = _amm.liquidationFeeRatio();
             if (
                 // check margin(based on spot price) is enough to pay the liquidation fee
                 // after partially close, otherwise we fully close the position.
@@ -1296,8 +1240,8 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         // if holding a long position, using open notional (mapping to quote debt in Curie)
         // if holding a short position, using position notional (mapping to base debt in Curie)
         int256 marginRequirement = pos.size > 0
-            ? pos.openNotional.toInt().mulD(initMarginRatio.toInt())
-            : positionNotional.toInt().mulD(initMarginRatio.toInt());
+            ? pos.openNotional.toInt().mulD(_amm.initMarginRatio().toInt())
+            : positionNotional.toInt().mulD(_amm.initMarginRatio().toInt());
 
         return minCollateral - marginRequirement;
     }

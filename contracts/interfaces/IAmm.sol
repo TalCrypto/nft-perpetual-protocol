@@ -109,6 +109,15 @@ interface IAmm {
     function getSpotPrice() external view returns (uint256);
 
     // overridden by state variable
+
+    function initMarginRatio() external view returns (uint256);
+
+    function maintenanceMarginRatio() external view returns (uint256);
+
+    function liquidationFeeRatio() external view returns (uint256);
+
+    function partialLiquidationRatio() external view returns (uint256);
+
     function quoteAsset() external view returns (IERC20);
 
     function priceFeedKey() external view returns (bytes32);

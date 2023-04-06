@@ -172,37 +172,13 @@ export async function deployAmmReader(signer: Signer): Promise<AmmReader> {
   return instance;
 }
 
-export async function deployClearingHouse(
-  signer: Signer,
-  initMarginRatio: BigNumber,
-  maintenanceMarginRatio: BigNumber,
-  liquidationFeeRatio: BigNumber,
-  insuranceFund: string,
-  trustedForwarder: string
-): Promise<ClearingHouseFake> {
-  const instance = await new ClearingHouseFake__factory(signer).deploy(
-    initMarginRatio.toString(),
-    maintenanceMarginRatio.toString(),
-    liquidationFeeRatio.toString(),
-    insuranceFund,
-    trustedForwarder
-  );
+export async function deployClearingHouse(signer: Signer, insuranceFund: string, trustedForwarder: string): Promise<ClearingHouseFake> {
+  const instance = await new ClearingHouseFake__factory(signer).deploy(insuranceFund, trustedForwarder);
   return instance;
 }
 
-export async function deployProxyClearingHouse(
-  signer: Signer,
-  initMarginRatio: BigNumber,
-  maintenanceMarginRatio: BigNumber,
-  liquidationFeeRatio: BigNumber,
-  insuranceFund: string
-): Promise<ClearingHouse> {
-  const instance = (await upgrades.deployProxy(new ClearingHouse__factory(signer), [
-    initMarginRatio.toString(),
-    maintenanceMarginRatio.toString(),
-    liquidationFeeRatio.toString(),
-    insuranceFund,
-  ])) as ClearingHouse;
+export async function deployProxyClearingHouse(signer: Signer, insuranceFund: string): Promise<ClearingHouse> {
+  const instance = (await upgrades.deployProxy(new ClearingHouse__factory(signer), [insuranceFund])) as ClearingHouse;
   await instance.deployed();
   return instance;
 }
