@@ -339,7 +339,7 @@ contract ClearingHouseViewer {
         }
     }
 
-    function _isOverSpreadLimit(uint256 marketPrice, uint256 oraclePrice) public pure returns (bool result) {
+    function _isOverSpreadLimit(uint256 marketPrice, uint256 oraclePrice) internal view virtual returns (bool result) {
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
         result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
