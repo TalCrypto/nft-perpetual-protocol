@@ -102,7 +102,7 @@ describe("EthStakingPool unit test", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
     await quoteToken.connect(alice).transfer(ethStakingPool.address, toFullDigitBN(5));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await ethStakingPool.claim();
     expect(await ethStakingPool.calculateTotalReward()).eq(toFullDigitBN(0));
@@ -111,7 +111,7 @@ describe("EthStakingPool unit test", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
     await quoteToken.connect(alice).transfer(ethStakingPool.address, toFullDigitBN(5));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await expect(ethStakingPool.connect(alice).claim()).revertedWith("ES_NTT");
   });
@@ -119,7 +119,7 @@ describe("EthStakingPool unit test", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
     await quoteToken.connect(alice).transfer(ethStakingPool.address, toFullDigitBN(5));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await ethStakingPool.restakeReward(toFullDigitBN(2));
     expect(await ethStakingPool.calculateTotalReward()).eq(toFullDigitBN(3));
@@ -130,14 +130,14 @@ describe("EthStakingPool unit test", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
     await quoteToken.connect(alice).transfer(ethStakingPool.address, toFullDigitBN(5));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await expect(ethStakingPool.connect(alice).restakeReward(toFullDigitBN(5))).revertedWith("ES_NTT");
   });
   it("reward is not claimable when it is below than 0 after the period by treasury", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await expect(ethStakingPool.claim()).revertedWith("ES_IR");
   });
@@ -145,7 +145,7 @@ describe("EthStakingPool unit test", async () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await ethStakingPool.stake(toFullDigitBN(10));
     await quoteToken.connect(alice).transfer(ethStakingPool.address, toFullDigitBN(5));
-    await forward(7 * 24 * 3600);
+    await forward(30 * 24 * 3600);
     expect(await ethStakingPool.isClaimable()).true;
     await expect(ethStakingPool.restakeReward(toFullDigitBN(12))).revertedWith("ES_IR");
   });

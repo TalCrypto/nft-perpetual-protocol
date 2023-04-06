@@ -52,7 +52,7 @@ contract ETHStakingPool is IETHStakingPool, OwnableUpgradeableSafe, BlockContext
         _requireNonZeroAddress(_insuranceFund);
         quoteToken = IERC20(_quoteToken);
         insuranceFund = IInsuranceFund(_insuranceFund);
-        claimPeriodInSec = 7 * 24 * 3600;
+        claimPeriodInSec = 30 * 24 * 3600;
         nextClaimTimestamp = _blockTimestamp() + claimPeriodInSec;
         guardEndTimestamp = _blockTimestamp() + 6 * 30 * 24 * 3600;
     }
