@@ -14,6 +14,8 @@ contract ClearingHouseViewer {
     using UIntMath for uint256;
     using IntMath for int256;
 
+    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 0.1 ether; // 10%
+
     struct PositionInfo {
         address trader;
         IAmm amm;
@@ -186,8 +188,7 @@ contract ClearingHouseViewer {
                 ? clearingHouse.getLatestCumulativePremiumFractionLong(amm)
                 : clearingHouse.getLatestCumulativePremiumFractionShort(amm)
         );
-        (uint256 quoteAssetReserve, uint256 baseAssetReserve) = amm.getReserve();
-        positionInfo.spotPrice = quoteAssetReserve.divD(baseAssetReserve);
+        positionInfo.spotPrice = amm.getSpotPrice();
         positionInfo = _fillAdditionalPositionInfo(amm, positionInfo);
     }
 
@@ -285,9 +286,8 @@ contract ClearingHouseViewer {
 
     function _fillAdditionalPositionInfo(IAmm amm, PositionInfo memory positionInfo) private view returns (PositionInfo memory) {
         positionInfo.margin = positionInfo.openMargin + positionInfo.fundingPayment + positionInfo.unrealizedPnl;
-        (bool isOverSpread, , ) = amm.isOverSpreadLimit();
-        if (isOverSpread) {
-            uint256 oraclePrice = amm.getUnderlyingPrice();
+        uint256 oraclePrice = amm.getUnderlyingPrice();
+        if (_isOverSpreadLimit(positionInfo.spotPrice, oraclePrice)) {
             uint256 positionNotionalBasedOnOracle = positionInfo.positionSize.abs().mulD(oraclePrice);
             int256 unrealizedPnlBasedOnOracle = positionInfo.positionSize < 0
                 ? positionInfo.openNotional.toInt() - positionNotionalBasedOnOracle.toInt()
@@ -337,5 +337,10 @@ contract ClearingHouseViewer {
         } else {
             return (entryPrice.toInt() - (margin + fundingPayment).divD(positionSize)).divD(1 ether + maintenanceMarginRatio.toInt());
         }
+    }
+
+    function _isOverSpreadLimit(uint256 marketPrice, uint256 oraclePrice) public pure returns (bool result) {
+        uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
+        result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 }
