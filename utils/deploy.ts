@@ -12,6 +12,7 @@ import {
   Liquidator,
   Amm,
   ETHStakingPool,
+  ClearingHouseViewerMock,
 } from "../typechain-types";
 import {
   deployAmm,
@@ -26,6 +27,7 @@ import {
   deployProxyClearingHouse,
   deployProxyAmm,
   deployETHStakingPool,
+  deployClearingHouseViewerMock,
 } from "./contract";
 import { toFullDigitBN } from "./number";
 
@@ -36,7 +38,7 @@ export interface PerpContractsFake {
   clearingHouse: ClearingHouseFake;
   amm: AmmFake;
   ammReader: AmmReader;
-  clearingHouseViewer: ClearingHouseViewer;
+  clearingHouseViewer: ClearingHouseViewerMock;
   tollPool: TollPool;
   liquidator: Liquidator;
   ethStakingPool: ETHStakingPool;
@@ -112,7 +114,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
     insuranceFund.address
   );
 
-  const clearingHouseViewer = await deployClearingHouseViewer(sender!, clearingHouse.address);
+  const clearingHouseViewer = await deployClearingHouseViewerMock(sender!, clearingHouse.address);
   const tollPool = await deployTollPool(sender!, clearingHouse.address);
 
   await clearingHouse.setTollPool(tollPool.address);

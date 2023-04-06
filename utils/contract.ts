@@ -37,6 +37,8 @@ import {
   ChainlinkAggregatorMock__factory,
   ETHStakingPool,
   ETHStakingPool__factory,
+  ClearingHouseViewerMock__factory,
+  ClearingHouseViewerMock,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -213,6 +215,12 @@ export async function deployLiquidator(signer: Signer, clearingHouse: string): P
 
 export async function deployClearingHouseViewer(signer: Signer, clearingHouse: string): Promise<ClearingHouseViewer> {
   const instance = await new ClearingHouseViewer__factory(signer).deploy(clearingHouse);
+  await instance.deployed();
+  return instance;
+}
+
+export async function deployClearingHouseViewerMock(signer: Signer, clearingHouse: string): Promise<ClearingHouseViewerMock> {
+  const instance = await new ClearingHouseViewerMock__factory(signer).deploy(clearingHouse);
   await instance.deployed();
   return instance;
 }

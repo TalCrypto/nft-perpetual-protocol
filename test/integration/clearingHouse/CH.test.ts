@@ -12,6 +12,7 @@ import {
   TraderWallet,
   L2PriceFeedMock,
   ETHStakingPool,
+  ClearingHouseViewerMock,
 } from "../../../typechain-types";
 import { deployL2PriceFeed, PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
@@ -33,7 +34,7 @@ describe("ClearingHouse Test", () => {
   let quoteToken: ERC20Fake;
   let mockPriceFeed!: L2PriceFeedMock;
   let clearingHouse: ClearingHouseFake;
-  let clearingHouseViewer: ClearingHouseViewer;
+  let clearingHouseViewer: ClearingHouseViewerMock;
 
   let traderWallet1: TraderWallet;
   let traderWallet2: TraderWallet;
@@ -190,7 +191,7 @@ describe("ClearingHouse Test", () => {
       await approve(alice, clearingHouse.address, 600);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
       await mockPriceFeed.setPrice(toFullDigitBN(10));
-      await amm.mockSetSpreadCheck(true);
+      await clearingHouseViewer.mockSetSpreadCheck(true);
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
       expect(positionInfo.positionSize).eq(toFullDigitBN(20));
       expect(positionInfo.positionNotional).eq(toFullDigitBN(250));
@@ -270,7 +271,7 @@ describe("ClearingHouse Test", () => {
   describe("getOpenPositionEstimation - when over spread", () => {
     it("estimation of new position", async () => {
       await mockPriceFeed.setPrice(toFullDigitBN(12));
-      await amm.mockSetSpreadCheck(true);
+      await clearingHouseViewer.mockSetSpreadCheck(true);
       const est = await clearingHouseViewer.getOpenPositionEstimation(
         amm.address,
         alice.address,
@@ -291,7 +292,7 @@ describe("ClearingHouse Test", () => {
       await approve(alice, clearingHouse.address, 600);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(10), toFullDigitBN(0), true);
       await mockPriceFeed.setPrice(toFullDigitBN(12));
-      await amm.mockSetSpreadCheck(true);
+      await clearingHouseViewer.mockSetSpreadCheck(true);
       const est = await clearingHouseViewer.getOpenPositionEstimation(
         amm.address,
         alice.address,
@@ -1321,6 +1322,7 @@ describe("ClearingHouse Test", () => {
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.125));
         expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.125));
+        await clearingHouseViewer.mockSetSpreadCheck(true);
         await amm.mockSetSpreadCheck(true);
         await mockPriceFeed.setPrice(toFullDigitBN(10));
         // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotionalBasedOnOracle
@@ -1347,6 +1349,7 @@ describe("ClearingHouse Test", () => {
         await clearingHouse.payFunding(amm.address);
         expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.075));
         expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.075));
+        await clearingHouseViewer.mockSetSpreadCheck(true);
         await amm.mockSetSpreadCheck(true);
         await mockPriceFeed.setPrice(toFullDigitBN(10));
         // funding payment: 20 * 7.5% = 1.5
