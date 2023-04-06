@@ -186,6 +186,21 @@ describe("ClearingHouse Test", () => {
       expect(bobPosition.positionSize).to.eq(toFullDigitBN(-187.5));
       expect(bobPosition.openMargin.add(bobPosition.fundingPayment)).to.eq(toFullDigitBN(1201.875));
     });
+    it("returns margin ratio based on oracle when overspread", async () => {
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
+      await mockPriceFeed.setPrice(toFullDigitBN(10));
+      await amm.mockSetSpreadCheck(true);
+      const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
+      expect(positionInfo.positionSize).eq(toFullDigitBN(20));
+      expect(positionInfo.positionNotional).eq(toFullDigitBN(250));
+      expect(positionInfo.openNotional).eq(toFullDigitBN(250));
+      expect(positionInfo.margin).eq(toFullDigitBN(25));
+      // positionNotionalBasedOnOracle = 20 * 10 = 200
+      // unrealizedPnl = 200 - 250 = -50
+      // marginRatio = (25-50)/200
+      expect(positionInfo.marginRatio).eq(toFullDigitBN(-0.125));
+    });
     it("empty position returns 0 in all fields", async () => {
       const carolPositioin = await clearingHouseViewer.getTraderPositionInfo(amm.address, carol.address);
       expect(carolPositioin.positionSize).eq(BigNumber.from(0));
@@ -249,6 +264,45 @@ describe("ClearingHouse Test", () => {
       expect(estimation.positionSize).eq(positionInfo.positionSize);
       expect(estimation.spotPrice).eq(positionInfo.spotPrice);
       expect(estimation.unrealizedPnl).eq(positionInfo.unrealizedPnl);
+    });
+  });
+
+  describe("getOpenPositionEstimation - when over spread", () => {
+    it("estimation of new position", async () => {
+      await mockPriceFeed.setPrice(toFullDigitBN(12));
+      await amm.mockSetSpreadCheck(true);
+      const est = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        alice.address,
+        Side.BUY,
+        toFullDigitBN(250),
+        toFullDigitBN(10)
+      );
+      expect(est.positionInfo.positionSize).eq(toFullDigitBN(20));
+      expect(est.positionInfo.positionNotional).eq(toFullDigitBN(250));
+      expect(est.positionInfo.openNotional).eq(toFullDigitBN(250));
+      expect(est.positionInfo.margin).eq(toFullDigitBN(25));
+      // positionNotionalBasedOnOracle = 20 * 12 = 240
+      // unrealizedPnl = 240 - 250 = -10
+      // marginRatio = (25-10)/240
+      expect(est.positionInfo.marginRatio).eq(toFullDigitBN(0.0625));
+    });
+    it("estimation of increase position", async () => {
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(50), toFullDigitBN(10), toFullDigitBN(0), true);
+      await mockPriceFeed.setPrice(toFullDigitBN(12));
+      await amm.mockSetSpreadCheck(true);
+      const est = await clearingHouseViewer.getOpenPositionEstimation(
+        amm.address,
+        alice.address,
+        Side.BUY,
+        toFullDigitBN(200),
+        toFullDigitBN(10)
+      );
+      // positionNotionalBasedOnOracle = 20 * 12 = 240
+      // unrealizedPnl = 240 - 250 = -10
+      // marginRatio = (25-10)/240
+      expect(est.positionInfo.marginRatio).eq("62499999999999999");
     });
   });
 
@@ -1092,6 +1146,25 @@ describe("ClearingHouse Test", () => {
       expect(marginRatio).to.eq(toFullDigitBN(0.1));
     });
 
+    it("get margin ratio - when over spread", async () => {
+      await approve(alice, clearingHouse.address, 2000);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+
+      await amm.mockSetSpreadCheck(true);
+      await mockPriceFeed.setPrice(toFullDigitBN(10));
+      // position size = 20
+      // oracle price = 10
+      // position notional based on oralce = 200
+      // open notional = 250
+      // unrealizedPnl = -50
+      // margin = 25
+      // margin ratio = (25-50)/200 = -0.125
+      const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
+      expect(marginRatio).to.eq(toFullDigitBN(-0.125));
+    });
+
     it("get margin ratio - long", async () => {
       await approve(alice, clearingHouse.address, 2000);
 
@@ -1231,6 +1304,56 @@ describe("ClearingHouse Test", () => {
         // margin ratio: (25 + 1.5) / 250 =  0.106
         const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
         expect(aliceMarginRatio).to.eq(toFullDigitBN(0.106));
+      });
+
+      it("when funding rate is positive - over spread", async () => {
+        await approve(alice, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+
+        // given the underlying twap price: 15.5
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(15.5));
+
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(0.125));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(0.125));
+        await amm.mockSetSpreadCheck(true);
+        await mockPriceFeed.setPrice(toFullDigitBN(10));
+        // marginRatio = (margin + funding payment + unrealized Pnl) / positionNotionalBasedOnOracle
+        // funding payment: 20 * -12.5% = -2.5
+        // positionNotionalBasedOnOracle: 200
+        // margin ratio: (25 - 2.5 + 200 - 250) / 200 = -0.1375
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq(toFullDigitBN(-0.1375));
+      });
+
+      it("when funding rate is negative - over spread", async () => {
+        await amm.setSpreadRatio(toFullDigitBN(0.5));
+        await approve(alice, clearingHouse.address, 2000);
+
+        // price: 1250 / 80 = 15.625
+        await clearingHouse
+          .connect(alice)
+          .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+
+        // given the underlying twap price is 15.7
+        await mockPriceFeed.setTwapPrice(toFullDigitBN(15.7));
+
+        await gotoNextFundingTime();
+        await clearingHouse.payFunding(amm.address);
+        expect(await clearingHouse.getLatestCumulativePremiumFractionLong(amm.address)).eq(toFullDigitBN(-0.075));
+        expect(await clearingHouse.getLatestCumulativePremiumFractionShort(amm.address)).eq(toFullDigitBN(-0.075));
+        await amm.mockSetSpreadCheck(true);
+        await mockPriceFeed.setPrice(toFullDigitBN(10));
+        // funding payment: 20 * 7.5% = 1.5
+        // positionNotionalBasedOnOracle: 200
+        // margin ratio: (25 + 1.5 - 50) / 200 =  -0.1175
+        const aliceMarginRatio = await clearingHouseViewer.getMarginRatio(amm.address, alice.address);
+        expect(aliceMarginRatio).to.eq(toFullDigitBN(-0.1175));
       });
 
       it("with pnl and funding rate is positive", async () => {

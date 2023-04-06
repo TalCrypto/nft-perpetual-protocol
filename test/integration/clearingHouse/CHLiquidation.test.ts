@@ -136,6 +136,75 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.setLiquidationFeeRatio(toFullDigitBN(0.025));
     });
 
+    it("liquidate a long position of which margin ratio based on spot is above mm ratio when over spread", async () => {
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.05));
+      await approve(alice, clearingHouse.address, 2000);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+      expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).to.eq(toFullDigitBN(0.1));
+      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
+      await amm.mockSetSpreadCheck(true);
+      await mockPriceFeed.setPrice(toFullDigitBN(10));
+      // position size = 20
+      // oracle price = 10
+      // position notional based on oralce = 200
+      // open notional = 250
+      // unrealizedPnl = -50
+      // margin = 25
+      // margin ratio = (25-50)/200 = -0.125
+      const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
+      expect(marginRatio).to.eq(toFullDigitBN(-0.125));
+      await clearingHouse.liquidate(amm.address, alice.address);
+    });
+
+    it("liquidate a short position of which margin ratio based on spot is above mm ratio when over spread", async () => {
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.05));
+      await approve(alice, clearingHouse.address, 2000);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(200), toFullDigitBN(10), toFullDigitBN(0), true);
+      expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).to.eq(toFullDigitBN(0.1));
+      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
+      await amm.mockSetSpreadCheck(true);
+      await mockPriceFeed.setPrice(toFullDigitBN(10));
+      // position size = -25
+      // oracle price = 10
+      // position notional based on oralce = 250
+      // open notional = 200
+      // unrealizedPnl = -50
+      // margin = 20
+      // margin ratio = (20-50)/250 = -0.12
+      const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
+      expect(marginRatio).to.eq(toFullDigitBN(-0.12));
+      await clearingHouse.liquidate(amm.address, alice.address);
+    });
+
+    it("liquidatable based spot, but not based on oracle ", async () => {
+      await clearingHouse.mockSetMMRatio(toFullDigitBN(0.05));
+      await approve(alice, clearingHouse.address, 2000);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+      // Q: 1250, B: 80
+      await approve(bob, clearingHouse.address, 2000);
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(20), true);
+      // Q: 1000, B: 100
+      expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).lt(toFullDigitBN(0.05));
+      await amm.mockSetSpreadCheck(true);
+      await mockPriceFeed.setPrice(toFullDigitBN(15));
+      // position size = 20
+      // oracle price = 15
+      // position notional based on oralce = 300
+      // open notional = 250
+      // unrealizedPnl = 50
+      // margin = 25
+      // margin ratio = (25+50)/300 = -0.125
+      const marginRatio = await clearingHouse.getMarginRatio(amm.address, alice.address);
+      expect(marginRatio).to.eq(toFullDigitBN(0.25));
+      await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
+    });
+
     it("partially liquidate a long position", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
