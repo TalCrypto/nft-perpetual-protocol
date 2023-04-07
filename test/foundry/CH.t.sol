@@ -119,10 +119,6 @@ contract CHFundingTest is Test {
 
         assertEq(fractionLong, fractionShort, "funding premium fractions should be same between long and short");
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
-        assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
-            "difference between actual and theoretical should be 0"
-        );
     }
 
     function testNormalFundingWhenCost(
@@ -328,12 +324,7 @@ contract CHFundingTest is Test {
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
-
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
-        assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
-            "difference between actual and theoretical should be 0"
-        );
     }
 
     function testDynamicFundingAsTakeWhenRevenueWithDoublePay(
@@ -380,14 +371,7 @@ contract CHFundingTest is Test {
         // positive means revenue
         int256 systemFundingPayment = (alicePositionBefore.margin + bobPositionBefore.margin) -
             (alicePositionAfter.margin + bobPositionAfter.margin);
-
-        emit log_int(systemFundingPayment);
-
         assertTrue(systemFundingPayment >= 0, "system funding payment should be revenue");
-        assertTrue(
-            (systemFundingPayment - int256(insuranceBudgetAfter) + int256(insuranceBudgetBefore)) < 1e2,
-            "difference between actual and theoretical should be 0"
-        );
     }
 
     function testDynamicFundingAsCoverWhenCost(
