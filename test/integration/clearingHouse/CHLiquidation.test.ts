@@ -1475,7 +1475,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(carol, clearingHouse.address, 1000);
       await amm.mockSetMMRatio(toFullDigitBN(0.1));
     });
-    it.only("make alice liquidatable by another liquidation", async () => {
+    it("make alice liquidatable by another liquidation", async () => {
       await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(9.09), true);
       await clearingHouse
         .connect(alice)
