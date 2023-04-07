@@ -14,7 +14,7 @@ import {
   ETHStakingPool,
   ClearingHouseViewerMock,
 } from "../../../typechain-types";
-import { deployL2PriceFeed, PnlCalcOption, Side } from "../../../utils/contract";
+import { deployL2PriceFeed, deployWhitelistMaster, PnlCalcOption, Side } from "../../../utils/contract";
 import { fullDeploy } from "../../../utils/deploy";
 import { toFullDigitBN } from "../../../utils/number";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -1848,6 +1848,26 @@ describe("ClearingHouse Test", () => {
   describe("ownership renounce", async () => {
     it("not allowed to renounce ownership by admin", async () => {
       await expect(clearingHouse.connect(admin).renounceOwnership()).to.be.revertedWith("OS_NR");
+    });
+  });
+
+  describe.only("whitelist functions", () => {
+    beforeEach(async () => {
+      const whitelistMaster = await deployWhitelistMaster(admin);
+      await clearingHouse.makePrivate(whitelistMaster.address);
+      await whitelistMaster.addToWhitelist([alice.address]);
+    });
+    it("alice can open position as it's been whitelisted", async () => {
+      await approve(alice, clearingHouse.address, 200);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true);
+    });
+    it("bob can't open position as it's not been whitelisted", async () => {
+      await approve(bob, clearingHouse.address, 200);
+      await expect(
+        clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(100), toFullDigitBN(5), toFullDigitBN(11.12), true)
+      ).revertedWith("CH_NW");
     });
   });
 });

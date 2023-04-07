@@ -39,6 +39,8 @@ import {
   ETHStakingPool__factory,
   ClearingHouseViewerMock__factory,
   ClearingHouseViewerMock,
+  WhitelistMaster,
+  WhitelistMaster__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -267,6 +269,12 @@ export async function deployChainlinkAggregatorMock(signer: Signer): Promise<Cha
 
 export async function deployETHStakingPool(signer: Signer, quoteTokenAddr: string, insuranceFundAddr: string): Promise<ETHStakingPool> {
   const instance = (await upgrades.deployProxy(new ETHStakingPool__factory(signer), [quoteTokenAddr, insuranceFundAddr])) as ETHStakingPool;
+  await instance.deployed();
+  return instance;
+}
+
+export async function deployWhitelistMaster(signer: Signer): Promise<WhitelistMaster> {
+  const instance = (await upgrades.deployProxy(new WhitelistMaster__factory(signer), [])) as WhitelistMaster;
   await instance.deployed();
   return instance;
 }
