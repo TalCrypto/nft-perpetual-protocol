@@ -1,22 +1,20 @@
 export enum AmmInstanceName {
   BAYCETH = "BAYCETH",
-  DOODLESETH = "DOODLESETH",
   AZUKIETH = "AZUKIETH",
+  DOODLESETH = "DOODLESETH",
   MOONBIRDSETH = "MOONBIRDSETH",
-  CLONEXETH = "CLONEXETH",
-  CRYPTOPUNKSETH = "CRYPTOPUNKSETH",
-  MEEBITSETH = "MEEBITSETH",
+  MAYCETH = "MAYCETH",
+  PUDGYPENGUINSETH = "PUDGYPENGUINSETH",
 }
 
 // chainlink
 export enum PriceFeedKey {
   BAYC = "BAYC/ETH",
+  AZUKI = "AZUKI/ETH",
   DOODLES = "DOODLES/ETH",
-  AZUKIETH = "AZUKI/ETH",
   MOONBIRDS = "MOONBIRDS/ETH",
-  CLONEX = "CLONEX/ETH",
-  CRYPTOPUNKS = "CRYPTOPUNKS/ETH",
-  MEEBITS = "MEEBITS/ETH",
+  MAYC = "MAYCETH/ETH",
+  PUDGYPENGUINS = "PUDGYPENGUINS/ETH",
 }
 
 export enum ContractFullyQualifiedName {
@@ -28,4 +26,6 @@ export enum ContractFullyQualifiedName {
   AmmReader = "contracts/AmmReader.sol:AmmReader",
   TollPool = "contracts/TollPool.sol:TollPool",
   Liquidator = "contracts/keeper/Liquidator.sol:Liquidator",
+  ETHStakingPool = "contracts/ETHStakingPool.sol:ETHStakingPool",
+  ChainlinkPriceFeed = "contracts/ChainlinkPriceFeed.sol:ChainlinkPriceFeed",
 }

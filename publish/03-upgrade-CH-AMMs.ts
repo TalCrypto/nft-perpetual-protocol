@@ -18,16 +18,6 @@ async function main() {
   console.log("upgraded AZUKIETH amm");
   await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.BAYCETH], new Amm__factory(ledger));
   console.log("upgraded BAYCETH amm");
-  await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.CLONEXETH], new Amm__factory(ledger));
-  console.log("upgraded CLONEXETH amm");
-  await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.CRYPTOPUNKSETH], new Amm__factory(ledger));
-  console.log("upgraded CRYPTOPUNKSETH amm");
-  await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.DOODLESETH], new Amm__factory(ledger));
-  console.log("upgraded DOODLESETH amm");
-  await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.MEEBITSETH], new Amm__factory(ledger));
-  console.log("upgraded MEEBITSETH amm");
-  await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.MOONBIRDSETH], new Amm__factory(ledger));
-  console.log("upgraded MOONBIRDSETH amm");
 }
 
 main()

@@ -66,7 +66,7 @@ async function main() {
   console.log("verifying Liquidator contract");
   await run("verify:verify", {
     address: addresses.liquidator,
-    constructorArguments: [addresses.clearingHouse, deployConfig.maintenanceMarginRequirement],
+    constructorArguments: [addresses.clearingHouse],
     contract: ContractFullyQualifiedName.Liquidator,
   });
 }

@@ -46,6 +46,7 @@ const deploy = async (hre: any, contractName: string): Promise<string> => {
 const INFURA_API_KEY = process.env.INFURA_API_KEY;
 const PRIVATE_KEY = process.env.PRIVATE_KEY! || "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3";
 const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
+const ARBI_API_KEY = process.env.ARBI_API_KEY;
 
 const config = {
   solidity: {
@@ -63,8 +64,9 @@ const config = {
     hardhat: {
       allowUnlimitedContractSize: true,
     },
-    arbitrum_rinkeby: {
-      url: "https://rinkeby.arbitrum.io/rpc",
+    arbitrum_goerli: {
+      url: "https://goerli-rollup.arbitrum.io/rpc/",
+      accounts: [PRIVATE_KEY],
     },
     arbitrum: {
       url: "https://arb-mainnet.g.alchemy.com/v2/XY2OuQR0tqpTi-WY_yljupj20HFlfVok",
@@ -86,7 +88,11 @@ const config = {
     subgraph: "tribe3-perp-subgraph",
   },
   etherscan: {
-    apiKey: ETHERSCAN_API_KEY,
+    apiKey: {
+      mainnet: String(ETHERSCAN_API_KEY),
+      arbitrumOne: String(ARBI_API_KEY),
+      arbitrumGoerli: String(ARBI_API_KEY),
+    },
   },
   mocha: {
     timeout: 80000,

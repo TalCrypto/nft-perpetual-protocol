@@ -1,15 +1,18 @@
 import { readFileSync, writeFileSync } from "fs";
+import { AmmInstanceName } from "../Constants";
 
 const filePath = "./publish/addresses/addresses.json";
 
 export interface ContractAddresses {
   clearingHouse: string;
   clearingHouseViewer: string;
-  amm: Record<string, string>;
+  amm: Record<AmmInstanceName, string>;
   ammReader: string;
   insuranceFund: string;
   tollPool: string;
   liquidator: string;
+  chainlinkPriceFeed: string;
+  ethStakingPool: string;
 }
 
 export function getAddresses(networkName: string): ContractAddresses {

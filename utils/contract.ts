@@ -156,7 +156,7 @@ export async function deployProxyAmm(params: {
     params.tradeLimitRatio,
     params.fundingPeriod,
     params.priceFeedAddress,
-    ethers.utils.formatBytes32String(params.priceFeedKey),
+    params.priceFeedKey,
     params.quoteTokenAddress,
     params.fluctuation,
     params.tollRatio,
