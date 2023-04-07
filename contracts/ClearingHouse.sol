@@ -15,6 +15,7 @@ import { TransferHelper } from "./utils/TransferHelper.sol";
 import { AmmMath } from "./utils/AmmMath.sol";
 import { IClearingHouse } from "./interfaces/IClearingHouse.sol";
 import { IInsuranceFundCallee } from "./interfaces/IInsuranceFundCallee.sol";
+import { IWhitelistMaster } from "./interfaces/IWhitelistMaster.sol";
 
 contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpgradeSafe, ReentrancyGuardUpgradeable, BlockContext {
     using UIntMath for uint256;
@@ -111,6 +112,8 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     // amm => revenue since last funding, used for calculation of k-adjustment budget
     mapping(IAmm => int256) public netRevenuesSinceLastFunding;
 
+    address public whitelistMaster;
+
     uint256[50] private __gap;
 
     //**********************************************************//
@@ -182,6 +185,13 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         uint256 badDebt
     );
 
+    modifier checkAccess() {
+        if (whitelistMaster != address(0)) {
+            require(IWhitelistMaster(whitelistMaster).isWhitelisted(_msgSender()), "CH_NW"); // not whitelisted
+        }
+        _;
+    }
+
     function initialize(IInsuranceFund _insuranceFund) public initializer {
         _requireNonZeroAddress(address(_insuranceFund));
 
@@ -195,6 +205,24 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //
     // External
     //
+
+    /**
+     * @notice make protocol private that works for only whitelisted users
+     * @dev only owner can call
+     * @param _whitelistMaster the address of whitelist master where the whitelisted addresses are stored
+     */
+    function makePrivate(address _whitelistMaster) external onlyOwner {
+        _requireNonZeroAddress(_whitelistMaster);
+        whitelistMaster = _whitelistMaster;
+    }
+
+    /**
+     * @notice make protocol public that works for all
+     * @dev only owner can call
+     */
+    function makePublic() external onlyOwner {
+        whitelistMaster = address(0);
+    }
 
     /**
      * @notice set the toll pool address
@@ -230,7 +258,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @param _amm IAmm address
      * @param _addedMargin added margin in 18 digits
      */
-    function addMargin(IAmm _amm, uint256 _addedMargin) external whenNotPaused nonReentrant {
+    function addMargin(IAmm _amm, uint256 _addedMargin) external whenNotPaused nonReentrant checkAccess {
         // check condition
         _requireAmm(_amm, true);
         _requireNonZeroInput(_addedMargin);
@@ -251,7 +279,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @param _amm IAmm address
      * @param _removedMargin removed margin in 18 digits
      */
-    function removeMargin(IAmm _amm, uint256 _removedMargin) external whenNotPaused nonReentrant {
+    function removeMargin(IAmm _amm, uint256 _removedMargin) external whenNotPaused nonReentrant checkAccess {
         // check condition
         _requireAmm(_amm, true);
         _requireNonZeroInput(_removedMargin);
@@ -288,7 +316,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @notice settle all the positions when amm is shutdown. The settlement price is according to IAmm.settlementPrice
      * @param _amm IAmm address
      */
-    function settlePosition(IAmm _amm) external nonReentrant {
+    function settlePosition(IAmm _amm) external nonReentrant checkAccess {
         // check condition
         _requireAmm(_amm, false);
         address trader = _msgSender();
@@ -372,7 +400,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         uint256 _leverage,
         uint256 _oppositeAmountBound,
         bool _isQuote
-    ) external whenNotPaused nonReentrant {
+    ) external whenNotPaused nonReentrant checkAccess {
         _requireAmm(_amm, true);
         _requireNonZeroInput(_amount);
         _requireNonZeroInput(_leverage);
@@ -466,7 +494,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @notice close all the positions
      * @param _amm IAmm address
      */
-    function closePosition(IAmm _amm, uint256 _quoteAssetAmountLimit) external whenNotPaused nonReentrant {
+    function closePosition(IAmm _amm, uint256 _quoteAssetAmountLimit) external whenNotPaused nonReentrant checkAccess {
         // check conditions
         _requireAmm(_amm, true);
         _requireNotRestrictionMode(_amm);
@@ -526,7 +554,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         IAmm _amm,
         address _trader,
         uint256 _quoteAssetAmountLimit
-    ) external nonReentrant returns (uint256 quoteAssetAmount, bool isPartialClose) {
+    ) external nonReentrant checkAccess returns (uint256 quoteAssetAmount, bool isPartialClose) {
         Position memory position = getPosition(_amm, _trader);
         (quoteAssetAmount, isPartialClose) = _liquidate(_amm, _trader);
 
@@ -545,7 +573,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @param _amm IAmm address
      * @param _trader trader address
      */
-    function liquidate(IAmm _amm, address _trader) external nonReentrant {
+    function liquidate(IAmm _amm, address _trader) external nonReentrant checkAccess {
         _liquidate(_amm, _trader);
     }
 
@@ -553,7 +581,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @notice if funding rate is positive, traders with long position pay traders with short position and vice versa.
      * @param _amm IAmm address
      */
-    function payFunding(IAmm _amm) external {
+    function payFunding(IAmm _amm) external checkAccess {
         _requireAmm(_amm, true);
         uint256 budget = insuranceFund.getAvailableBudgetFor(_amm);
         bool repegable;
