@@ -92,29 +92,14 @@ async function main() {
     AmmInstanceName.AZUKIETH,
     ledger
   );
-  const doodlesAmm = await deployAndConfigAmm(
-    insuranceFund,
-    clearingHouse,
-    chainlinkPriceFeed,
-    deployConfig,
-    AmmInstanceName.DOODLESETH,
-    ledger
-  );
-  const moonbirdsAmm = await deployAndConfigAmm(
-    insuranceFund,
-    clearingHouse,
-    chainlinkPriceFeed,
-    deployConfig,
-    AmmInstanceName.MOONBIRDSETH,
-    ledger
-  );
+
   const maycAmm = await deployAndConfigAmm(insuranceFund, clearingHouse, chainlinkPriceFeed, deployConfig, AmmInstanceName.MAYCETH, ledger);
-  const pudgyAmm = await deployAndConfigAmm(
+  const punksAmm = await deployAndConfigAmm(
     insuranceFund,
     clearingHouse,
     chainlinkPriceFeed,
     deployConfig,
-    AmmInstanceName.PUDGYPENGUINSETH,
+    AmmInstanceName.WRAPPEDCRYPTOPUNKSETH,
     ledger
   );
 
@@ -145,11 +130,12 @@ async function main() {
     clearingHouseViewer: clearingHouseViewer.address,
     amm: {
       [AmmInstanceName.BAYCETH]: baycAmm.address,
-      [AmmInstanceName.DOODLESETH]: doodlesAmm.address,
+      [AmmInstanceName.DOODLESETH]: "",
       [AmmInstanceName.AZUKIETH]: azukiAmm.address,
-      [AmmInstanceName.MOONBIRDSETH]: moonbirdsAmm.address,
+      [AmmInstanceName.MOONBIRDSETH]: "",
       [AmmInstanceName.MAYCETH]: maycAmm.address,
-      [AmmInstanceName.PUDGYPENGUINSETH]: pudgyAmm.address,
+      [AmmInstanceName.PUDGYPENGUINSETH]: "",
+      [AmmInstanceName.WRAPPEDCRYPTOPUNKSETH]: punksAmm.address,
     },
     ammReader: ammReader.address,
     tollPool: tollPool.address,

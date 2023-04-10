@@ -1,8 +1,9 @@
 import { ethers, network, upgrades } from "hardhat";
-import { getAddresses } from "./addresses";
+import { getAddresses, saveAddresses } from "./addresses";
 import { LedgerSigner } from "@ethersproject/hardware-wallets";
 import { AmmInstanceName } from "./Constants";
 import { ClearingHouse__factory, Amm__factory, ClearingHouseViewer__factory } from "../typechain-types";
+import { deployClearingHouseViewer } from "../utils/contract";
 
 async function main() {
   // const accounts = await ethers.getSigners();
@@ -12,8 +13,12 @@ async function main() {
   console.log("deployer: ", await ledger.getAddress());
 
   const addresses = getAddresses(network.name);
-  await upgrades.upgradeProxy(addresses.clearingHouseViewer, new ClearingHouseViewer__factory(ledger));
-  console.log("upgraded ClearingHouseViewer");
+
+  console.log("deploying ClearingHouseViewer");
+  const clearingHouseViewer = await deployClearingHouseViewer(ledger, addresses.clearingHouse);
+  console.log("deployed ClearingHouseViewer address: ", clearingHouseViewer.address);
+  addresses.clearingHouseViewer = clearingHouseViewer.address;
+
   await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.AZUKIETH], new Amm__factory(ledger));
   console.log("upgraded AZUKIETH amm");
   await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.BAYCETH], new Amm__factory(ledger));
@@ -22,6 +27,8 @@ async function main() {
   console.log("upgraded MAYCETH amm");
   await upgrades.upgradeProxy(addresses.amm[AmmInstanceName.WRAPPEDCRYPTOPUNKSETH], new Amm__factory(ledger));
   console.log("upgraded WRAPPEDCRYPTOPUNKSETH amm");
+
+  saveAddresses(network.name, addresses);
 }
 
 main()
