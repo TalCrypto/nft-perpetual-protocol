@@ -305,6 +305,10 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           // total reserve = 6.5 + max(45.860748587566391346-21.300551659460829192, 41.024899564780716437)
         });
         it("funding payment is done, but repeg is not", async () => {
+          const est = await clearingHouseViewer.getFundingRates(amm.address);
+          expect(est.fundingRateLong).eq("-113475177304964539");
+          expect(est.fundingRateShort).eq("-113475177304964539");
+          expect(est.fundingPayment).eq(toFullDigitBN(-40));
           const tx = await clearingHouse.payFunding(amm.address);
           await expect(tx)
             .to.emit(amm, "FundingRateUpdated")
@@ -331,6 +335,10 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           // total reserve = 18.375 + max(45.860748587566391346-21.300551659460829192, 41.024899564780716437)
         });
         it("funding and repeg is done", async () => {
+          const est = await clearingHouseViewer.getFundingRates(amm.address);
+          expect(est.fundingRateLong).eq("-113475177304964539");
+          expect(est.fundingRateShort).eq("-113475177304964539");
+          expect(est.fundingPayment).eq(toFullDigitBN(-40));
           const tx = await clearingHouse.payFunding(amm.address);
           await expect(tx)
             .to.emit(amm, "FundingRateUpdated")

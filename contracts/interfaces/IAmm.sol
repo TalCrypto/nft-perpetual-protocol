@@ -156,4 +156,15 @@ interface IAmm {
             uint256 marketPrice,
             uint256 oraclePrice
         );
+
+    function getFundingPaymentEstimation(uint256 _cap)
+        external
+        view
+        returns (
+            bool notPayable,
+            int256 premiumFractionLong,
+            int256 premiumFractionShort,
+            int256 fundingPayment,
+            uint256 underlyingPrice
+        );
 }

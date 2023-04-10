@@ -268,6 +268,25 @@ contract ClearingHouseViewer {
         positionEst.positionInfo = _fillAdditionalPositionInfo(amm, positionEst.positionInfo);
     }
 
+    function getFundingRates(IAmm _amm)
+        public
+        view
+        returns (
+            int256 fundingRateLong,
+            int256 fundingRateShort,
+            int256 fundingPayment
+        )
+    {
+        int256 premiumFractionLong;
+        int256 premiumFractionShort;
+        uint256 underlyingPrice;
+        (, premiumFractionLong, premiumFractionShort, fundingPayment, underlyingPrice) = _amm.getFundingPaymentEstimation(
+            type(uint256).max
+        );
+        fundingRateLong = premiumFractionLong.divD(underlyingPrice.toInt());
+        fundingRateShort = premiumFractionShort.divD(underlyingPrice.toInt());
+    }
+
     //
     // PRIVATE
     //

@@ -340,89 +340,11 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         )
     {
         require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
-
-        // premium = twapMarketPrice - twapIndexPrice
-        // timeFraction = fundingPeriod(3 hour) / 1 day
-        // premiumFraction = premium * timeFraction
-        uint256 underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
-        int256 premiumFraction = ((getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt()) * fundingPeriod.toInt()) /
-            int256(1 days);
-        int256 positionSize = getBaseAssetDelta();
-        // funding payment = premium fraction * position
-        // eg. if alice takes 10 long position, totalPositionSize = 10
-        // if premiumFraction is positive: long pay short, amm get positive funding payment
-        // if premiumFraction is negative: short pay long, amm get negative funding payment
-        // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
-        int256 normalFundingPayment = premiumFraction.mulD(positionSize);
-
-        // dynamic funding rate formula
-        // premiumFractionLong  = premiumFraction * (2*shortSize + a*positionSize) / (longSize + shortSize)
-        // premiumFractionShort = premiumFraction * (2*longSize  - a*positionSize) / (longSize + shortSize)
-        int256 _longPositionSize = int256(longPositionSize);
-        int256 _shortPositionSize = int256(shortPositionSize);
-        int256 _fundingRevenueTakeRate = int256(fundingRevenueTakeRate);
-        int256 _fundingCostCoverRate = int256(fundingCostCoverRate);
-
-        if (normalFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
-            // when the normal funding payment is revenue and daynamic rate is available, system takes profit partially
-            fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
-            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
-            premiumFractionLong =
-                int256(
-                    Math.mulDiv(
-                        premiumFraction.abs(),
-                        uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingRevenueTakeRate)),
-                        uint256(_longPositionSize + _shortPositionSize)
-                    )
-                ) *
-                sign;
-            premiumFractionShort =
-                int256(
-                    Math.mulDiv(
-                        premiumFraction.abs(),
-                        uint256(_longPositionSize * 2 - positionSize.mulD(_fundingRevenueTakeRate)),
-                        uint256(_longPositionSize + _shortPositionSize)
-                    )
-                ) *
-                sign;
-        } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
-            // when the normal funding payment is cost and daynamic rate is available, system covers partially
-            fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
-            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
-            if (uint256(-fundingPayment) > _cap) {
-                // when the funding payment that system covers is greater than the cap, then not pay funding and shutdown amm
-                fundingPayment = 0;
-                _implShutdown();
-            } else {
-                premiumFractionLong =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingCostCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
-                premiumFractionShort =
-                    int256(
-                        Math.mulDiv(
-                            premiumFraction.abs(),
-                            uint256(_longPositionSize * 2 - positionSize.mulD(_fundingCostCoverRate)),
-                            uint256(_longPositionSize + _shortPositionSize)
-                        )
-                    ) *
-                    sign;
-            }
-        } else {
-            fundingPayment = normalFundingPayment;
-            // if expense of funding payment is greater than cap amount, then not pay funding and shutdown amm
-            if (fundingPayment < 0 && uint256(-fundingPayment) > _cap) {
-                fundingPayment = 0;
-                _implShutdown();
-            } else {
-                premiumFractionLong = premiumFraction;
-                premiumFractionShort = premiumFraction;
-            }
+        uint256 underlyingPrice;
+        bool notPayable;
+        (notPayable, premiumFractionLong, premiumFractionShort, fundingPayment, underlyingPrice) = getFundingPaymentEstimation(_cap);
+        if (notPayable) {
+            _implShutdown();
         }
         // positive fundingPayment is revenue to system, otherwise cost to system
         emit FundingRateUpdated(
@@ -985,6 +907,103 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
 
         return quoteAssetSold;
+    }
+
+    function getFundingPaymentEstimation(uint256 _cap)
+        public
+        view
+        override
+        returns (
+            bool notPayable,
+            int256 premiumFractionLong,
+            int256 premiumFractionShort,
+            int256 fundingPayment,
+            uint256 underlyingPrice
+        )
+    {
+        // premium = twapMarketPrice - twapIndexPrice
+        // timeFraction = fundingPeriod(3 hour) / 1 day
+        // premiumFraction = premium * timeFraction
+        underlyingPrice = getUnderlyingTwapPrice(spotPriceTwapInterval);
+        int256 premiumFraction = ((getTwapPrice(spotPriceTwapInterval).toInt() - underlyingPrice.toInt()) * fundingPeriod.toInt()) /
+            int256(1 days);
+        int256 positionSize = getBaseAssetDelta();
+        // funding payment = premium fraction * position
+        // eg. if alice takes 10 long position, totalPositionSize = 10
+        // if premiumFraction is positive: long pay short, amm get positive funding payment
+        // if premiumFraction is negative: short pay long, amm get negative funding payment
+        // if totalPositionSize.side * premiumFraction > 0, funding payment is positive which means profit
+        int256 normalFundingPayment = premiumFraction.mulD(positionSize);
+
+        // dynamic funding rate formula
+        // premiumFractionLong  = premiumFraction * (2*shortSize + a*positionSize) / (longSize + shortSize)
+        // premiumFractionShort = premiumFraction * (2*longSize  - a*positionSize) / (longSize + shortSize)
+        int256 _longPositionSize = int256(longPositionSize);
+        int256 _shortPositionSize = int256(shortPositionSize);
+        int256 _fundingRevenueTakeRate = int256(fundingRevenueTakeRate);
+        int256 _fundingCostCoverRate = int256(fundingCostCoverRate);
+
+        if (normalFundingPayment > 0 && _fundingRevenueTakeRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
+            // when the normal funding payment is revenue and daynamic rate is available, system takes profit partially
+            fundingPayment = normalFundingPayment.mulD(_fundingRevenueTakeRate);
+            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
+            premiumFractionLong =
+                int256(
+                    Math.mulDiv(
+                        premiumFraction.abs(),
+                        uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingRevenueTakeRate)),
+                        uint256(_longPositionSize + _shortPositionSize)
+                    )
+                ) *
+                sign;
+            premiumFractionShort =
+                int256(
+                    Math.mulDiv(
+                        premiumFraction.abs(),
+                        uint256(_longPositionSize * 2 - positionSize.mulD(_fundingRevenueTakeRate)),
+                        uint256(_longPositionSize + _shortPositionSize)
+                    )
+                ) *
+                sign;
+        } else if (normalFundingPayment < 0 && _fundingCostCoverRate < 1 ether && _longPositionSize + _shortPositionSize != 0) {
+            // when the normal funding payment is cost and daynamic rate is available, system covers partially
+            fundingPayment = normalFundingPayment.mulD(_fundingCostCoverRate);
+            int256 sign = premiumFraction >= 0 ? int256(1) : int256(-1);
+            if (uint256(-fundingPayment) > _cap) {
+                // when the funding payment that system covers is greater than the cap, then not pay funding and shutdown amm
+                fundingPayment = 0;
+                notPayable = true;
+            } else {
+                premiumFractionLong =
+                    int256(
+                        Math.mulDiv(
+                            premiumFraction.abs(),
+                            uint256(_shortPositionSize * 2 + positionSize.mulD(_fundingCostCoverRate)),
+                            uint256(_longPositionSize + _shortPositionSize)
+                        )
+                    ) *
+                    sign;
+                premiumFractionShort =
+                    int256(
+                        Math.mulDiv(
+                            premiumFraction.abs(),
+                            uint256(_longPositionSize * 2 - positionSize.mulD(_fundingCostCoverRate)),
+                            uint256(_longPositionSize + _shortPositionSize)
+                        )
+                    ) *
+                    sign;
+            }
+        } else {
+            fundingPayment = normalFundingPayment;
+            // if expense of funding payment is greater than cap amount, then not pay funding and shutdown amm
+            if (fundingPayment < 0 && uint256(-fundingPayment) > _cap) {
+                fundingPayment = 0;
+                notPayable = true;
+            } else {
+                premiumFractionLong = premiumFraction;
+                premiumFractionShort = premiumFraction;
+            }
+        }
     }
 
     function _addReserveSnapshot() internal {
