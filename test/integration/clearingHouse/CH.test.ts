@@ -1851,7 +1851,7 @@ describe("ClearingHouse Test", () => {
     });
   });
 
-  describe.only("whitelist functions", () => {
+  describe("whitelist functions", () => {
     beforeEach(async () => {
       const whitelistMaster = await deployWhitelistMaster(admin);
       await clearingHouse.makePrivate(whitelistMaster.address);
