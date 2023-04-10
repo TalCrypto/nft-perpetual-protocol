@@ -11,6 +11,8 @@ import {
   ClearingHouse,
   Liquidator,
   Amm,
+  ETHStakingPool,
+  ClearingHouseViewerMock,
 } from "../typechain-types";
 import {
   deployAmm,
@@ -24,6 +26,8 @@ import {
   deployLiquidator,
   deployProxyClearingHouse,
   deployProxyAmm,
+  deployETHStakingPool,
+  deployClearingHouseViewerMock,
 } from "./contract";
 import { toFullDigitBN } from "./number";
 
@@ -34,9 +38,10 @@ export interface PerpContractsFake {
   clearingHouse: ClearingHouseFake;
   amm: AmmFake;
   ammReader: AmmReader;
-  clearingHouseViewer: ClearingHouseViewer;
+  clearingHouseViewer: ClearingHouseViewerMock;
   tollPool: TollPool;
   liquidator: Liquidator;
+  ethStakingPool: ETHStakingPool;
 }
 
 export interface PerpContracts {
@@ -49,6 +54,7 @@ export interface PerpContracts {
   clearingHouseViewer: ClearingHouseViewer;
   tollPool: TollPool;
   liquidator: Liquidator;
+  ethStakingPool: ETHStakingPool;
 }
 
 export interface ContractDeployArgs {
@@ -97,16 +103,11 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
 
   const insuranceFund = await deployInsuranceFund(sender!, priceFeed.address, priceFeed.address);
 
-  const clearingHouse = await deployClearingHouse(
-    sender!,
-    toFullDigitBN(0.05),
-    toFullDigitBN(0.05),
-    toFullDigitBN(0.05),
-    insuranceFund.address,
-    insuranceFund.address
-  );
+  const ethStakingPool = await deployETHStakingPool(sender!, quoteToken.address, insuranceFund.address);
 
-  const clearingHouseViewer = await deployClearingHouseViewer(sender!, clearingHouse.address);
+  const clearingHouse = await deployClearingHouse(sender!, insuranceFund.address, insuranceFund.address);
+
+  const clearingHouseViewer = await deployClearingHouseViewerMock(sender!, clearingHouse.address);
   const tollPool = await deployTollPool(sender!, clearingHouse.address);
 
   await clearingHouse.setTollPool(tollPool.address);
@@ -127,11 +128,15 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
   });
 
   const ammReader = await deployAmmReader(sender!);
-
+  await amm.mockSetIMRatio(toFullDigitBN(0.05));
+  await amm.mockSetMMRatio(toFullDigitBN(0.05));
+  await amm.mockSetLFRatio(toFullDigitBN(0.05));
+  await amm.setPartialLiquidationRatio(toFullDigitBN(0));
   await amm.setGlobalShutdown(insuranceFund.address);
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
   await insuranceFund.setBeneficiary(clearingHouse.address);
+  await insuranceFund.activateETHStakingPool(ethStakingPool.address);
   await tollPool.addFeeToken(quoteToken.address);
 
   await amm.setOpen(true);
@@ -147,6 +152,7 @@ export async function fullDeploy(args: ContractDeployArgs): Promise<PerpContract
     quoteToken,
     priceFeed,
     insuranceFund,
+    ethStakingPool,
     clearingHouse,
     amm,
     ammReader,
@@ -171,13 +177,9 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
 
   const insuranceFund = await deployInsuranceFund(sender!, priceFeed.address, priceFeed.address);
 
-  const clearingHouse = await deployProxyClearingHouse(
-    sender!,
-    toFullDigitBN(0.05),
-    toFullDigitBN(0.05),
-    toFullDigitBN(0.05),
-    insuranceFund.address
-  );
+  const ethStakingPool = await deployETHStakingPool(sender!, quoteToken.address, insuranceFund.address);
+
+  const clearingHouse = await deployProxyClearingHouse(sender!, insuranceFund.address);
 
   const clearingHouseViewer = await deployClearingHouseViewer(sender!, clearingHouse.address);
   const tollPool = await deployTollPool(sender!, clearingHouse.address);
@@ -205,6 +207,7 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
   await amm.setCounterParty(clearingHouse.address);
   await insuranceFund.addAmm(amm.address);
   await insuranceFund.setBeneficiary(clearingHouse.address);
+  await insuranceFund.activateETHStakingPool(ethStakingPool.address);
   await tollPool.addFeeToken(quoteToken.address);
 
   await amm.setOpen(true);
@@ -223,5 +226,6 @@ export async function fullProxyDeploy(args: ContractDeployArgs): Promise<PerpCon
     clearingHouseViewer,
     tollPool,
     liquidator,
+    ethStakingPool,
   };
 }

@@ -105,11 +105,14 @@ describe("ClearingHouse add/remove margin Test", () => {
     clearingHouseViewer = contracts.clearingHouseViewer;
     clearingHouse = contracts.clearingHouse;
 
+    const ethStakingPool = contracts.ethStakingPool;
+    await ethStakingPool.setTribe3Treasury(admin.address);
+
     // Each of Alice & Bob have 5000 DAI
     await quoteToken.transfer(alice.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
     await quoteToken.transfer(bob.address, toFullDigitBN(5000, +(await quoteToken.decimals())));
-    await quoteToken.approve(clearingHouse.address, toFullDigitBN(5000));
-    await clearingHouse.inject2InsuranceFund(amm.address, toFullDigitBN(5000));
+    await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
+    await ethStakingPool.stake(toFullDigitBN(5000));
 
     // await amm.setCap(toFullDigitBN(0), toFullDigitBN(0));
 

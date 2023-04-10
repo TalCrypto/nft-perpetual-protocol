@@ -9,14 +9,8 @@ contract ClearingHouseFake is ClearingHouse {
     uint256 private timestamp = 1444004400;
     uint256 private number = 10001;
 
-    constructor(
-        uint256 _initMarginRatio,
-        uint256 _maintenanceMarginRatio,
-        uint256 _liquidationFeeRatio,
-        IInsuranceFund _insuranceFund,
-        address
-    ) {
-        ClearingHouse.initialize(_initMarginRatio, _maintenanceMarginRatio, _liquidationFeeRatio, _insuranceFund);
+    constructor(IInsuranceFund _insuranceFund, address) {
+        ClearingHouse.initialize(_insuranceFund);
     }
 
     function mock_setBlockTimestamp(uint256 _timestamp) public {
@@ -54,9 +48,5 @@ contract ClearingHouseFake is ClearingHouse {
 
     function getPrepaidBadDebt(address _amm) public view returns (uint256) {
         return prepaidBadDebts[_amm];
-    }
-
-    function mockSetMMRatio(uint256 _ratio) public {
-        maintenanceMarginRatio = _ratio;
     }
 }

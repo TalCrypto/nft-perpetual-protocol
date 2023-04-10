@@ -61,12 +61,18 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     //    The below state variables can not change the order    //
     //**********************************************************//
 
-    // // DEPRECATED
-    // // update during every swap and calculate total amm pnl per funding period
-    // int256 private baseAssetDeltaThisFundingPeriod;
+    // only admin
+    uint256 public override initMarginRatio;
 
-    // update during every swap and used when shutting amm down. it's trader's total base asset size
-    // int256 public totalPositionSize;
+    // only admin
+    uint256 public override maintenanceMarginRatio;
+
+    // only admin
+    uint256 public override liquidationFeeRatio;
+
+    // only admin
+    uint256 public override partialLiquidationRatio;
+
     uint256 public longPositionSize;
     uint256 public shortPositionSize;
 
@@ -81,8 +87,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     // owner can update
     uint256 public tollRatio;
     uint256 public spreadRatio;
-    // uint256 private maxHoldingBaseAsset;
-    // uint256 private openInterestNotionalCap;
 
     uint256 public spotPriceTwapInterval;
     uint256 public fundingPeriod;
@@ -128,7 +132,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     event SwapOutput(Dir dirOfQuote, uint256 quoteAssetAmount, uint256 baseAssetAmount);
     event FundingRateUpdated(int256 rateLong, int256 rateShort, uint256 underlyingPrice, int256 fundingPayment);
     event ReserveSnapshotted(uint256 quoteAssetReserve, uint256 baseAssetReserve, uint256 timestamp);
-    // event LiquidityChanged(uint256 quoteReserve, uint256 baseReserve, int256 cumulativeNotional);
     event CapChanged(uint256 maxHoldingBaseAsset, uint256 openInterestNotionalCap);
     event Shutdown(uint256 settlementPrice);
     event PriceFeedUpdated(address priceFeed);
@@ -180,6 +183,11 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         require(_priceFeed.decimals(_priceFeedKey) == 18, "AMM_NMD"); // not match decimal
 
         __Ownable_init();
+
+        initMarginRatio = 0.2 ether; // 5x leverage
+        maintenanceMarginRatio = 0.1 ether; // 10x leverage
+        partialLiquidationRatio = 0.125 ether; // 1/8 of position size
+        liquidationFeeRatio = 0.05 ether; // 5% - 1/2 of maintenance margin
 
         repegPriceGapRatio = 0.05 ether; // 5%
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
@@ -332,8 +340,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         )
     {
         require(_blockTimestamp() >= nextFundingTime, "AMM_SFTE"); //settle funding too early
-        uint256 latestPricetimestamp = priceFeed.getLatestTimestamp(priceFeedKey);
-        require(_blockTimestamp() < latestPricetimestamp + 30 * 60, "AMM_OPE"); //oracle price is expired
 
         // premium = twapMarketPrice - twapIndexPrice
         // timeFraction = fundingPeriod(3 hour) / 1 day
@@ -521,6 +527,51 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     }
 
     /**
+     * @notice set init margin ratio, should be bigger than mm ratio
+     * @dev only owner can call
+     * @param _initMarginRatio new maintenance margin ratio in 18 digits
+     */
+    function setInitMarginRatio(uint256 _initMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_initMarginRatio);
+        _requireRatio(_initMarginRatio);
+        require(maintenanceMarginRatio < _initMarginRatio, "AMM_WIMR"); // wrong init margin ratio
+        initMarginRatio = _initMarginRatio;
+    }
+
+    /**
+     * @notice set maintenance margin ratio, should be smaller than initMarginRatio
+     * @dev only owner can call
+     * @param _maintenanceMarginRatio new maintenance margin ratio in 18 digits
+     */
+    function setMaintenanceMarginRatio(uint256 _maintenanceMarginRatio) external onlyOwner {
+        _requireNonZeroInput(_maintenanceMarginRatio);
+        _requireRatio(_maintenanceMarginRatio);
+        require(_maintenanceMarginRatio < initMarginRatio, "AMM_WMMR"); // wrong maintenance margin ratio
+        maintenanceMarginRatio = _maintenanceMarginRatio;
+    }
+
+    /**
+     * @notice set liquidation fee ratio, shouldn't be bigger than mm ratio
+     * @dev only owner can call
+     * @param _liquidationFeeRatio new liquidation fee ratio in 18 digits
+     */
+    function setLiquidationFeeRatio(uint256 _liquidationFeeRatio) external onlyOwner {
+        _requireNonZeroInput(_liquidationFeeRatio);
+        _requireRatio(_liquidationFeeRatio);
+        require(_liquidationFeeRatio <= maintenanceMarginRatio, "AMM_WLFR"); // wrong liquidation fee ratio
+        liquidationFeeRatio = _liquidationFeeRatio;
+    }
+
+    /**
+     * @notice set the margin ratio after deleveraging
+     * @dev only owner can call
+     */
+    function setPartialLiquidationRatio(uint256 _ratio) external onlyOwner {
+        _requireRatio(_ratio);
+        partialLiquidationRatio = _ratio;
+    }
+
+    /**
      * @notice set counter party
      * @dev only owner can call this function
      * @param _counterParty address of counter party
@@ -615,18 +666,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         spreadRatio = _spreadRatio;
     }
 
-    // /**
-    //  * @notice set new cap during guarded period, which is max position size that traders can hold
-    //  * @dev only owner can call. assume this will be removes soon once the guarded period has ended.
-    //  * @param _maxHoldingBaseAsset max position size that traders can hold in 18 digits
-    //  * @param _openInterestNotionalCap open interest cap, denominated in quoteToken
-    //  */
-    // function setCap(uint256 _maxHoldingBaseAsset, uint256 _openInterestNotionalCap) external onlyOwner {
-    //     maxHoldingBaseAsset = _maxHoldingBaseAsset;
-    //     openInterestNotionalCap = _openInterestNotionalCap;
-    //     emit CapChanged(maxHoldingBaseAsset, openInterestNotionalCap);
-    // }
-
     /**
      * @notice set priceFee address
      * @dev only owner can call
@@ -715,6 +754,25 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                         newBaseAssetReserve
                     );
                 }
+            }
+        }
+    }
+
+    function getMaxKDecreaseRevenue(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external view override returns (int256 revenue) {
+        if (open && adjustable && canLowerK) {
+            uint256 _ptcKDecreaseMax = ptcKDecreaseMax;
+            int256 _positionSize = getBaseAssetDelta();
+            if (_positionSize >= 0 || _baseAssetReserve.mulD(_ptcKDecreaseMax) > _positionSize.abs()) {
+                // decreasing cost is always negative (profit)
+                revenue =
+                    (-1) *
+                    AmmMath.calcCostForAdjustReserves(
+                        _quoteAssetReserve,
+                        _baseAssetReserve,
+                        _positionSize,
+                        _quoteAssetReserve.mulD(_ptcKDecreaseMax),
+                        _baseAssetReserve.mulD(_ptcKDecreaseMax)
+                    );
             }
         }
     }
@@ -827,14 +885,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         return settlementPrice;
     }
 
-    // function getMaxHoldingBaseAsset() public view override returns (uint256) {
-    //     return maxHoldingBaseAsset;
-    // }
-
-    // function getOpenInterestNotionalCap() public view override returns (uint256) {
-    //     return openInterestNotionalCap;
-    // }
-
     function getBaseAssetDelta() public view override returns (int256) {
         return longPositionSize.toInt() - shortPositionSize.toInt();
     }
@@ -842,6 +892,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     function isOverSpreadLimit()
         public
         view
+        virtual
         override
         returns (
             bool result,
@@ -857,17 +908,14 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
-    // /**
-    //  * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
-    //  * @param _quoteAssetAmount quoteAssetAmount
-    //  * @return total tx fee
-    //  */
-    // function calcFee(uint256 _quoteAssetAmount) external view override returns (uint256, uint256) {
-    //     if (_quoteAssetAmount == 0) {
-    //         return (0, 0);
-    //     }
-    //     return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
-    // }
+    /**
+     * @notice calculate total fee (including toll and spread) by input quoteAssetAmount
+     * @param _quoteAssetAmount quoteAssetAmount
+     * @return total tx fee
+     */
+    function calcFee(uint256 _quoteAssetAmount) public view override returns (uint256, uint256) {
+        return (_quoteAssetAmount.mulD(tollRatio), _quoteAssetAmount.mulD(spreadRatio));
+    }
 
     /*       plus/minus 1 while the amount is not dividable
      *
@@ -908,15 +956,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         baseAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter, Math.Rounding.Up);
         baseAssetBought = (baseAssetAfter.toInt() - _baseAssetPoolAmount.toInt()).abs();
 
-        // // if the amount is not dividable, return 1 wei less for trader
-        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, quoteAssetAfter) != 0) {
-        //     if (isAddToAmm) {
-        //         baseAssetBought = baseAssetBought - 1;
-        //     } else {
-        //         baseAssetBought = baseAssetBought + 1;
-        //     }
-        // }
-
         return baseAssetBought;
     }
 
@@ -944,15 +983,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
         quoteAssetAfter = Math.mulDiv(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter, Math.Rounding.Up);
         quoteAssetSold = (quoteAssetAfter.toInt() - _quoteAssetPoolAmount.toInt()).abs();
-
-        // // if the amount is not dividable, return 1 wei less for trader
-        // if (mulmod(_quoteAssetPoolAmount, _baseAssetPoolAmount, baseAssetAfter) != 0) {
-        //     if (isAddToAmm) {
-        //         quoteAssetSold = quoteAssetSold - 1;
-        //     } else {
-        //         quoteAssetSold = quoteAssetSold + 1;
-        //     }
-        // }
 
         return quoteAssetSold;
     }
@@ -1264,5 +1294,9 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     function _requireNonZeroAddress(address _input) private pure {
         require(_input != address(0), "AMM_ZA");
+    }
+
+    function _requireNonZeroInput(uint256 _input) private pure {
+        require(_input != 0, "AMM_ZI"); //zero input
     }
 }

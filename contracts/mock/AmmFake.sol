@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "../Amm.sol";
 
 contract AmmFake is Amm {
+    bool useSpreadCheck;
+
     constructor(
         uint256 _dcQuoteAssetReserve,
         uint256 _dcBaseAssetReserve,
@@ -79,5 +81,37 @@ contract AmmFake is Amm {
     function mockSetReserve(uint256 _quoteReserve, uint256 _baseReserve) public {
         quoteAssetReserve = _quoteReserve;
         baseAssetReserve = _baseReserve;
+    }
+
+    function isOverSpreadLimit()
+        public
+        view
+        override
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        )
+    {
+        (result, marketPrice, oraclePrice) = super.isOverSpreadLimit();
+        if (!useSpreadCheck) {
+            result = false;
+        }
+    }
+
+    function mockSetSpreadCheck(bool input) public {
+        useSpreadCheck = input;
+    }
+
+    function mockSetIMRatio(uint256 _ratio) public {
+        initMarginRatio = _ratio;
+    }
+
+    function mockSetMMRatio(uint256 _ratio) public {
+        maintenanceMarginRatio = _ratio;
+    }
+
+    function mockSetLFRatio(uint256 _ratio) public {
+        liquidationFeeRatio = _ratio;
     }
 }

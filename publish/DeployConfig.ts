@@ -1,11 +1,11 @@
-import { utils, BigNumber } from "ethers";
+import { utils, BigNumber, ethers } from "ethers";
 import { AmmInstanceName, PriceFeedKey } from "./Constants";
 
 const DEFAULT_AMM_TRADE_LIMIT_RATIO = utils.parseEther("0.9"); // 90% trading limit ratio
 const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(10800); // 3 hour
 const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.02"); // 2%
-const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0.0006"); // 0.06%
-const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.0024"); // 0.24%
+const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0"); // 0%
+const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.003"); // 0.3%
 
 // amm
 export interface AmmDeployArgs {
@@ -19,30 +19,20 @@ export interface AmmDeployArgs {
   spreadRatio: BigNumber;
 }
 
-interface AmmProperties {
-  maxHoldingBaseAsset: BigNumber;
-  openInterestNotionalCap: BigNumber;
-}
-
-export type AmmConfig = { name: AmmInstanceName; deployArgs: AmmDeployArgs; properties: AmmProperties };
-export type AmmConfigMap = Record<string, AmmConfig>;
+export type AmmConfig = { name: AmmInstanceName; deployArgs: AmmDeployArgs };
 
 const BAYC_AMM: AmmConfig = {
   name: AmmInstanceName.BAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("6000"),
-    baseAssetReserve: utils.parseEther("82.22"),
+    quoteAssetReserve: utils.parseEther("4000"),
+    baseAssetReserve: utils.parseEther("68.26"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.BAYC,
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.BAYC),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-  },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
   },
 };
 
@@ -51,17 +41,13 @@ const DOODLES_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("428.57"),
+    baseAssetReserve: utils.parseEther("1093.8"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.DOODLES,
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.DOODLES),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-  },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
   },
 };
 
@@ -69,18 +55,14 @@ const AZUKI_AMM: AmmConfig = {
   name: AmmInstanceName.AZUKIETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("202.51"),
+    quoteAssetReserve: utils.parseEther("4000"),
+    baseAssetReserve: utils.parseEther("308.59"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.AZUKIETH,
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.AZUKI),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-  },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
   },
 };
 
@@ -89,114 +71,45 @@ const MOONBIRDS_AMM: AmmConfig = {
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("387.00"),
+    baseAssetReserve: utils.parseEther("964.94"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.MOONBIRDS,
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.MOONBIRDS),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
   },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
+};
+
+const MAYC_AMM: AmmConfig = {
+  name: AmmInstanceName.MAYCETH,
+  deployArgs: {
+    // base * price
+    quoteAssetReserve: utils.parseEther("3500"),
+    baseAssetReserve: utils.parseEther("274.01"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
+    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.MAYC),
+    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
+    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
   },
 };
 
-const CLONEX_AMM: AmmConfig = {
-  name: AmmInstanceName.CLONEXETH,
+const PUDGYPENGUINS_AMM: AmmConfig = {
+  name: AmmInstanceName.PUDGYPENGUINSETH,
   deployArgs: {
     // base * price
     quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("560.51"),
+    baseAssetReserve: utils.parseEther("736.21"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.CLONEX,
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.PUDGYPENGUINS),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
   },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
-  },
 };
-
-const CRYPTOPUNKS_AMM: AmmConfig = {
-  name: AmmInstanceName.CRYPTOPUNKSETH,
-  deployArgs: {
-    // base * price
-    quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("45.26"),
-    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
-    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.CRYPTOPUNKS,
-    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
-    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-  },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
-  },
-};
-
-const MEEBITS_AMM: AmmConfig = {
-  name: AmmInstanceName.MEEBITSETH,
-  deployArgs: {
-    // base * price
-    quoteAssetReserve: utils.parseEther("3000"),
-    baseAssetReserve: utils.parseEther("912.78"),
-    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
-    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
-    priceFeedKey: PriceFeedKey.MEEBITS,
-    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
-    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-  },
-  properties: {
-    maxHoldingBaseAsset: utils.parseEther("0"), // No cap
-    openInterestNotionalCap: utils.parseEther("0"), // No cap
-  },
-};
-
-export function makeAmmConfig(
-  name: AmmInstanceName,
-  priceFeedKey: string,
-  baseAssetReserve: BigNumber,
-  maxHoldingBaseAsset: BigNumber,
-  openInterestNotionalCap: BigNumber,
-  restDeployArgs?: Partial<AmmDeployArgs>
-): AmmConfig {
-  const config: AmmConfig = {
-    name,
-    deployArgs: {
-      // base * price
-      // exact quote reserve amount will be overriden by the script based on the base reserve and the price upon deployment
-      baseAssetReserve,
-      quoteAssetReserve: BigNumber.from(0),
-      tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO,
-      fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD,
-      fluctuation: DEFAULT_AMM_FLUCTUATION,
-      priceFeedKey: priceFeedKey,
-      tollRatio: DEFAULT_AMM_TOLL_RATIO,
-      spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
-    },
-    properties: {
-      maxHoldingBaseAsset,
-      openInterestNotionalCap,
-    },
-  };
-
-  if (restDeployArgs) {
-    config.deployArgs = {
-      ...config.deployArgs,
-      ...restDeployArgs,
-    };
-  }
-
-  return config;
-}
 
 export class DeployConfig {
   // stage
@@ -204,27 +117,22 @@ export class DeployConfig {
   // deploy
   readonly confirmations: number;
 
-  // chainlink
-  readonly priceFeed: string;
-
   // weth address
   readonly weth: string;
 
-  // clearing house
-  readonly initMarginRequirement = utils.parseEther("0.2"); // 20% - 5x
-  readonly maintenanceMarginRequirement = utils.parseEther("0.1"); // 10% - 10x
-  readonly partialLiquidationRatio = utils.parseEther("0.125");
-  readonly liquidationFeeRatio = utils.parseEther("0.05"); // 5% - 1/2 of maintenance margin
+  // tribe3 treasury address
+  readonly tribe3Treasury;
+
+  readonly aggregators: Record<AmmInstanceName, string>;
 
   // amm
-  readonly legacyAmmConfigMap: Record<string, AmmConfig> = {
+  readonly legacyAmmConfigMap: Record<AmmInstanceName, AmmConfig> = {
     [AmmInstanceName.BAYCETH]: BAYC_AMM,
     [AmmInstanceName.AZUKIETH]: AZUKI_AMM,
     [AmmInstanceName.DOODLESETH]: DOODLES_AMM,
     [AmmInstanceName.MOONBIRDSETH]: MOONBIRDS_AMM,
-    [AmmInstanceName.CLONEXETH]: CLONEX_AMM,
-    [AmmInstanceName.CRYPTOPUNKSETH]: CRYPTOPUNKS_AMM,
-    [AmmInstanceName.MEEBITSETH]: MEEBITS_AMM,
+    [AmmInstanceName.MAYCETH]: MAYC_AMM,
+    [AmmInstanceName.PUDGYPENGUINSETH]: PUDGYPENGUINS_AMM,
   };
 
   constructor(network: string) {
@@ -232,31 +140,42 @@ export class DeployConfig {
     switch (network) {
       case "arbitrum":
         this.confirmations = 5;
-        // fake address
-        this.priceFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
-        // fake address
-        this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
+        this.weth = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
+        this.tribe3Treasury = "";
+        this.aggregators = {
+          [AmmInstanceName.BAYCETH]: "",
+          [AmmInstanceName.AZUKIETH]: "",
+          [AmmInstanceName.DOODLESETH]: "",
+          [AmmInstanceName.MOONBIRDSETH]: "",
+          [AmmInstanceName.MAYCETH]: "",
+          [AmmInstanceName.PUDGYPENGUINSETH]: "",
+        };
+        break;
+      case "arbitrum_goerli":
+        this.confirmations = 5;
+        this.weth = "0xEe01c0CD76354C383B8c7B4e65EA88D00B06f36f";
+        this.tribe3Treasury = "0x3bDA1E0f89D925e6931B7B64B1bDaaC210C9a519";
+        this.aggregators = {
+          [AmmInstanceName.BAYCETH]: "0xDeE1bfdFB24547Fa54130649ca8Cd83827b4d5E2",
+          [AmmInstanceName.AZUKIETH]: "0x6c72f0c19864A6CbE860c525c747ec5318b05baA",
+          [AmmInstanceName.DOODLESETH]: "0xD5cEc194526b633F14A2f007Fdf4b440aE4Dc65B",
+          [AmmInstanceName.MOONBIRDSETH]: "0x97D4e4fa0BB86e096dE6041d373c32FA55062458",
+          [AmmInstanceName.MAYCETH]: "0x5A00Dca3e384686922adb59303A6735c3F46c189",
+          [AmmInstanceName.PUDGYPENGUINSETH]: "0x27D5738e9264B295BD714f337c77bc0447461b03",
+        };
         break;
       case "goerli":
         this.confirmations = 5;
-        // fake address
-        this.priceFeed = "0xF8d5fd95EB2087E907bA6E78bf873F1A39c273Ed"; // For campaign only
-        // fake address
         this.weth = "0x1DcD297530778f987e8DEEB07667E29Cd052bC50"; // Test WETH for campaign only
-        break;
-      case "rinkeby":
-        this.confirmations = 5;
-        // fake address
-        this.priceFeed = "0x95eC14c7B17Ea5E533372e9d3aE547ecf9e5D0c8"; // For campaign only
-        // fake address
-        this.weth = "0x1746eb1b452f33Bc83f0230dC3ca1298037D3eeF"; // Test WETH for campaign only
-        break;
-      case "test":
-        this.confirmations = 1;
-        // fake address
-        this.priceFeed = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c";
-        // fake address
-        this.weth = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
+        this.tribe3Treasury = "";
+        this.aggregators = {
+          [AmmInstanceName.BAYCETH]: "0x862f31222C62240344c930426788129Fe488a09C",
+          [AmmInstanceName.AZUKIETH]: "0x10a9B70Ff86BbE92A3E86Be2CEa3754AFCC7C4FC",
+          [AmmInstanceName.DOODLESETH]: "0x59846B946A0ca6Fd25feFd25578455D0B4b7bDe9",
+          [AmmInstanceName.MOONBIRDSETH]: "0x9F9bd05aB4F631e926F6e48D52254FDA3719e53b",
+          [AmmInstanceName.MAYCETH]: "0x7a3A09090Ed5b0559c158D91747EF3b1659A4De3",
+          [AmmInstanceName.PUDGYPENGUINSETH]: "0x824fe7D8070dE426358019F57bEAbBd7fa179Fa1",
+        };
         break;
       default:
         throw new Error(`not supported network=${network}`);

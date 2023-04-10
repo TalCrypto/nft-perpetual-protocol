@@ -35,6 +35,12 @@ import {
   ChainlinkPriceFeed__factory,
   ChainlinkAggregatorMock,
   ChainlinkAggregatorMock__factory,
+  ETHStakingPool,
+  ETHStakingPool__factory,
+  ClearingHouseViewerMock__factory,
+  ClearingHouseViewerMock,
+  WhitelistMaster,
+  WhitelistMaster__factory,
 } from "../typechain-types";
 import { toFullDigitBN } from "./number";
 
@@ -152,7 +158,7 @@ export async function deployProxyAmm(params: {
     params.tradeLimitRatio,
     params.fundingPeriod,
     params.priceFeedAddress,
-    ethers.utils.formatBytes32String(params.priceFeedKey),
+    params.priceFeedKey,
     params.quoteTokenAddress,
     params.fluctuation,
     params.tollRatio,
@@ -168,37 +174,13 @@ export async function deployAmmReader(signer: Signer): Promise<AmmReader> {
   return instance;
 }
 
-export async function deployClearingHouse(
-  signer: Signer,
-  initMarginRatio: BigNumber,
-  maintenanceMarginRatio: BigNumber,
-  liquidationFeeRatio: BigNumber,
-  insuranceFund: string,
-  trustedForwarder: string
-): Promise<ClearingHouseFake> {
-  const instance = await new ClearingHouseFake__factory(signer).deploy(
-    initMarginRatio.toString(),
-    maintenanceMarginRatio.toString(),
-    liquidationFeeRatio.toString(),
-    insuranceFund,
-    trustedForwarder
-  );
+export async function deployClearingHouse(signer: Signer, insuranceFund: string, trustedForwarder: string): Promise<ClearingHouseFake> {
+  const instance = await new ClearingHouseFake__factory(signer).deploy(insuranceFund, trustedForwarder);
   return instance;
 }
 
-export async function deployProxyClearingHouse(
-  signer: Signer,
-  initMarginRatio: BigNumber,
-  maintenanceMarginRatio: BigNumber,
-  liquidationFeeRatio: BigNumber,
-  insuranceFund: string
-): Promise<ClearingHouse> {
-  const instance = (await upgrades.deployProxy(new ClearingHouse__factory(signer), [
-    initMarginRatio.toString(),
-    maintenanceMarginRatio.toString(),
-    liquidationFeeRatio.toString(),
-    insuranceFund,
-  ])) as ClearingHouse;
+export async function deployProxyClearingHouse(signer: Signer, insuranceFund: string): Promise<ClearingHouse> {
+  const instance = (await upgrades.deployProxy(new ClearingHouse__factory(signer), [insuranceFund])) as ClearingHouse;
   await instance.deployed();
   return instance;
 }
@@ -211,6 +193,12 @@ export async function deployLiquidator(signer: Signer, clearingHouse: string): P
 
 export async function deployClearingHouseViewer(signer: Signer, clearingHouse: string): Promise<ClearingHouseViewer> {
   const instance = await new ClearingHouseViewer__factory(signer).deploy(clearingHouse);
+  await instance.deployed();
+  return instance;
+}
+
+export async function deployClearingHouseViewerMock(signer: Signer, clearingHouse: string): Promise<ClearingHouseViewerMock> {
+  const instance = await new ClearingHouseViewerMock__factory(signer).deploy(clearingHouse);
   await instance.deployed();
   return instance;
 }
@@ -277,4 +265,16 @@ export async function deployChainlinkPriceFeed(signer: Signer): Promise<Chainlin
 
 export async function deployChainlinkAggregatorMock(signer: Signer): Promise<ChainlinkAggregatorMock> {
   return new ChainlinkAggregatorMock__factory(signer).deploy();
+}
+
+export async function deployETHStakingPool(signer: Signer, quoteTokenAddr: string, insuranceFundAddr: string): Promise<ETHStakingPool> {
+  const instance = (await upgrades.deployProxy(new ETHStakingPool__factory(signer), [quoteTokenAddr, insuranceFundAddr])) as ETHStakingPool;
+  await instance.deployed();
+  return instance;
+}
+
+export async function deployWhitelistMaster(signer: Signer): Promise<WhitelistMaster> {
+  const instance = (await upgrades.deployProxy(new WhitelistMaster__factory(signer), [])) as WhitelistMaster;
+  await instance.deployed();
+  return instance;
 }

@@ -48,4 +48,6 @@ interface IClearingHouse {
     function getMarginRatio(IAmm _amm, address _trader) external view returns (int256);
 
     function getPosition(IAmm _amm, address _trader) external view returns (Position memory);
+
+    function getVaultFor(IAmm _amm) external view returns (uint256);
 }

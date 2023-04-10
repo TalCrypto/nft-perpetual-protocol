@@ -64,7 +64,7 @@ interface IAmm {
             int256 fundingPayment
         );
 
-    // function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
+    function calcFee(uint256 _quoteAssetAmount) external view returns (uint256, uint256);
 
     //
     // VIEW
@@ -80,13 +80,9 @@ interface IAmm {
             uint256 newBaseAssetReserve
         );
 
-    function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
+    function getMaxKDecreaseRevenue(uint256 _quoteAssetReserve, uint256 _baseAssetReserve) external view returns (int256 revenue);
 
-    // function calcBaseAssetAfterLiquidityMigration(
-    //     int256 _baseAssetAmount,
-    //     uint256 _fromQuoteReserve,
-    //     uint256 _fromBaseReserve
-    // ) external view returns (int256);
+    function isOverFluctuationLimit(Dir _dirOfBase, uint256 _baseAssetAmount) external view returns (bool);
 
     function getQuoteTwap(Dir _dir, uint256 _quoteAssetAmount) external view returns (uint256);
 
@@ -113,6 +109,15 @@ interface IAmm {
     function getSpotPrice() external view returns (uint256);
 
     // overridden by state variable
+
+    function initMarginRatio() external view returns (uint256);
+
+    function maintenanceMarginRatio() external view returns (uint256);
+
+    function liquidationFeeRatio() external view returns (uint256);
+
+    function partialLiquidationRatio() external view returns (uint256);
+
     function quoteAsset() external view returns (IERC20);
 
     function priceFeedKey() external view returns (bytes32);
@@ -135,16 +140,9 @@ interface IAmm {
 
     function ptcKDecreaseMax() external view returns (uint256);
 
-    // can not be overridden by state variable due to type `Deciaml.decimal`
     function getSettlementPrice() external view returns (uint256);
 
-    // function getBaseAssetDeltaThisFundingPeriod() external view returns (int256);
-
     function getCumulativeNotional() external view returns (int256);
-
-    // function getMaxHoldingBaseAsset() external view returns (uint256);
-
-    // function getOpenInterestNotionalCap() external view returns (uint256);
 
     function getBaseAssetDelta() external view returns (int256);
 
