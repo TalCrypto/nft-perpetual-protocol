@@ -151,6 +151,7 @@ async function main() {
     liquidator: liquidator.address,
     chainlinkPriceFeed: chainlinkPriceFeed.address,
     ethStakingPool: ethStakingPool.address,
+    whitelistMaster: "",
   };
   saveAddresses(network.name, contracts);
 }

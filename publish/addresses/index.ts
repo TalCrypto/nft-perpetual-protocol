@@ -13,6 +13,7 @@ export interface ContractAddresses {
   liquidator: string;
   chainlinkPriceFeed: string;
   ethStakingPool: string;
+  whitelistMaster: string;
 }
 
 export function getAddresses(networkName: string): ContractAddresses {
