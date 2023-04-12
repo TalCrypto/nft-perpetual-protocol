@@ -72,6 +72,10 @@ const config = {
       url: "https://arb-mainnet.g.alchemy.com/v2/XY2OuQR0tqpTi-WY_yljupj20HFlfVok",
       accounts: [PRIVATE_KEY],
     },
+    arbitrum_staging: {
+      url: "https://arb-mainnet.g.alchemy.com/v2/XY2OuQR0tqpTi-WY_yljupj20HFlfVok",
+      accounts: [PRIVATE_KEY],
+    },
     goerli: {
       url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`,
       accounts: [PRIVATE_KEY],

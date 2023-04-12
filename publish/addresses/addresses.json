@@ -33,10 +33,10 @@
     "tollPool": "0x43a1349Cd1533d8Cd0cBAC9d19991a0819443484",
     "liquidator": "0xa385ce05A9461a8A8CA5646fC03165Ac3Adc1ce0"
   },
-  "arbitrum": {
+  "arbitrum_staging": {
     "insuranceFund": "0x752723823Ccf845c2f820D4F4654C0fc38F3e40A",
     "clearingHouse": "0x550763c20554ea59092c85be847E7292fE7A6295",
-    "clearingHouseViewer": "0x5e908FBFA6c8903a8757Adb1EADa03A07792b55e",
+    "clearingHouseViewer": "0xBaf6BB987d0E8748cD01d0b7718671EF7359dD2D",
     "amm": {
       "BAYCETH": "0x26f7786A917f226608c43E18D054829b33dACFca",
       "DOODLESETH": "",
