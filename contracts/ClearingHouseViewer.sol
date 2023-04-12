@@ -14,8 +14,6 @@ contract ClearingHouseViewer {
     using UIntMath for uint256;
     using IntMath for int256;
 
-    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 0.1 ether; // 10%
-
     struct PositionInfo {
         address trader;
         IAmm amm;
@@ -362,6 +360,6 @@ contract ClearingHouseViewer {
 
     function _isOverSpreadLimit(uint256 marketPrice, uint256 oraclePrice) internal view virtual returns (bool result) {
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
-        result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
+        result = oracleSpreadRatioAbs >= clearingHouse.LIQ_SWITCH_RATIO() ? true : false;
     }
 }

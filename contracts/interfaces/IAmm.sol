@@ -157,6 +157,15 @@ interface IAmm {
             uint256 oraclePrice
         );
 
+    function isOverSpread(uint256 _limit)
+        external
+        view
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        );
+
     function getFundingPaymentEstimation(uint256 _cap)
         external
         view

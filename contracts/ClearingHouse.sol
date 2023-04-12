@@ -89,6 +89,9 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
         mapping(address => Position) positionMap;
     }
 
+    // constants
+    uint256 public constant LIQ_SWITCH_RATIO = 0.2 ether; // 20%
+
     //**********************************************************//
     //    Can not change the order of below state variables     //
     //**********************************************************//
@@ -691,7 +694,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @return margin ratio in 18 digits
      */
     function getMarginRatio(IAmm _amm, address _trader) public view returns (int256) {
-        (bool isOverSpread, , ) = _amm.isOverSpreadLimit();
+        (bool isOverSpread, , ) = _amm.isOverSpread(LIQ_SWITCH_RATIO);
         if (isOverSpread) {
             return _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.ORACLE);
         } else {

@@ -83,7 +83,7 @@ contract AmmFake is Amm {
         baseAssetReserve = _baseReserve;
     }
 
-    function isOverSpreadLimit()
+    function isOverSpread(uint256 _limit)
         public
         view
         override
@@ -93,7 +93,7 @@ contract AmmFake is Amm {
             uint256 oraclePrice
         )
     {
-        (result, marketPrice, oraclePrice) = super.isOverSpreadLimit();
+        (result, marketPrice, oraclePrice) = super.isOverSpread(_limit);
         if (!useSpreadCheck) {
             result = false;
         }
