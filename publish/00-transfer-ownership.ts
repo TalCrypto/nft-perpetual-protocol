@@ -1,4 +1,4 @@
-import { ethers, network } from "hardhat";
+import { ethers, network, upgrades } from "hardhat";
 import { getAddresses, saveAddresses } from "./addresses";
 import { LedgerSigner } from "@ethersproject/hardware-wallets";
 import { deployLiquidator, deployProxyAmm } from "../utils/contract";
@@ -16,6 +16,9 @@ async function main() {
   }
   // const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
   const [ledger] = await ethers.getSigners();
+
+  await upgrades.admin.transferProxyAdminOwnership(MULTISIG_ADDRESS);
+  console.log("successfully transferred proxy admins");
 
   const addresses = getAddresses(network.name);
 
