@@ -187,7 +187,7 @@ describe("ClearingHouse Test", () => {
       expect(bobPosition.positionSize).to.eq(toFullDigitBN(-187.5));
       expect(bobPosition.openMargin.add(bobPosition.fundingPayment)).to.eq(toFullDigitBN(1201.875));
     });
-    it("returns margin ratio based on oracle when overspread", async () => {
+    it("returns margin ratio based on vamm when overspread", async () => {
       await approve(alice, clearingHouse.address, 600);
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(250), toFullDigitBN(10), toFullDigitBN(0), true);
       await mockPriceFeed.setPrice(toFullDigitBN(10));
@@ -197,10 +197,8 @@ describe("ClearingHouse Test", () => {
       expect(positionInfo.positionNotional).eq(toFullDigitBN(250));
       expect(positionInfo.openNotional).eq(toFullDigitBN(250));
       expect(positionInfo.margin).eq(toFullDigitBN(25));
-      // positionNotionalBasedOnOracle = 20 * 10 = 200
-      // unrealizedPnl = 200 - 250 = -50
-      // marginRatio = (25-50)/200
-      expect(positionInfo.marginRatio).eq(toFullDigitBN(-0.125));
+      expect(positionInfo.marginRatio).eq(toFullDigitBN(0.1));
+      expect(positionInfo.isLiquidatable).true;
     });
     it("empty position returns 0 in all fields", async () => {
       const carolPositioin = await clearingHouseViewer.getTraderPositionInfo(amm.address, carol.address);
@@ -283,10 +281,8 @@ describe("ClearingHouse Test", () => {
       expect(est.positionInfo.positionNotional).eq(toFullDigitBN(250));
       expect(est.positionInfo.openNotional).eq(toFullDigitBN(250));
       expect(est.positionInfo.margin).eq(toFullDigitBN(25));
-      // positionNotionalBasedOnOracle = 20 * 12 = 240
-      // unrealizedPnl = 240 - 250 = -10
-      // marginRatio = (25-10)/240
-      expect(est.positionInfo.marginRatio).eq(toFullDigitBN(0.0625));
+      expect(est.positionInfo.marginRatio).eq(toFullDigitBN(0.1));
+      expect(est.positionInfo.isLiquidatable).false;
     });
     it("estimation of increase position", async () => {
       await approve(alice, clearingHouse.address, 600);
@@ -297,13 +293,11 @@ describe("ClearingHouse Test", () => {
         amm.address,
         alice.address,
         Side.BUY,
-        toFullDigitBN(200),
+        toFullDigitBN(600),
         toFullDigitBN(10)
       );
-      // positionNotionalBasedOnOracle = 20 * 12 = 240
-      // unrealizedPnl = 240 - 250 = -10
-      // marginRatio = (25-10)/240
-      expect(est.positionInfo.marginRatio).eq("62499999999999999");
+      expect(est.positionInfo.marginRatio).eq("99999999999999999");
+      expect(est.positionInfo.isLiquidatable).true;
     });
   });
 

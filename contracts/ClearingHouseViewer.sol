@@ -30,6 +30,7 @@ contract ClearingHouseViewer {
         uint256 positionNotional; // the current notional value of a position
         uint256 entryPrice; // the excuted price when opening a price
         uint256 spotPrice; // the current vAmm price
+        bool isLiquidatable;
     }
 
     struct OpenPositionEstResp {
@@ -303,24 +304,23 @@ contract ClearingHouseViewer {
 
     function _fillAdditionalPositionInfo(IAmm amm, PositionInfo memory positionInfo) private view returns (PositionInfo memory) {
         positionInfo.margin = positionInfo.openMargin + positionInfo.fundingPayment + positionInfo.unrealizedPnl;
+        if (positionInfo.positionNotional == uint256(0)) {
+            positionInfo.marginRatio = 0;
+        } else {
+            positionInfo.marginRatio = positionInfo.margin.divD(int256(positionInfo.positionNotional));
+        }
+        positionInfo.isLiquidatable = positionInfo.marginRatio < int256(amm.maintenanceMarginRatio());
         uint256 oraclePrice = amm.getUnderlyingPrice();
         if (_isOverSpreadLimit(positionInfo.spotPrice, oraclePrice)) {
             uint256 positionNotionalBasedOnOracle = positionInfo.positionSize.abs().mulD(oraclePrice);
             int256 unrealizedPnlBasedOnOracle = positionInfo.positionSize < 0
                 ? positionInfo.openNotional.toInt() - positionNotionalBasedOnOracle.toInt()
                 : positionNotionalBasedOnOracle.toInt() - positionInfo.openNotional.toInt();
-            if (positionNotionalBasedOnOracle == 0) {
-                positionInfo.marginRatio = 0;
-            } else {
-                positionInfo.marginRatio = (positionInfo.openMargin + positionInfo.fundingPayment + unrealizedPnlBasedOnOracle).divD(
+            if (positionNotionalBasedOnOracle != 0) {
+                int256 marginRatioBasedOnOracle = (positionInfo.openMargin + positionInfo.fundingPayment + unrealizedPnlBasedOnOracle).divD(
                     positionNotionalBasedOnOracle.toInt()
                 );
-            }
-        } else {
-            if (positionInfo.positionNotional == uint256(0)) {
-                positionInfo.marginRatio = 0;
-            } else {
-                positionInfo.marginRatio = positionInfo.margin.divD(int256(positionInfo.positionNotional));
+                positionInfo.isLiquidatable = marginRatioBasedOnOracle < int256(amm.maintenanceMarginRatio());
             }
         }
 
