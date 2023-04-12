@@ -25,8 +25,8 @@ const BAYC_AMM: AmmConfig = {
   name: AmmInstanceName.BAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("4000"),
-    baseAssetReserve: utils.parseEther("69.05"),
+    quoteAssetReserve: utils.parseEther("4052"),
+    baseAssetReserve: utils.parseEther("70.70"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -55,8 +55,8 @@ const AZUKI_AMM: AmmConfig = {
   name: AmmInstanceName.AZUKIETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("4000"),
-    baseAssetReserve: utils.parseEther("301.89"),
+    quoteAssetReserve: utils.parseEther("3435"),
+    baseAssetReserve: utils.parseEther("252.22"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -85,8 +85,8 @@ const MAYC_AMM: AmmConfig = {
   name: AmmInstanceName.MAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("3500"),
-    baseAssetReserve: utils.parseEther("272.37"),
+    quoteAssetReserve: utils.parseEther("2852"),
+    baseAssetReserve: utils.parseEther("220.34"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -115,8 +115,8 @@ const WRAPPEDCRYPTOPUNKS_AMM: AmmConfig = {
   name: AmmInstanceName.WRAPPEDCRYPTOPUNKSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("4500"),
-    baseAssetReserve: utils.parseEther("79.53"),
+    quoteAssetReserve: utils.parseEther("5414"),
+    baseAssetReserve: utils.parseEther("95.50"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -156,8 +156,8 @@ export class DeployConfig {
     switch (network) {
       case "arbitrum":
         this.confirmations = 5;
-        this.weth = "0x7F4C5d495Fd0FFBD76992505200d9dF604Fa0715";
-        this.tribe3Treasury = "0x3D97f8E56717bacabdf627c8F7c5444c392eA91d";
+        this.weth = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1";
+        this.tribe3Treasury = "0x278c1e4aabFDADe6804Eb54014521b25793f105d";
         this.aggregators = {
           [AmmInstanceName.BAYCETH]: "0x11De87FC66a66dC001e83f2bF48E90353168d02D",
           [AmmInstanceName.AZUKIETH]: "0xFA56Ea945b94F2Ef0489178343eCC3CACfbB3836",
