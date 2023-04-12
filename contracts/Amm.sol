@@ -814,6 +814,19 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     function isOverSpreadLimit()
         public
         view
+        override
+        returns (
+            bool result,
+            uint256 marketPrice,
+            uint256 oraclePrice
+        )
+    {
+        (result, marketPrice, oraclePrice) = isOverSpread(MAX_ORACLE_SPREAD_RATIO);
+    }
+
+    function isOverSpread(uint256 _limit)
+        public
+        view
         virtual
         override
         returns (
@@ -827,7 +840,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         marketPrice = getSpotPrice();
         uint256 oracleSpreadRatioAbs = (marketPrice.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
 
-        result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
+        result = oracleSpreadRatioAbs >= _limit ? true : false;
     }
 
     /**
