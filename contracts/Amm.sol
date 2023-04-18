@@ -53,7 +53,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     // if the position size is less than IGNORABLE_DIGIT_FOR_SHUTDOWN, it's equal size is 0
     uint256 private constant IGNORABLE_DIGIT_FOR_SHUTDOWN = 1e9;
 
-    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 0.1 ether; // 10%
+    uint256 public constant MAX_ORACLE_SPREAD_RATIO = 0.05 ether; // 5%
 
     uint8 public constant MIN_NUM_REPEG_FLAG = 3;
 
@@ -189,7 +189,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         partialLiquidationRatio = 0.125 ether; // 1/8 of position size
         liquidationFeeRatio = 0.05 ether; // 5% - 1/2 of maintenance margin
 
-        repegPriceGapRatio = 0.05 ether; // 5%
+        repegPriceGapRatio = 0; // 0%
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
         fundingRevenueTakeRate = 1 ether; // system take 100% of normal funding payment when revenue
 
