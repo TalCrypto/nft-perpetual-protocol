@@ -889,8 +889,8 @@ describe("Amm Unit Test", () => {
       // (10-10.5)/10.5=-0.04
       await priceFeed.setPrice(toFullDigitBN(10.5));
       expect((await amm.isOverSpreadLimit()).result).eq(false);
-      // (10-9.5)/9.5=0.05
-      await priceFeed.setPrice(toFullDigitBN(9.5));
+      // (10-9.6)/9.6
+      await priceFeed.setPrice(toFullDigitBN(9.6));
       expect((await amm.isOverSpreadLimit()).result).eq(false);
     });
   });

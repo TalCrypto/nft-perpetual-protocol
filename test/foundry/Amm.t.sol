@@ -117,50 +117,50 @@ contract AmmTest is Test {
         (isAdjustable, cost, newQReserve, newBReserve) = amm.repegCheck(budget);
         if (totalPositionSize > 0) {
             // #long > #short
-            if (oraclePrice * 900 > spotPrice * 1000) {
+            if (oraclePrice * 95 > spotPrice * 100) {
                 // oracle price is bigger than spot price and exceeds spread limit 10%
                 assertGt(cost, 0, "cost is not positive"); // there is a cost to system
                 if (budget == 0) {
                     assertFalse(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertTrue(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 }
-            } else if (oraclePrice * 11 < spotPrice * 10) {
+            } else if (oraclePrice * 105 < spotPrice * 100) {
                 // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertLt(cost, 0); // there is a revenue to system
                 assertTrue(isAdjustable);
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                 assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
             } else {
                 assertFalse(isAdjustable);
             }
         } else if (totalPositionSize < 0) {
             // #long < #short
-            if (oraclePrice * 900 > spotPrice * 1000) {
+            if (oraclePrice * 95 > spotPrice * 100) {
                 // oracle price is more than spot price and exceeds spread limit 10%
                 assertLt(cost, 0, "cost is not negative"); // there is a revenue to system
                 assertTrue(isAdjustable);
-                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether - 0.05 ether)), 1e10, "wrong repeg");
+                assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                 if (newBReserve != oldBReserve) {
                     // in case new base asset reserve is bigger than totalPositionSize.abs()
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertGt(newQReserve * newBReserve, oldQReserve * oldBReserve, "decrease K");
                 }
-            } else if (oraclePrice * 11 < spotPrice * 10) {
+            } else if (oraclePrice * 105 < spotPrice * 100) {
                 // oracle price is smaller than spot price and exceeds spread limit 10%
                 assertGt(cost, 0); // there is a cost to system
                 if (budget == 0) {
                     assertFalse(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 } else {
                     assertTrue(isAdjustable);
-                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice.mulD(1 ether + 0.05 ether)), 1e10, "wrong repeg");
+                    assertApproxEqRel(newQReserve, newBReserve.mulD(oraclePrice), 1e10, "wrong repeg");
                     assertApproxEqRel(oldQReserve * oldBReserve, newQReserve * newBReserve, 1e10, "changed K");
                 }
             } else {

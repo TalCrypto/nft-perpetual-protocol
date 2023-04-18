@@ -252,7 +252,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
       it("repeg is done", async () => {
         await clearingHouse.payFunding(amm.address);
         const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
-        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(baseAssetReserveAfter)).eq("14700000007662592776");
+        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(baseAssetReserveAfter)).eq("14000000004732863828");
       });
       it("k is increased", async () => {
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
@@ -268,8 +268,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
         await expect(tx)
           .to.emit(clearingHouse, "UpdateK")
-          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "875554814810925883");
-        expect(ifBalAfter.sub(ifBalBefore)).eq("2626664444432777643");
+          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "3449465108424479284");
+        expect(ifBalAfter.sub(ifBalBefore)).eq("10348395325273437850");
       });
     });
     describe("when total is cost", () => {
@@ -322,7 +322,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReservebefore).eq(toFullDigitBN(0.5));
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-41024899564780716436");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706761");
         });
       });
       describe("when total reserve is sufficient to pay funding and repeg cost", () => {
@@ -331,7 +331,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await mockPriceFeed.setTwapPrice(toFullDigitBN(17.625));
           // funding payment = (15.625-17.625)*20 = -40
           // budget = 18.375
-          await ethStakingPool.stake(toFullDigitBN(13.5));
+          await ethStakingPool.stake(toFullDigitBN(50));
           // total reserve = 18.375 + max(45.860748587566391346-21.300551659460829192, 41.024899564780716437)
         });
         it("funding and repeg is done", async () => {
@@ -345,7 +345,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
             .withArgs("-113475177304964539", "-113475177304964539", toFullDigitBN(17.625), toFullDigitBN(-40));
           await expect(tx)
             .to.emit(clearingHouse, "Repeg")
-            .withArgs(amm.address, "1351303425030554414768", "79023592097864476385", "21300551659460829192");
+            .withArgs(amm.address, "1386408061182874743310", "77022670015195071867", "34165539667841413525");
         });
         it("max k decreasing after repeg is done when budget is not sufficient", async () => {
           const [quoteAssetReservebefore, baseAssetReservebefore] = await amm.getReserve();
@@ -354,7 +354,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReservebefore).eq(toFullDigitBN(0.5));
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-45860748587566391344");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706760");
         });
         it("half of total cost (30.6) is recovered through k decreasing when budget is sufficient", async () => {
           // budget = 38.374999999999999998
@@ -363,9 +363,9 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-30650275829730414595");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706760");
           expect(await quoteToken.balanceOf(insuranceFund.address)).eq("0"); // 38.37-40-21.3+30.65 = 7.724724170269585401
-          expect(await quoteToken.balanceOf(ethStakingPool.address)).eq("7724724170269585401");
+          expect(await quoteToken.balanceOf(ethStakingPool.address)).eq("37792230166079293233");
         });
       });
     });
