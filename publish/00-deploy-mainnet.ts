@@ -81,7 +81,7 @@ async function main() {
 
   console.log("deploying chainlinkPriceFeed");
   const chainlinkPriceFeed = await deployChainlinkPriceFeed(ledger);
-  console.log("deployed chainlinkPriceFeed address: ", tollPool.address);
+  console.log("deployed chainlinkPriceFeed address: ", chainlinkPriceFeed.address);
 
   const baycAmm = await deployAndConfigAmm(insuranceFund, clearingHouse, chainlinkPriceFeed, deployConfig, AmmInstanceName.BAYCETH, ledger);
   const azukiAmm = await deployAndConfigAmm(
