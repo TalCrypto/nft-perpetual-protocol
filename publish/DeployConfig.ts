@@ -25,8 +25,8 @@ const BAYC_AMM: AmmConfig = {
   name: AmmInstanceName.BAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("4052"),
-    baseAssetReserve: utils.parseEther("70.70"),
+    quoteAssetReserve: utils.parseEther("400"),
+    baseAssetReserve: utils.parseEther("7.574"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -55,8 +55,8 @@ const AZUKI_AMM: AmmConfig = {
   name: AmmInstanceName.AZUKIETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("3435"),
-    baseAssetReserve: utils.parseEther("252.22"),
+    quoteAssetReserve: utils.parseEther("300"),
+    baseAssetReserve: utils.parseEther("18.691"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -85,8 +85,8 @@ const MAYC_AMM: AmmConfig = {
   name: AmmInstanceName.MAYCETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("2852"),
-    baseAssetReserve: utils.parseEther("220.34"),
+    quoteAssetReserve: utils.parseEther("500"),
+    baseAssetReserve: utils.parseEther("42.087"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
@@ -115,8 +115,8 @@ const WRAPPEDCRYPTOPUNKS_AMM: AmmConfig = {
   name: AmmInstanceName.WRAPPEDCRYPTOPUNKSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("5414"),
-    baseAssetReserve: utils.parseEther("95.50"),
+    quoteAssetReserve: utils.parseEther("400"),
+    baseAssetReserve: utils.parseEther("7.616"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
