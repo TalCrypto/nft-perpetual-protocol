@@ -31,6 +31,7 @@ contract ClearingHouseViewer {
         uint256 entryPrice; // the excuted price when opening a price
         uint256 spotPrice; // the current vAmm price
         bool isLiquidatable;
+        int256 unrealizedPnlWithoutPriceImpact;
     }
 
     struct OpenPositionEstResp {
@@ -338,6 +339,9 @@ contract ClearingHouseViewer {
             positionInfo.openMargin,
             positionInfo.fundingPayment
         );
+        positionInfo.unrealizedPnlWithoutPriceImpact = positionInfo.positionSize < 0
+            ? positionInfo.openNotional.toInt() - positionInfo.positionSize.abs().mulD(positionInfo.spotPrice).toInt()
+            : positionInfo.positionSize.abs().mulD(positionInfo.spotPrice).toInt() - positionInfo.openNotional.toInt();
         return positionInfo;
     }
 
