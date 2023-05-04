@@ -55,7 +55,7 @@
     "arbitrum": {
         "insuranceFund": "0x3AF692A5Ab2dA34f742686Bd4A77b5E609Ee9eC6",
         "clearingHouse": "0x01b6407ADf740d135ddF1eBDD1529407845773F3",
-        "clearingHouseViewer": "0xaDD9845734086F1A545b735cC219CAFa57D8Ad41",
+        "clearingHouseViewer": "0x20bC35dfB2969E0ef777437e30Ce304D3cD4F13a",
         "amm": {
             "BAYCETH": "0xd490246758b4dFED5Fb8576cB9Ac20073BB111dD",
             "DOODLESETH": "",
