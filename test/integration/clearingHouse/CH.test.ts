@@ -213,7 +213,7 @@ describe("ClearingHouse Test", () => {
       expect(carolPositioin.leverage).eq(BigNumber.from(0));
       expect(carolPositioin.openNotional).eq(BigNumber.from(0));
       expect(carolPositioin.positionNotional).eq(BigNumber.from(0));
-      expect(carolPositioin.entryPrice).eq(BigNumber.from(0));
+      expect(carolPositioin.avgEntryPrice).eq(BigNumber.from(0));
     });
   });
 
@@ -231,7 +231,7 @@ describe("ClearingHouse Test", () => {
       const estimation = await clearingHouseViewer.getMarginAdjustmentEstimation(amm.address, alice.address, toFullDigitBN(80));
       await clearingHouse.connect(alice).addMargin(amm.address, toFullDigitBN(80));
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
-      expect(estimation.entryPrice).eq(positionInfo.entryPrice);
+      expect(estimation.avgEntryPrice).eq(positionInfo.avgEntryPrice);
       expect(estimation.fundingPayment).eq(positionInfo.fundingPayment);
       expect(estimation.leverage).eq(positionInfo.leverage);
       expect(estimation.liquidationPrice).eq(positionInfo.liquidationPrice);
@@ -250,7 +250,7 @@ describe("ClearingHouse Test", () => {
       const estimation = await clearingHouseViewer.getMarginAdjustmentEstimation(amm.address, alice.address, toFullDigitBN(-10));
       await clearingHouse.connect(alice).removeMargin(amm.address, toFullDigitBN(10));
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
-      expect(estimation.entryPrice).eq(positionInfo.entryPrice);
+      expect(estimation.avgEntryPrice).eq(positionInfo.avgEntryPrice);
       expect(estimation.fundingPayment).eq(positionInfo.fundingPayment);
       expect(estimation.leverage).eq(positionInfo.leverage);
       expect(estimation.liquidationPrice).eq(positionInfo.liquidationPrice);
@@ -283,6 +283,8 @@ describe("ClearingHouse Test", () => {
       expect(est.positionInfo.margin).eq(toFullDigitBN(25));
       expect(est.positionInfo.marginRatio).eq(toFullDigitBN(0.1));
       expect(est.positionInfo.isLiquidatable).false;
+      expect(est.entryPrice).eq(toFullDigitBN(12.5));
+      expect(est.priceImpact).eq(toFullDigitBN(0.25));
     });
     it("estimation of increase position", async () => {
       await approve(alice, clearingHouse.address, 600);
@@ -322,7 +324,7 @@ describe("ClearingHouse Test", () => {
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, bob.address);
       expect(positionEst.positionSize).eq(positionInfo.positionSize);
       expect(positionEst.positionNotional).eq("100000000000000000000");
-      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.avgEntryPrice).eq(positionInfo.avgEntryPrice);
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
       expect(positionEst.leverage).eq("10000000000000000000");
       expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
@@ -369,7 +371,7 @@ describe("ClearingHouse Test", () => {
       const positionInfo = await clearingHouseViewer.getTraderPositionInfo(amm.address, alice.address);
       expect(positionEst.positionSize).eq(positionInfo.positionSize);
       expect(positionEst.positionNotional).eq("218032786885245901637");
-      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.avgEntryPrice).eq(positionInfo.avgEntryPrice);
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
       expect(positionEst.leverage).eq("5732758620689655197");
       expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
@@ -417,7 +419,7 @@ describe("ClearingHouse Test", () => {
       expect(positionEst.positionSize).eq(positionInfo.positionSize);
       expect(positionEst.positionNotional).eq("68032786885245901637");
       expect(positionEst.openNotional).eq(positionInfo.openNotional);
-      expect(positionEst.entryPrice).eq(positionInfo.entryPrice);
+      expect(positionEst.avgEntryPrice).eq(positionInfo.avgEntryPrice);
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
       expect(positionEst.leverage).eq("2426900584795321639");
       expect(positionEst.liquidationPrice).eq(positionInfo.liquidationPrice);
@@ -463,7 +465,7 @@ describe("ClearingHouse Test", () => {
       expect(positionEst.positionSize).eq("-2813852813852813853");
       expect(positionEst.positionNotional).eq("31967213114754098363");
       expect(positionEst.openNotional).eq(positionInfo.openNotional);
-      expect(positionEst.entryPrice).eq("11360655737704918032");
+      expect(positionEst.avgEntryPrice).eq("11360655737704918032");
       expect(positionEst.fundingPayment).eq(positionInfo.fundingPayment);
       expect(positionEst.leverage).eq("10000000000000000100");
       expect(positionEst.liquidationPrice).eq("11901639344262295080");
