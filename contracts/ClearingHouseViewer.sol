@@ -15,26 +15,25 @@ contract ClearingHouseViewer {
     using IntMath for int256;
 
     struct PositionInfo {
-        address trader;
-        IAmm amm;
         int256 positionSize; // the contract size of a position
         int256 openMargin; // the margin that is collateralized when opening
         int256 margin; // openMargin + fundingPayment + unrealizedPnl
         int256 unrealizedPnl; // the unrealized profit and loss of a position
         int256 fundingPayment; // the funding payment that a position has received since opening the position
         int256 marginRatio; // (openMargin + fundingPayment + unrealizedPnl) / positionNotional
-        int256 liquidationPrice; // the excution price where a position is liquidated
+        int256 liquidationPrice; // the price at which a position is liquidated
         uint256 openLeverage; // the leverage that was used when opening a position
         uint256 leverage; // the current leverage, positionNotional / (openMargin + fundingPayment + unrealizedPnl)
         uint256 openNotional; // the notional value of a position when it is opened
         uint256 positionNotional; // the current notional value of a position
-        uint256 entryPrice; // the excuted price when opening a price
+        uint256 avgEntryPrice; // the average executed price of the current position size
         uint256 spotPrice; // the current vAmm price
         bool isLiquidatable;
         int256 unrealizedPnlWithoutPriceImpact;
     }
 
     struct OpenPositionEstResp {
+        // the estimated position info after having opened a position
         PositionInfo positionInfo;
         // the quote asset amount trader will send if open position, will receive if close
         uint256 exchangedQuoteAssetAmount;
@@ -53,6 +52,10 @@ contract ClearingHouseViewer {
         uint256 spreadFee;
         // fee to the toll pool which provides rewards to the token stakers
         uint256 tollFee;
+        // the executed price of a standalone tx
+        uint256 entryPrice;
+        // (entryPrice - spotPrice) / spotPrice
+        int256 priceImpact;
     }
 
     ClearingHouse public clearingHouse;
@@ -173,8 +176,6 @@ contract ClearingHouseViewer {
     }
 
     function getTraderPositionInfo(IAmm amm, address trader) public view returns (PositionInfo memory positionInfo) {
-        positionInfo.trader = trader;
-        positionInfo.amm = amm;
         ClearingHouse.Position memory position = clearingHouse.getPosition(amm, trader);
         positionInfo.positionSize = position.size;
         positionInfo.openMargin = position.margin;
@@ -226,6 +227,10 @@ contract ClearingHouseViewer {
         }
         positionEst.exchangedPositionSize = exchangedPositionSize;
         positionEst.exchangedQuoteAssetAmount = quoteAmount;
+        positionEst.entryPrice = quoteAmount.divD(exchangedPositionSize.abs());
+        positionEst.priceImpact = (positionEst.entryPrice.toInt() - oldPositionInfo.spotPrice.toInt()).divD(
+            oldPositionInfo.spotPrice.toInt()
+        );
         (positionEst.tollFee, positionEst.spreadFee) = amm.calcFee(quoteAmount);
 
         // increase or decrease position depends on old position's side and size
@@ -325,7 +330,7 @@ contract ClearingHouseViewer {
             }
         }
 
-        positionInfo.entryPrice = positionInfo.positionSize == 0 ? 0 : positionInfo.openNotional.divD(positionInfo.positionSize.abs());
+        positionInfo.avgEntryPrice = positionInfo.positionSize == 0 ? 0 : positionInfo.openNotional.divD(positionInfo.positionSize.abs());
         positionInfo.openLeverage = positionInfo.openMargin <= 0 ? 0 : positionInfo.openNotional.divD(positionInfo.openMargin.abs());
         if (positionInfo.marginRatio <= 0) {
             positionInfo.leverage = 0;
@@ -334,7 +339,7 @@ contract ClearingHouseViewer {
         }
         positionInfo.liquidationPrice = _getLiquidationPrice(
             amm,
-            positionInfo.entryPrice,
+            positionInfo.avgEntryPrice,
             positionInfo.positionSize,
             positionInfo.openMargin,
             positionInfo.fundingPayment
