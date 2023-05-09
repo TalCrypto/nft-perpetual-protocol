@@ -283,8 +283,8 @@ describe("ClearingHouse Test", () => {
       expect(est.positionInfo.margin).eq(toFullDigitBN(25));
       expect(est.positionInfo.marginRatio).eq(toFullDigitBN(0.1));
       expect(est.positionInfo.isLiquidatable).false;
-      expect(est.entryPrice).eq(toFullDigitBN(12.5));
-      expect(est.priceImpact).eq(toFullDigitBN(0.25));
+      expect(est.txSummary.entryPrice).eq(toFullDigitBN(12.5));
+      expect(est.txSummary.priceImpact).eq(toFullDigitBN(0.25));
     });
     it("estimation of increase position", async () => {
       await approve(alice, clearingHouse.address, 600);
@@ -341,18 +341,18 @@ describe("ClearingHouse Test", () => {
           bob.address,
           amm.address,
           positionEst.openMargin,
-          estimation.exchangedQuoteAssetAmount,
-          estimation.exchangedPositionSize,
-          estimation.tollFee.sub(estimation.spreadFee),
+          estimation.txSummary.exchangedQuoteAssetAmount,
+          estimation.txSummary.exchangedPositionSize,
+          estimation.txSummary.tollFee.sub(estimation.txSummary.spreadFee),
           positionEst.positionSize,
-          estimation.realizedPnl,
+          estimation.txSummary.realizedPnl,
           positionEst.unrealizedPnl,
-          estimation.badDebt,
+          estimation.txSummary.badDebt,
           0,
           positionEst.spotPrice,
           positionEst.fundingPayment
         );
-      expect(estimation.marginToVault).eq(toFullDigitBN(10));
+      expect(estimation.txSummary.marginToVault).eq(toFullDigitBN(10));
     });
 
     it("increase position estimation", async () => {
@@ -388,18 +388,18 @@ describe("ClearingHouse Test", () => {
           alice.address,
           amm.address,
           positionEst.openMargin,
-          estimation.exchangedQuoteAssetAmount,
-          estimation.exchangedPositionSize,
-          estimation.tollFee.sub(estimation.spreadFee),
+          estimation.txSummary.exchangedQuoteAssetAmount,
+          estimation.txSummary.exchangedPositionSize,
+          estimation.txSummary.tollFee.sub(estimation.txSummary.spreadFee),
           positionEst.positionSize,
-          estimation.realizedPnl,
+          estimation.txSummary.realizedPnl,
           positionEst.unrealizedPnl,
-          estimation.badDebt,
+          estimation.txSummary.badDebt,
           0,
           positionEst.spotPrice,
           positionEst.fundingPayment
         );
-      expect(estimation.marginToVault).eq(toFullDigitBN(10));
+      expect(estimation.txSummary.marginToVault).eq(toFullDigitBN(10));
     });
 
     it("reduce position estimation", async () => {
@@ -435,13 +435,13 @@ describe("ClearingHouse Test", () => {
           alice.address,
           amm.address,
           positionEst.openMargin,
-          estimation.exchangedQuoteAssetAmount,
-          estimation.exchangedPositionSize,
-          estimation.tollFee.sub(estimation.spreadFee),
+          estimation.txSummary.exchangedQuoteAssetAmount,
+          estimation.txSummary.exchangedPositionSize,
+          estimation.txSummary.tollFee.sub(estimation.txSummary.spreadFee),
           positionEst.positionSize,
-          estimation.realizedPnl,
+          estimation.txSummary.realizedPnl,
           positionEst.unrealizedPnl,
-          estimation.badDebt,
+          estimation.txSummary.badDebt,
           0,
           positionEst.spotPrice,
           positionEst.fundingPayment
@@ -481,18 +481,18 @@ describe("ClearingHouse Test", () => {
           alice.address,
           amm.address,
           positionEst.openMargin,
-          estimation.exchangedQuoteAssetAmount,
+          estimation.txSummary.exchangedQuoteAssetAmount,
           "-11904761904761904763",
-          estimation.tollFee.sub(estimation.spreadFee),
+          estimation.txSummary.tollFee.sub(estimation.txSummary.spreadFee),
           "-2813852813852813854",
-          estimation.realizedPnl,
+          estimation.txSummary.realizedPnl,
           positionEst.unrealizedPnl,
-          estimation.badDebt,
+          estimation.txSummary.badDebt,
           0,
           positionEst.spotPrice,
           positionEst.fundingPayment
         );
-      expect(estimation.marginToVault).eq("-24836065573770491801");
+      expect(estimation.txSummary.marginToVault).eq("-24836065573770491801");
     });
   });
   // describe("openInterestNotional", () => {
