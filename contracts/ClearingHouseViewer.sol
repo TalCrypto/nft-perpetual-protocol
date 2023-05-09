@@ -32,9 +32,7 @@ contract ClearingHouseViewer {
         int256 unrealizedPnlWithoutPriceImpact;
     }
 
-    struct OpenPositionEstResp {
-        // the estimated position info after having opened a position
-        PositionInfo positionInfo;
+    struct TxSummary {
         // the quote asset amount trader will send if open position, will receive if close
         uint256 exchangedQuoteAssetAmount;
         // if realizedPnl + realizedFundingPayment + margin is negative, it's the abs value of it
@@ -56,6 +54,12 @@ contract ClearingHouseViewer {
         uint256 entryPrice;
         // (entryPrice - spotPrice) / spotPrice
         int256 priceImpact;
+    }
+
+    struct OpenPositionEstResp {
+        // the estimated position info after having opened a position
+        PositionInfo positionInfo;
+        TxSummary txSummary;
     }
 
     ClearingHouse public clearingHouse;
@@ -225,13 +229,13 @@ contract ClearingHouseViewer {
             exchangedPositionSize = (-1) * (amm.getQuotePrice(IAmm.Dir.REMOVE_FROM_AMM, quoteAmount).toInt());
             positionEst.positionInfo.spotPrice = (quoteAssetReserve - quoteAmount).divD(baseAssetReserve + exchangedPositionSize.abs());
         }
-        positionEst.exchangedPositionSize = exchangedPositionSize;
-        positionEst.exchangedQuoteAssetAmount = quoteAmount;
-        positionEst.entryPrice = quoteAmount.divD(exchangedPositionSize.abs());
-        positionEst.priceImpact = (positionEst.entryPrice.toInt() - oldPositionInfo.spotPrice.toInt()).divD(
+        positionEst.txSummary.exchangedPositionSize = exchangedPositionSize;
+        positionEst.txSummary.exchangedQuoteAssetAmount = quoteAmount;
+        positionEst.txSummary.entryPrice = quoteAmount.divD(exchangedPositionSize.abs());
+        positionEst.txSummary.priceImpact = (positionEst.txSummary.entryPrice.toInt() - oldPositionInfo.spotPrice.toInt()).divD(
             oldPositionInfo.spotPrice.toInt()
         );
-        (positionEst.tollFee, positionEst.spreadFee) = amm.calcFee(quoteAmount);
+        (positionEst.txSummary.tollFee, positionEst.txSummary.spreadFee) = amm.calcFee(quoteAmount);
 
         // increase or decrease position depends on old position's side and size
         if (
@@ -245,30 +249,33 @@ contract ClearingHouseViewer {
             positionEst.positionInfo.openNotional = oldPositionInfo.openNotional + quoteAmount;
             positionEst.positionInfo.positionNotional = oldPositionInfo.positionNotional + quoteAmount;
             positionEst.positionInfo.unrealizedPnl = oldPositionInfo.unrealizedPnl;
-            positionEst.marginToVault = increaseMarginRequirement;
+            positionEst.txSummary.marginToVault = increaseMarginRequirement;
         } else {
             // reverse position
             if (oldPositionInfo.positionNotional > quoteAmount) {
-                positionEst.realizedPnl = oldPositionInfo.unrealizedPnl.mulD(exchangedPositionSize.abs().toInt()).divD(
+                positionEst.txSummary.realizedPnl = oldPositionInfo.unrealizedPnl.mulD(exchangedPositionSize.abs().toInt()).divD(
                     oldPositionInfo.positionSize.abs().toInt()
                 );
-                positionEst.positionInfo.openMargin = oldPositionInfo.openMargin + positionEst.realizedPnl + oldPositionInfo.fundingPayment;
+                positionEst.positionInfo.openMargin =
+                    oldPositionInfo.openMargin +
+                    positionEst.txSummary.realizedPnl +
+                    oldPositionInfo.fundingPayment;
             } else {
-                positionEst.realizedPnl = oldPositionInfo.unrealizedPnl;
-                int256 remainMargin = oldPositionInfo.openMargin + positionEst.realizedPnl + oldPositionInfo.fundingPayment;
+                positionEst.txSummary.realizedPnl = oldPositionInfo.unrealizedPnl;
+                int256 remainMargin = oldPositionInfo.openMargin + positionEst.txSummary.realizedPnl + oldPositionInfo.fundingPayment;
                 int256 increaseMarginRquirement = (quoteAmount - oldPositionInfo.positionNotional).divD(leverage).toInt();
                 positionEst.positionInfo.openMargin = increaseMarginRquirement;
-                positionEst.marginToVault = increaseMarginRquirement - remainMargin;
+                positionEst.txSummary.marginToVault = increaseMarginRquirement - remainMargin;
             }
             positionEst.positionInfo.positionNotional = (oldPositionInfo.positionNotional.toInt() - quoteAmount.toInt()).abs();
             positionEst.positionInfo.fundingPayment = 0;
-            positionEst.positionInfo.unrealizedPnl = oldPositionInfo.unrealizedPnl - positionEst.realizedPnl;
+            positionEst.positionInfo.unrealizedPnl = oldPositionInfo.unrealizedPnl - positionEst.txSummary.realizedPnl;
             int256 remainOpenNotional = oldPositionInfo.positionSize > 0
                 ? oldPositionInfo.positionNotional.toInt() - quoteAmount.toInt() - positionEst.positionInfo.unrealizedPnl
                 : positionEst.positionInfo.unrealizedPnl + oldPositionInfo.positionNotional.toInt() - quoteAmount.toInt();
             positionEst.positionInfo.openNotional = remainOpenNotional.abs();
         }
-        positionEst.badDebt = positionEst.positionInfo.openMargin < 0 ? positionEst.positionInfo.openMargin.abs() : 0;
+        positionEst.txSummary.badDebt = positionEst.positionInfo.openMargin < 0 ? positionEst.positionInfo.openMargin.abs() : 0;
         positionEst.positionInfo.positionSize = oldPositionInfo.positionSize + exchangedPositionSize;
         positionEst.positionInfo = _fillAdditionalPositionInfo(amm, positionEst.positionInfo);
     }
