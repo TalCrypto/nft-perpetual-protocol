@@ -19,7 +19,7 @@
     "goerli": {
         "insuranceFund": "0x2037ec323BcB1eE3836cD21048aDc4f7F7B18830",
         "clearingHouse": "0x481AD75e7874c967e3E26eED23b61eE538b51042",
-        "clearingHouseViewer": "0xbC9c540B60BBe511e0308685f9834898ed3B3381",
+        "clearingHouseViewer": "0x6f038923F1E02ca817dE2D393a9f6b1b2B097053",
         "amm": {
             "BAYCETH": "0xBb19566D478f7D5bA7def9516daB022B88FF1728",
             "DOODLESETH": "0x8715740893001Ae53a462375eE9dC6501f0F3EAA",
@@ -29,7 +29,7 @@
             "CRYPTOPUNKSETH": "0xC6e682D3a2c5566507650455f8D6A41C80444102",
             "MEEBITSETH": "0x0bD545C90899654de1EE019aC319ca68bd4368d7"
         },
-        "ammReader": "0x3B35be42D7D0Dc757Ba7a316ACeE174C2Fa3633d",
+        "ammReader": "0x43dA4169ffC0Cc950911EEF3CD79c9a44ec6cf57",
         "tollPool": "0x43a1349Cd1533d8Cd0cBAC9d19991a0819443484",
         "liquidator": "0xa385ce05A9461a8A8CA5646fC03165Ac3Adc1ce0"
     },
@@ -55,7 +55,7 @@
     "arbitrum": {
         "insuranceFund": "0x3AF692A5Ab2dA34f742686Bd4A77b5E609Ee9eC6",
         "clearingHouse": "0x01b6407ADf740d135ddF1eBDD1529407845773F3",
-        "clearingHouseViewer": "0x20bC35dfB2969E0ef777437e30Ce304D3cD4F13a",
+        "clearingHouseViewer": "0x6F678b1C9cdA5520Fb0a349cAEF379c2E17bFf5D",
         "amm": {
             "BAYCETH": "0xd490246758b4dFED5Fb8576cB9Ac20073BB111dD",
             "DOODLESETH": "",
@@ -65,7 +65,7 @@
             "PUDGYPENGUINSETH": "",
             "WRAPPEDCRYPTOPUNKSETH": "0x2396cC2b3c814609dAEb7413b7680F569BBC16e0"
         },
-        "ammReader": "0xb6142d2D8C0Ea1D9bB0B693aAe5204380608C04A",
+        "ammReader": "0x233A76584d5D91140459Be8fd75b799a39EC91dB",
         "tollPool": "0x44668C33DDAbB3333eA78D5A5794B6eE4Bf7cC41",
         "liquidator": "0xD6c6DD6685d10E2410C7A0Fc34f939e93253fD07",
         "chainlinkPriceFeed": "0x604a18faF36A8CC6f2DfdB4606ce67C4f912CF01",
