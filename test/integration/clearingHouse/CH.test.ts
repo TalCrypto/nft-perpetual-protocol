@@ -217,6 +217,40 @@ describe("ClearingHouse Test", () => {
     });
   });
 
+  describe("getTraderPositionInfoWithoutPriceImpact", () => {
+    it("returns exact infos", async () => {
+      await approve(alice, clearingHouse.address, 600);
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(2), toFullDigitBN(37.5), true);
+
+      // given bob takes 1x short position (-187.5B) with 1200 margin
+      await approve(bob, clearingHouse.address, 1800);
+      await clearingHouse
+        .connect(bob)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(1200), toFullDigitBN(1), toFullDigitBN(187.5), true);
+
+      // given the underlying twap price is 1.59, and current snapShot price is 400B/250Q = $1.6
+      await mockPriceFeed.setTwapPrice(toFullDigitBN(1.59));
+
+      // when the new fundingRate is 1% which means underlyingPrice < snapshotPrice
+      await gotoNextFundingTime();
+      await clearingHouse.payFunding(amm.address);
+
+      expect(await amm.getSpotPrice()).eq(toFullDigitBN(1.6));
+
+      const alicePosition = await clearingHouseViewer.getTraderPositionInfoWithoutPriceImpact(amm.address, alice.address);
+      expect(alicePosition.positionSize).to.eq(toFullDigitBN(37.5));
+      expect(alicePosition.positionNotional).to.eq(toFullDigitBN(37.5 * 1.6));
+      expect(alicePosition.unrealizedPnl).to.eq(toFullDigitBN(37.5 * 1.6).sub(alicePosition.openNotional));
+
+      const bobPosition = await clearingHouseViewer.getTraderPositionInfoWithoutPriceImpact(amm.address, bob.address);
+      expect(bobPosition.positionSize).to.eq(toFullDigitBN(-187.5));
+      expect(bobPosition.positionNotional).to.eq(toFullDigitBN(187.5 * 1.6));
+      expect(bobPosition.unrealizedPnl).to.eq(bobPosition.openNotional.sub(toFullDigitBN(187.5 * 1.6)));
+    });
+  });
+
   describe("getMarginAdjustmentEstimation", () => {
     beforeEach(async () => {
       await approve(alice, clearingHouse.address, 2000);
