@@ -29,7 +29,6 @@ contract ClearingHouseViewer {
         uint256 avgEntryPrice; // the average executed price of the current position size
         uint256 spotPrice; // the current vAmm price
         bool isLiquidatable;
-        int256 unrealizedPnlWithoutPriceImpact;
     }
 
     struct TxSummary {
@@ -197,6 +196,25 @@ contract ClearingHouseViewer {
         positionInfo = _fillAdditionalPositionInfo(amm, positionInfo);
     }
 
+    function getTraderPositionInfoWithoutPriceImpact(IAmm amm, address trader) public view returns (PositionInfo memory positionInfo) {
+        ClearingHouse.Position memory position = clearingHouse.getPosition(amm, trader);
+        positionInfo.positionSize = position.size;
+        positionInfo.openMargin = position.margin;
+        positionInfo.openNotional = position.openNotional;
+        positionInfo.spotPrice = amm.getSpotPrice();
+        positionInfo.positionNotional = positionInfo.positionSize.abs().mulD(positionInfo.spotPrice);
+        positionInfo.unrealizedPnl = positionInfo.positionSize < 0
+            ? positionInfo.openNotional.toInt() - positionInfo.positionNotional.toInt()
+            : positionInfo.positionNotional.toInt() - positionInfo.openNotional.toInt();
+        positionInfo.fundingPayment = _getFundingPayment(
+            position,
+            position.size > 0
+                ? clearingHouse.getLatestCumulativePremiumFractionLong(amm)
+                : clearingHouse.getLatestCumulativePremiumFractionShort(amm)
+        );
+        positionInfo = _fillAdditionalPositionInfo(amm, positionInfo);
+    }
+
     function getMarginAdjustmentEstimation(
         IAmm amm,
         address trader,
@@ -351,9 +369,6 @@ contract ClearingHouseViewer {
             positionInfo.openMargin,
             positionInfo.fundingPayment
         );
-        positionInfo.unrealizedPnlWithoutPriceImpact = positionInfo.positionSize < 0
-            ? positionInfo.openNotional.toInt() - positionInfo.positionSize.abs().mulD(positionInfo.spotPrice).toInt()
-            : positionInfo.positionSize.abs().mulD(positionInfo.spotPrice).toInt() - positionInfo.openNotional.toInt();
         return positionInfo;
     }
 
