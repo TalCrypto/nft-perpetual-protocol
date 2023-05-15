@@ -71,5 +71,24 @@
         "chainlinkPriceFeed": "0x604a18faF36A8CC6f2DfdB4606ce67C4f912CF01",
         "ethStakingPool": "0x1033E5D73fbeBe045a8AfD099a21A330C6541797",
         "whitelistMaster": "0xBC2BeE5BdD9Cd2CA0e5c83412Fe4c8C1288d6Db5"
+    },
+    "arbitrum_goerli": {
+        "insuranceFund": "0xfa96282806F21e0b14D20C4bbb64EE186471c9C7",
+        "clearingHouse": "0x8e9aed761C1f73A0f41D7a2fd51E38b76B3601a2",
+        "clearingHouseViewer": "0xE9FeD1596C1f3B15A34f5002F28216Fa63DE77DE",
+        "amm": {
+            "BAYCETH": "0x1812DBda7a954E829a6AdA968CEE0d3F315dDBa2",
+            "DOODLESETH": "",
+            "AZUKIETH": "0x77EB2F64a0A94B98283060D35645e6E2EAde029c",
+            "MOONBIRDSETH": "",
+            "MAYCETH": "0xf7749f92627985Afde9BC8577a66caDc3e055589",
+            "PUDGYPENGUINSETH": "",
+            "WRAPPEDCRYPTOPUNKSETH": "0xFdeE694aB487321A205ff077c757692Ea172AafC"
+        },
+        "ammReader": "0xf03FBaC9066871A15AA6552b94eff81c33d5E6bC",
+        "tollPool": "0x5Ff501db60BE310D7bD94Cc6f0671FA8981b8577",
+        "liquidator": "0xC31Bc863e29Fa8f1dF27C103AbB53b43CCD3f585",
+        "chainlinkPriceFeed": "0xaFC04FD838075c660C064B1Da1F9A6e1cfbCdCE8",
+        "ethStakingPool": "0xf04809DfBf7B1E541D790E37E2AA9975512497FF"
     }
 }
