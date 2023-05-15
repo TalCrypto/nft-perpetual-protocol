@@ -36,7 +36,7 @@
   "arbitrum_staging": {
     "insuranceFund": "0x752723823Ccf845c2f820D4F4654C0fc38F3e40A",
     "clearingHouse": "0x550763c20554ea59092c85be847E7292fE7A6295",
-    "clearingHouseViewer": "0xBaf6BB987d0E8748cD01d0b7718671EF7359dD2D",
+    "clearingHouseViewer": "0x00d857B5FAF26Cbb231283F0FAb4eB781cE29440",
     "amm": {
       "BAYCETH": "0x26f7786A917f226608c43E18D054829b33dACFca",
       "DOODLESETH": "",
