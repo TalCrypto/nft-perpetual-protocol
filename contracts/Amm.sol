@@ -184,10 +184,10 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
         __Ownable_init();
 
-        initMarginRatio = 0.2 ether; // 5x leverage
-        maintenanceMarginRatio = 0.1 ether; // 10x leverage
-        partialLiquidationRatio = 0.125 ether; // 1/8 of position size
-        liquidationFeeRatio = 0.05 ether; // 5% - 1/2 of maintenance margin
+        initMarginRatio = 0.1 ether; // 10x leverage
+        maintenanceMarginRatio = 0.075 ether; // 13.33x leverage
+        partialLiquidationRatio = 0.25 ether; // 1/4 of position size
+        liquidationFeeRatio = 0.05 ether; // 5% - 66.66% of maintenance margin
 
         repegPriceGapRatio = 0; // 0%
         fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost

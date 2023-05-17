@@ -3,7 +3,7 @@ import { AmmInstanceName, PriceFeedKey } from "./Constants";
 
 const DEFAULT_AMM_TRADE_LIMIT_RATIO = utils.parseEther("0.9"); // 90% trading limit ratio
 const DEFAULT_AMM_FUNDING_PERIOD = BigNumber.from(10800); // 3 hour
-const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.02"); // 2%
+const DEFAULT_AMM_FLUCTUATION = utils.parseEther("0.03"); // 3%
 const DEFAULT_AMM_TOLL_RATIO = utils.parseEther("0"); // 0%
 const DEFAULT_AMM_SPREAD_RATIO = utils.parseEther("0.003"); // 0.3%
 
@@ -29,7 +29,7 @@ const BAYC_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("7.574"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.BAYC),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -44,7 +44,7 @@ const DOODLES_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("1093.8"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.DOODLES),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -59,7 +59,7 @@ const AZUKI_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("18.691"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.AZUKI),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -74,7 +74,7 @@ const MOONBIRDS_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("964.94"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.MOONBIRDS),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -89,7 +89,7 @@ const MAYC_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("42.087"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.MAYC),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -104,7 +104,7 @@ const PUDGYPENGUINS_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("736.21"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.PUDGYPENGUINS),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
@@ -119,7 +119,7 @@ const WRAPPEDCRYPTOPUNKS_AMM: AmmConfig = {
     baseAssetReserve: utils.parseEther("7.616"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 6 hour
-    fluctuation: DEFAULT_AMM_FLUCTUATION, // 1.2%
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
     priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.WRAPPEDCRYPTOPUNKS),
     tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
     spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.5%
