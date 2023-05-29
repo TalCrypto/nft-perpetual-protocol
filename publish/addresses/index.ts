@@ -6,7 +6,9 @@ const filePath = "./publish/addresses/addresses.json";
 export interface ContractAddresses {
   clearingHouse: string;
   clearingHouseViewer: string;
-  amm: Record<AmmInstanceName, string>;
+  amm: {
+    [key in AmmInstanceName]?: string;
+  };
   ammReader: string;
   insuranceFund: string;
   tollPool: string;

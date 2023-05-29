@@ -126,6 +126,36 @@ const WRAPPEDCRYPTOPUNKS_AMM: AmmConfig = {
   },
 };
 
+const DEGODS_AMM: AmmConfig = {
+  name: AmmInstanceName.DEGODSETH,
+  deployArgs: {
+    // base * price
+    quoteAssetReserve: utils.parseEther("400"),
+    baseAssetReserve: utils.parseEther("7.616"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
+    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 3 hour
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.DEGODSETH),
+    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
+    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.3%
+  },
+};
+
+const THECAPTAINZ_AMM: AmmConfig = {
+  name: AmmInstanceName.THECAPTAINZETH,
+  deployArgs: {
+    // base * price
+    quoteAssetReserve: utils.parseEther("400"),
+    baseAssetReserve: utils.parseEther("7.616"),
+    tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
+    fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 3 hour
+    fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
+    priceFeedKey: ethers.utils.formatBytes32String(PriceFeedKey.THECAPTAINZETH),
+    tollRatio: DEFAULT_AMM_TOLL_RATIO, // 0.0%
+    spreadRatio: DEFAULT_AMM_SPREAD_RATIO, // 0.3%
+  },
+};
+
 export class DeployConfig {
   // stage
   readonly network: string;
@@ -149,6 +179,8 @@ export class DeployConfig {
     [AmmInstanceName.MAYCETH]: MAYC_AMM,
     [AmmInstanceName.PUDGYPENGUINSETH]: PUDGYPENGUINS_AMM,
     [AmmInstanceName.WRAPPEDCRYPTOPUNKSETH]: WRAPPEDCRYPTOPUNKS_AMM,
+    [AmmInstanceName.DEGODSETH]: DEGODS_AMM,
+    [AmmInstanceName.THECAPTAINZETH]: THECAPTAINZ_AMM,
   };
 
   constructor(network: string) {
@@ -166,6 +198,8 @@ export class DeployConfig {
           [AmmInstanceName.MAYCETH]: "0x574087CB2CC9D7c5170422b83b9FD1677430bd55",
           [AmmInstanceName.PUDGYPENGUINSETH]: "",
           [AmmInstanceName.WRAPPEDCRYPTOPUNKSETH]: "0x533a05621EebFac12a0d12599EA2B6665e9b171D",
+          [AmmInstanceName.DEGODSETH]: "0xF3667DCdEb71842B3F0606B1251003484e764723",
+          [AmmInstanceName.THECAPTAINZETH]: "0x9985a608Ed55c31897565dBCbB3D970eEAC1f527",
         };
         break;
       case "arbitrum_goerli":
@@ -180,6 +214,8 @@ export class DeployConfig {
           [AmmInstanceName.MAYCETH]: "0x5A00Dca3e384686922adb59303A6735c3F46c189",
           [AmmInstanceName.PUDGYPENGUINSETH]: "0x27D5738e9264B295BD714f337c77bc0447461b03",
           [AmmInstanceName.WRAPPEDCRYPTOPUNKSETH]: "",
+          [AmmInstanceName.DEGODSETH]: "",
+          [AmmInstanceName.THECAPTAINZETH]: "",
         };
         break;
       case "goerli":
@@ -194,6 +230,8 @@ export class DeployConfig {
           [AmmInstanceName.MAYCETH]: "0x7a3A09090Ed5b0559c158D91747EF3b1659A4De3",
           [AmmInstanceName.PUDGYPENGUINSETH]: "0x824fe7D8070dE426358019F57bEAbBd7fa179Fa1",
           [AmmInstanceName.WRAPPEDCRYPTOPUNKSETH]: "",
+          [AmmInstanceName.DEGODSETH]: "",
+          [AmmInstanceName.THECAPTAINZETH]: "",
         };
         break;
       default:
