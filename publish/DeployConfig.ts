@@ -130,8 +130,8 @@ const DEGODS_AMM: AmmConfig = {
   name: AmmInstanceName.DEGODSETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("400"),
-    baseAssetReserve: utils.parseEther("7.616"),
+    quoteAssetReserve: utils.parseEther("333"),
+    baseAssetReserve: utils.parseEther("39.494"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 3 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
@@ -145,8 +145,8 @@ const THECAPTAINZ_AMM: AmmConfig = {
   name: AmmInstanceName.THECAPTAINZETH,
   deployArgs: {
     // base * price
-    quoteAssetReserve: utils.parseEther("400"),
-    baseAssetReserve: utils.parseEther("7.616"),
+    quoteAssetReserve: utils.parseEther("333"),
+    baseAssetReserve: utils.parseEther("38.103"),
     tradeLimitRatio: DEFAULT_AMM_TRADE_LIMIT_RATIO, // 90% trading limit ratio
     fundingPeriod: DEFAULT_AMM_FUNDING_PERIOD, // 3 hour
     fluctuation: DEFAULT_AMM_FLUCTUATION, // 3%
