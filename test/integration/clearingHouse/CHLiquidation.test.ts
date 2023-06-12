@@ -205,6 +205,29 @@ describe("ClearingHouse Liquidation Test", () => {
       await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
     });
 
+    it("fully liquidate a long position of which notional is smaller than 0.1 eth, but margin ratio is above than liquidation fee ratio", async () => {
+      await approve(alice, clearingHouse.address, 100);
+      await approve(bob, clearingHouse.address, 100);
+      await amm.mockSetMMRatio(toFullDigitBN(0.1));
+
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.1), toFullDigitBN(5), toFullDigitBN(0), true);
+
+      await forwardBlockTimestamp(15); // 15 secs. later
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(70), toFullDigitBN(1), toFullDigitBN(0), true);
+      const marginRatio = formatEther(await clearingHouse.getMarginRatio(amm.address, alice.address));
+      const liquidationFeeRatio = formatEther(await amm.liquidationFeeRatio());
+      const mmRatio = formatEther(await amm.maintenanceMarginRatio());
+      const positionNotional = formatEther(
+        (await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).positionNotional
+      );
+      expect(Number(marginRatio)).lt(Number(mmRatio));
+      expect(Number(marginRatio)).gt(Number(liquidationFeeRatio));
+      expect(Number(positionNotional)).lt(0.1);
+      await clearingHouse.liquidate(amm.address, alice.address);
+      const posInfo = await clearingHouse.getPosition(amm.address, alice.address);
+      expect(posInfo.size).eq(toFullDigitBN("0"));
+    });
+
     it("partially liquidate a long position", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
@@ -295,6 +318,31 @@ describe("ClearingHouse Liquidation Test", () => {
 
       // if quoteAssetAmountLimit == 273.8 < 68.455 * 4 = 273.82, quote asset gets is more than expected
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.8));
+    });
+
+    it("fully liquidate a short position of which notional is smaller than 0.1 eth, but margin ratio is above than liquidation fee ratio", async () => {
+      await approve(alice, clearingHouse.address, 100);
+      await approve(bob, clearingHouse.address, 100);
+      await amm.mockSetMMRatio(toFullDigitBN(0.1));
+
+      await clearingHouse
+        .connect(alice)
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(0.05), toFullDigitBN(5), toFullDigitBN(0), true);
+
+      await forwardBlockTimestamp(15); // 15 secs. later
+      await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(70), toFullDigitBN(1), toFullDigitBN(0), true);
+      const marginRatio = formatEther(await clearingHouse.getMarginRatio(amm.address, alice.address));
+      const liquidationFeeRatio = formatEther(await amm.liquidationFeeRatio());
+      const mmRatio = formatEther(await amm.maintenanceMarginRatio());
+      const positionNotional = formatEther(
+        (await clearingHouse.getPositionNotionalAndUnrealizedPnl(amm.address, alice.address, PnlCalcOption.SPOT_PRICE)).positionNotional
+      );
+      expect(Number(marginRatio)).lt(Number(mmRatio));
+      expect(Number(marginRatio)).gt(Number(liquidationFeeRatio));
+      expect(Number(positionNotional)).lt(0.1);
+      await clearingHouse.liquidate(amm.address, alice.address);
+      const posInfo = await clearingHouse.getPosition(amm.address, alice.address);
+      expect(posInfo.size).eq(toFullDigitBN("0"));
     });
 
     it("partially liquidate a short position", async () => {
