@@ -799,15 +799,9 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             uint256 feeToLiquidator;
             uint256 feeToInsuranceFund;
 
-            int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
             uint256 _partialLiquidationRatio = _amm.partialLiquidationRatio();
             uint256 _liquidationFeeRatio = _amm.liquidationFeeRatio();
-            if (
-                // check margin(based on spot price) is enough to pay the liquidation fee
-                // after partially close, otherwise we fully close the position.
-                // that also means we can ensure no bad debt happen when partially liquidate
-                marginRatioBasedOnSpot > int256(_liquidationFeeRatio) && _partialLiquidationRatio < 1 ether && _partialLiquidationRatio != 0
-            ) {
+            if (_eligibilityToPartialLiquidation(_amm, _trader, _partialLiquidationRatio, _liquidationFeeRatio)) {
                 Position memory position = getPosition(_amm, _trader);
                 positionResp = _openReversePosition(
                     InternalOpenPositionParams({
@@ -1205,6 +1199,22 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     //
     // INTERNAL VIEW FUNCTIONS
     //
+
+    // check margin(based on spot price) is enough to pay the liquidation fee, or if notional is bigger than lower limit
+    function _eligibilityToPartialLiquidation(
+        IAmm _amm,
+        address _trader,
+        uint256 _partialLiquidationRatio,
+        uint256 _liquidationFeeRatio
+    ) internal view returns (bool) {
+        int256 marginRatioBasedOnSpot = _getMarginRatioByCalcOption(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+        (uint256 positionNotional, ) = getPositionNotionalAndUnrealizedPnl(_amm, _trader, PnlCalcOption.SPOT_PRICE);
+        return
+            marginRatioBasedOnSpot > int256(_liquidationFeeRatio) &&
+            _partialLiquidationRatio < 1 ether &&
+            _partialLiquidationRatio != 0 &&
+            positionNotional > 0.1 ether;
+    }
 
     function _getMarginRatioByCalcOption(
         IAmm _amm,
