@@ -210,7 +210,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await approve(bob, clearingHouse.address, 100);
       await amm.mockSetMMRatio(toFullDigitBN(0.1));
 
-      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.1), toFullDigitBN(5), toFullDigitBN(0), true);
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(0.02), toFullDigitBN(5), toFullDigitBN(0), true);
 
       await forwardBlockTimestamp(15); // 15 secs. later
       await clearingHouse.connect(bob).openPosition(amm.address, Side.SELL, toFullDigitBN(70), toFullDigitBN(1), toFullDigitBN(0), true);
@@ -222,7 +222,7 @@ describe("ClearingHouse Liquidation Test", () => {
       );
       expect(Number(marginRatio)).lt(Number(mmRatio));
       expect(Number(marginRatio)).gt(Number(liquidationFeeRatio));
-      expect(Number(positionNotional)).lt(0.1);
+      expect(Number(positionNotional)).lt(0.02);
       await clearingHouse.liquidate(amm.address, alice.address);
       const posInfo = await clearingHouse.getPosition(amm.address, alice.address);
       expect(posInfo.size).eq(toFullDigitBN("0"));
@@ -327,7 +327,7 @@ describe("ClearingHouse Liquidation Test", () => {
 
       await clearingHouse
         .connect(alice)
-        .openPosition(amm.address, Side.SELL, toFullDigitBN(0.05), toFullDigitBN(5), toFullDigitBN(0), true);
+        .openPosition(amm.address, Side.SELL, toFullDigitBN(0.01), toFullDigitBN(5), toFullDigitBN(0), true);
 
       await forwardBlockTimestamp(15); // 15 secs. later
       await clearingHouse.connect(bob).openPosition(amm.address, Side.BUY, toFullDigitBN(70), toFullDigitBN(1), toFullDigitBN(0), true);
@@ -339,7 +339,7 @@ describe("ClearingHouse Liquidation Test", () => {
       );
       expect(Number(marginRatio)).lt(Number(mmRatio));
       expect(Number(marginRatio)).gt(Number(liquidationFeeRatio));
-      expect(Number(positionNotional)).lt(0.1);
+      expect(Number(positionNotional)).lt(0.02);
       await clearingHouse.liquidate(amm.address, alice.address);
       const posInfo = await clearingHouse.getPosition(amm.address, alice.address);
       expect(posInfo.size).eq(toFullDigitBN("0"));

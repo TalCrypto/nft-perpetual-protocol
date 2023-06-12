@@ -1213,7 +1213,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
             marginRatioBasedOnSpot > int256(_liquidationFeeRatio) &&
             _partialLiquidationRatio < 1 ether &&
             _partialLiquidationRatio != 0 &&
-            positionNotional > 0.1 ether;
+            positionNotional >= 0.02 ether;
     }
 
     function _getMarginRatioByCalcOption(
