@@ -123,6 +123,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
 
+    uint256 public quoteReserveLowerLimit;
+
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
 
     //
@@ -624,6 +626,11 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         ptcKDecreaseMax = _rate;
     }
 
+    function setQuoteReserveLowerLimit(uint256 _limit) external onlyOwner {
+        require(_limit >= 100 ether, "AMM_IVL"); // invalid limit
+        quoteReserveLowerLimit = _limit;
+    }
+
     //
     // VIEW FUNCTIONS
     //
@@ -666,7 +673,12 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
             } else {
                 newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, scaleNum, scaleDenom);
                 newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
-                isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve < quoteReserveLowerLimit) {
+                    // if decreasing and target is smaller than lower limit
+                    isAdjustable = false;
+                } else {
+                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                }
                 if (isAdjustable) {
                     cost = AmmMath.calcCostForAdjustReserves(
                         _quoteAssetReserve,
