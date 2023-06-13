@@ -205,7 +205,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await expect(clearingHouse.liquidate(amm.address, alice.address)).revertedWith("CH_MRNC");
     });
 
-    it("fully liquidate a long position of which notional is smaller than 0.1 eth, but margin ratio is above than liquidation fee ratio", async () => {
+    it("fully liquidate a long position of which notional is smaller than 0.02 eth, but margin ratio is above than liquidation fee ratio", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
       await amm.mockSetMMRatio(toFullDigitBN(0.1));
@@ -320,7 +320,7 @@ describe("ClearingHouse Liquidation Test", () => {
       await clearingHouse.connect(carol).liquidateWithSlippage(amm.address, alice.address, toFullDigitBN(273.8));
     });
 
-    it("fully liquidate a short position of which notional is smaller than 0.1 eth, but margin ratio is above than liquidation fee ratio", async () => {
+    it("fully liquidate a short position of which notional is smaller than 0.02 eth, but margin ratio is above than liquidation fee ratio", async () => {
       await approve(alice, clearingHouse.address, 100);
       await approve(bob, clearingHouse.address, 100);
       await amm.mockSetMMRatio(toFullDigitBN(0.1));
