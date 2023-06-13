@@ -159,6 +159,26 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).gt(toFullDigitBN(1));
       });
+      it("should increase k even when target is smaller than the lower limit", async () => {
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        const limit = quoteAssetReserveBefore.mul(2);
+        await amm.setQuoteReserveLowerLimit(limit);
+        await clearingHouse.payFunding(amm.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter).gt(quoteAssetReserveBefore);
+        expect(quoteAssetReserveAfter).lt(limit);
+      });
+      it("should increase k when target is bigger than the lower limit", async () => {
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        const limit = quoteAssetReserveBefore;
+        await amm.setQuoteReserveLowerLimit(limit);
+        await clearingHouse.payFunding(amm.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter).gt(quoteAssetReserveBefore);
+        expect(quoteAssetReserveAfter).gt(limit);
+      });
       it("total/4 is used for increasing K", async () => {
         // (2 + 6.5)/4 = 2.125
         const ifBalBefore = await quoteToken.balanceOf(insuranceFund.address);
@@ -197,6 +217,18 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           .to.emit(clearingHouse, "UpdateK")
           .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-1749999999999999998");
         expect(ifBalAfter.sub(ifBalBefore)).eq("-8250000000000000002"); // =1.75-10
+      });
+      it("K is not decreased even having enough budget when the target is smaller than the lower limit", async () => {
+        await ethStakingPool.stake(toFullDigitBN(3.5));
+        // await quoteToken.balanceOf(insuranceFund.address);
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        await amm.setQuoteReserveLowerLimit(quoteAssetReserveBefore);
+        await clearingHouse.payFunding(amm.address);
+        //await quoteToken.balanceOf(insuranceFund.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveAfter).eq(quoteAssetReserveBefore);
+        expect(baseAssetReserveAfter).eq(baseAssetReserveBefore);
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(0));
       });
       it("mak k decreasing is done when insurance fund is not enough to pay half of total cost", async () => {
         await ethStakingPool.stake(toFullDigitBN(1.75));
