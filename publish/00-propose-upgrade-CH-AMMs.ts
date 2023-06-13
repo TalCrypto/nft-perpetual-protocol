@@ -32,6 +32,8 @@ async function main() {
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.MAYCETH);
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.AZUKIETH);
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.WRAPPEDCRYPTOPUNKSETH);
+  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.DEGODSETH);
+  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.THECAPTAINZETH);
 }
 
 main()
