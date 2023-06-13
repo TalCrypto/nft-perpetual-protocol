@@ -12,6 +12,7 @@ import { task } from "hardhat/config";
 import "@graphprotocol/hardhat-graph";
 import "hardhat-contract-sizer";
 import "solidity-coverage";
+import "@openzeppelin/hardhat-defender";
 
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -49,6 +50,10 @@ const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 const ARBI_API_KEY = process.env.ARBI_API_KEY;
 
 const config = {
+  defender: {
+    apiKey: process.env.DEFENDER_TEAM_API_KEY,
+    apiSecret: process.env.DEFENDER_TEAM_API_SECRET_KEY,
+  },
   solidity: {
     compilers: [
       {
