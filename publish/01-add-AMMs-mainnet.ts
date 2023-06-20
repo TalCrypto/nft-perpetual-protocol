@@ -1,21 +1,9 @@
-import { ethers, network, upgrades } from "hardhat";
-import { ContractAddresses, getAddresses, saveAddresses } from "./addresses";
+import { ethers, network } from "hardhat";
+import { getAddresses, saveAddresses } from "./addresses";
 import { LedgerSigner } from "@ethersproject/hardware-wallets";
-import {
-  deployAmmReader,
-  deployChainlinkPriceFeed,
-  deployClearingHouseViewer,
-  deployETHStakingPool,
-  deployLiquidator,
-  deployProxyAmm,
-  deployProxyClearingHouse,
-  deployProxyIF,
-  deployProxyTollPool,
-  deployWhitelistMaster,
-} from "../utils/contract";
+import { deployProxyAmm } from "../utils/contract";
 import { DeployConfig } from "./DeployConfig";
 import { AmmInstanceName } from "./Constants";
-import { Amm, InsuranceFund, ClearingHouse, ChainlinkPriceFeed } from "../typechain-types";
 import { Signer } from "ethers";
 import { config as dotEnvConfig } from "dotenv";
 dotEnvConfig();
@@ -33,6 +21,10 @@ async function deployAndConfigAmm(
   if (!ethers.utils.isAddress(MULTISIG_ADDRESS) || MULTISIG_ADDRESS == ethers.constants.AddressZero) {
     throw "invalid multisig address";
   }
+  // await chainlinkPriceFeed.addAggregator(
+  //   deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.priceFeedKey,
+  //   deployConfig.aggregators[ammInstanceName]
+  // );
   const amm = await deployProxyAmm({
     signer: ledger,
     quoteAssetReserve: deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.quoteAssetReserve,
@@ -54,6 +46,7 @@ async function deployAndConfigAmm(
   await amm.setOpen(true);
   await amm.setAdjustable(true);
   await amm.setCanLowerK(true);
+  await amm.setQuoteReserveLowerLimit(deployConfig.legacyAmmConfigMap[ammInstanceName].deployArgs.yLowerLimit);
   await amm.transferOwnership(MULTISIG_ADDRESS);
   return amm;
 }
@@ -68,25 +61,25 @@ async function main() {
 
   const deployConfig = new DeployConfig(network.name);
 
-  const degodsAmm = await deployAndConfigAmm(
+  const miladyAmm = await deployAndConfigAmm(
     addresses.insuranceFund,
     addresses.clearingHouse,
     addresses.chainlinkPriceFeed,
     deployConfig,
-    AmmInstanceName.DEGODSETH,
+    AmmInstanceName.MILADYETH,
     ledger
   );
-  const captainzAmm = await deployAndConfigAmm(
+  const penguinAmm = await deployAndConfigAmm(
     addresses.insuranceFund,
     addresses.clearingHouse,
     addresses.chainlinkPriceFeed,
     deployConfig,
-    AmmInstanceName.THECAPTAINZETH,
+    AmmInstanceName.PUDGYPENGUINSETH,
     ledger
   );
 
-  addresses.amm[AmmInstanceName.DEGODSETH] = degodsAmm.address;
-  addresses.amm[AmmInstanceName.THECAPTAINZETH] = captainzAmm.address;
+  addresses.amm[AmmInstanceName.MILADYETH] = miladyAmm.address;
+  addresses.amm[AmmInstanceName.PUDGYPENGUINSETH] = penguinAmm.address;
 
   saveAddresses(network.name, addresses);
 }
