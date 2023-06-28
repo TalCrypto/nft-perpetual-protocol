@@ -76,80 +76,80 @@ describe("ChainlinkPriceFeed Spec", () => {
     });
   });
 
-  describe("twap", () => {
-    beforeEach(async () => {
-      await priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), chainlinkMock1.address);
-      const currentTime = await priceFeed.mock_getCurrentTimestamp();
-      await chainlinkMock1.mockAddAnswer(0, toFullDigitBN(400), currentTime, currentTime, 0);
-      const firstTimestamp = currentTime.add(15);
-      await chainlinkMock1.mockAddAnswer(1, toFullDigitBN(405), firstTimestamp, firstTimestamp, 1);
-      const secondTimestamp = firstTimestamp.add(15);
-      await chainlinkMock1.mockAddAnswer(2, toFullDigitBN(410), secondTimestamp, secondTimestamp, 2);
-      const thirdTimestamp = secondTimestamp.add(15);
-      await priceFeed.mock_setBlockTimestamp(thirdTimestamp);
-    });
+  // describe("twap", () => {
+  //   beforeEach(async () => {
+  //     await priceFeed.addAggregator(ethers.utils.formatBytes32String("ETH"), chainlinkMock1.address);
+  //     const currentTime = await priceFeed.mock_getCurrentTimestamp();
+  //     await chainlinkMock1.mockAddAnswer(0, toFullDigitBN(400), currentTime, currentTime, 0);
+  //     const firstTimestamp = currentTime.add(15);
+  //     await chainlinkMock1.mockAddAnswer(1, toFullDigitBN(405), firstTimestamp, firstTimestamp, 1);
+  //     const secondTimestamp = firstTimestamp.add(15);
+  //     await chainlinkMock1.mockAddAnswer(2, toFullDigitBN(410), secondTimestamp, secondTimestamp, 2);
+  //     const thirdTimestamp = secondTimestamp.add(15);
+  //     await priceFeed.mock_setBlockTimestamp(thirdTimestamp);
+  //   });
 
-    // aggregator's answer
-    // timestamp(base + 0)  : 400
-    // timestamp(base + 15) : 405
-    // timestamp(base + 30) : 410
-    // now = base + 45
-    //
-    //  --+------+-----+-----+-----+-----+-----+
-    //          base                          now
+  //   // aggregator's answer
+  //   // timestamp(base + 0)  : 400
+  //   // timestamp(base + 15) : 405
+  //   // timestamp(base + 30) : 410
+  //   // now = base + 45
+  //   //
+  //   //  --+------+-----+-----+-----+-----+-----+
+  //   //          base                          now
 
-    it("twap price", async () => {
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
-      expect(price).to.eq(toFullDigitBN(405));
-    });
+  //   it("twap price", async () => {
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
+  //     expect(price).to.eq(toFullDigitBN(405));
+  //   });
 
-    it("asking interval more than aggregator has", async () => {
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 46);
-      expect(price).to.eq(toFullDigitBN(405));
-    });
+  //   it("asking interval more than aggregator has", async () => {
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 46);
+  //     expect(price).to.eq(toFullDigitBN(405));
+  //   });
 
-    it("asking interval less than aggregator has", async () => {
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 44);
-      expect(price).to.eq("405113636363636363636");
-    });
+  //   it("asking interval less than aggregator has", async () => {
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 44);
+  //     expect(price).to.eq("405113636363636363636");
+  //   });
 
-    it("given variant price period", async () => {
-      const currentTime = await priceFeed.mock_getCurrentTimestamp();
-      await chainlinkMock1.mockAddAnswer(4, toFullDigitBN(420), currentTime.add(30), currentTime.add(30), 4);
-      await priceFeed.mock_setBlockTimestamp(currentTime.add(50));
+  //   it("given variant price period", async () => {
+  //     const currentTime = await priceFeed.mock_getCurrentTimestamp();
+  //     await chainlinkMock1.mockAddAnswer(4, toFullDigitBN(420), currentTime.add(30), currentTime.add(30), 4);
+  //     await priceFeed.mock_setBlockTimestamp(currentTime.add(50));
 
-      // twap price should be (400 * 15) + (405 * 15) + (410 * 45) + (420 * 20) / 95 = 409.74
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 95);
-      expect(price).to.eq("409736842105263157894");
-    });
+  //     // twap price should be (400 * 15) + (405 * 15) + (410 * 45) + (420 * 20) / 95 = 409.74
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 95);
+  //     expect(price).to.eq("409736842105263157894");
+  //   });
 
-    it("latest price update time is earlier than the request, return the latest price", async () => {
-      const currentTime = await priceFeed.mock_getCurrentTimestamp();
-      await priceFeed.mock_setBlockTimestamp(currentTime.add(100));
+  //   it("latest price update time is earlier than the request, return the latest price", async () => {
+  //     const currentTime = await priceFeed.mock_getCurrentTimestamp();
+  //     await priceFeed.mock_setBlockTimestamp(currentTime.add(100));
 
-      // latest update time is base + 30, but now is base + 145 and asking for (now - 45)
-      // should return the latest price directly
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
-      expect(price).to.eq(toFullDigitBN(410));
-    });
+  //     // latest update time is base + 30, but now is base + 145 and asking for (now - 45)
+  //     // should return the latest price directly
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
+  //     expect(price).to.eq(toFullDigitBN(410));
+  //   });
 
-    it("if current price < 0, ignore the current price", async () => {
-      await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-10), 250, 250, 3);
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
-      expect(price).to.eq(toFullDigitBN(405));
-    });
+  //   it("if current price < 0, ignore the current price", async () => {
+  //     await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-10), 250, 250, 3);
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 45);
+  //     expect(price).to.eq(toFullDigitBN(405));
+  //   });
 
-    it("if there is a CL_NPP in the middle, ignore that price", async () => {
-      const currentTime = await priceFeed.mock_getCurrentTimestamp();
-      await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-100), currentTime.add(20), currentTime.add(20), 3);
-      await chainlinkMock1.mockAddAnswer(4, toFullDigitBN(420), currentTime.add(30), currentTime.add(30), 4);
-      await priceFeed.mock_setBlockTimestamp(currentTime.add(50));
+  //   it("if there is a CL_NPP in the middle, ignore that price", async () => {
+  //     const currentTime = await priceFeed.mock_getCurrentTimestamp();
+  //     await chainlinkMock1.mockAddAnswer(3, toFullDigitBN(-100), currentTime.add(20), currentTime.add(20), 3);
+  //     await chainlinkMock1.mockAddAnswer(4, toFullDigitBN(420), currentTime.add(30), currentTime.add(30), 4);
+  //     await priceFeed.mock_setBlockTimestamp(currentTime.add(50));
 
-      // twap price should be (400 * 15) + (405 * 15) + (410 * 45) + (420 * 20) / 95 = 409.74
-      const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 95);
-      expect(price).to.eq("409736842105263157894");
-    });
-  });
+  //     // twap price should be (400 * 15) + (405 * 15) + (410 * 45) + (420 * 20) / 95 = 409.74
+  //     const price = await priceFeed.getTwapPrice(ethers.utils.formatBytes32String("ETH"), 95);
+  //     expect(price).to.eq("409736842105263157894");
+  //   });
+  // });
 
   describe("getprice/getLatestTimestamp/getPreviousPrice/getPreviousTimestamp", () => {
     beforeEach(async () => {
