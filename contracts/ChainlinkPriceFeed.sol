@@ -53,7 +53,7 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
         revert("CL_NS"); //not supported
     }
 
-    function getPrice(bytes32 _priceFeedKey) external view override returns (uint256) {
+    function getPrice(bytes32 _priceFeedKey) public view override returns (uint256) {
         AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
         _requireNonEmptyAddress(address(aggregator));
 
@@ -69,64 +69,9 @@ contract ChainlinkPriceFeed is IPriceFeed, OwnableUpgradeableSafe, BlockContext 
         return latestTimestamp;
     }
 
-    function getTwapPrice(bytes32 _priceFeedKey, uint256 _interval) external view override returns (uint256) {
-        AggregatorV3Interface aggregator = aggregators[_priceFeedKey];
-        _requireNonEmptyAddress(address(aggregator));
-
-        // 3 different timestamps, `previous`, `current`, `target`
-        // `base` = now - _interval
-        // `current` = current round timestamp from aggregator
-        // `previous` = previous round timestamp form aggregator
-        // now >= previous > current > = < base
-        //
-        //  while loop i = 0
-        //  --+------+-----+-----+-----+-----+-----+
-        //         base                 current  now(previous)
-        //
-        //  while loop i = 1
-        //  --+------+-----+-----+-----+-----+-----+
-        //         base           current previous now
-
-        (uint80 round, uint256 latestPrice, uint256 latestTimestamp) = _getLatestRoundData(aggregator);
-        uint256 timestamp = _blockTimestamp();
-        uint256 baseTimestamp = timestamp - _interval;
-        // if the latest timestamp <= base timestamp, which means there's no new price, return the latest price
-        if (_interval == 0 || round == 0 || latestTimestamp <= baseTimestamp) {
-            return latestPrice;
-        }
-
-        // rounds are like snapshots, latestRound means the latest price snapshot. follow chainlink naming
-        uint256 previousTimestamp = latestTimestamp;
-        uint256 cumulativeTime = timestamp - previousTimestamp;
-        uint256 weightedPrice = latestPrice * cumulativeTime;
-        uint256 timeFraction;
-        uint64 aggregatorRoundId;
-        while (true) {
-            aggregatorRoundId = uint64(round); // The id starts at 1
-            // if this round is the start of new aggregator, then don't get the previous data
-            if (aggregatorRoundId == 1) {
-                // to prevent from div 0 error, return the latest price if `cumulativeTime == 0`
-                return cumulativeTime == 0 ? latestPrice : weightedPrice / cumulativeTime;
-            }
-
-            round = round - 1;
-            (, uint256 currentPrice, uint256 currentTimestamp) = _getRoundData(aggregator, round);
-
-            // check if current round timestamp is earlier than target timestamp
-            if (currentTimestamp <= baseTimestamp) {
-                // weighted time period will be (target timestamp - previous timestamp). For example,
-                // now is 1000, _interval is 100, then target timestamp is 900. If timestamp of current round is 970,
-                // and timestamp of NEXT round is 880, then the weighted time period will be (970 - 900) = 70,
-                // instead of (970 - 880)
-                weightedPrice = weightedPrice + currentPrice * (previousTimestamp - baseTimestamp);
-                break;
-            }
-            timeFraction = previousTimestamp - currentTimestamp;
-            weightedPrice = weightedPrice + currentPrice * timeFraction;
-            cumulativeTime = cumulativeTime + timeFraction;
-            previousTimestamp = currentTimestamp;
-        }
-        return weightedPrice == 0 ? latestPrice : weightedPrice / _interval;
+    // oracle price itself is twap so returns it as twap
+    function getTwapPrice(bytes32 _priceFeedKey, uint256) external view override returns (uint256) {
+        return getPrice(_priceFeedKey);
     }
 
     function getPreviousPrice(bytes32 _priceFeedKey, uint256 _numOfRoundBack) external view override returns (uint256) {
