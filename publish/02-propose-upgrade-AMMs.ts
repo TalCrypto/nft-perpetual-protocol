@@ -24,9 +24,6 @@ async function main() {
   console.log("deployer: ", await ledger.getAddress());
 
   const addresses = getAddresses(network.name);
-  console.log("Preparing proposal to upgrade CH...");
-  const proposalCH = await defender.proposeUpgrade(addresses.clearingHouse, new ClearingHouse__factory(ledger));
-  console.log("CH upgrade proposal created at:", proposalCH.url);
 
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.BAYCETH);
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.MAYCETH);
@@ -34,6 +31,8 @@ async function main() {
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.WRAPPEDCRYPTOPUNKSETH);
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.DEGODSETH);
   await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.THECAPTAINZETH);
+  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.MILADYETH);
+  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.PUDGYPENGUINSETH);
 }
 
 main()

@@ -823,6 +823,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         return longPositionSize.toInt() - shortPositionSize.toInt();
     }
 
+    // check the spread limit based on mark twap
     function isOverSpreadLimit()
         public
         view
@@ -833,7 +834,13 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
             uint256 oraclePrice
         )
     {
-        (result, marketPrice, oraclePrice) = isOverSpread(MAX_ORACLE_SPREAD_RATIO);
+        oraclePrice = getUnderlyingPrice();
+        require(oraclePrice > 0, "AMM_ZOP"); //zero oracle price
+        marketPrice = getSpotPrice();
+        uint256 marketTwap = getTwapPrice(spotPriceTwapInterval);
+        uint256 oracleSpreadRatioAbs = (marketTwap.toInt() - oraclePrice.toInt()).divD(oraclePrice.toInt()).abs();
+
+        result = oracleSpreadRatioAbs >= MAX_ORACLE_SPREAD_RATIO ? true : false;
     }
 
     function isOverSpread(uint256 _limit)
