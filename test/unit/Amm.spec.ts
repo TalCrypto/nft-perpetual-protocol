@@ -867,7 +867,8 @@ describe("Amm Unit Test", () => {
   describe("isOverSpreadLimit", () => {
     beforeEach(async () => {
       await amm.setOpen(true);
-      expect(await amm.getSpotPrice()).eq(toFullDigitBN(10));
+      const twapInterval = await amm.spotPriceTwapInterval();
+      expect(await amm.getTwapPrice(twapInterval)).eq(toFullDigitBN(10));
     });
 
     it("will fail if price feed return 0", async () => {
