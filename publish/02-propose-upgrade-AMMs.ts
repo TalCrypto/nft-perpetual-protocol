@@ -17,10 +17,10 @@ async function proposeUpgradeAMM(deployer: Signer, addresses: ContractAddresses,
 }
 
 async function main() {
-  const accounts = await ethers.getSigners();
-  const ledger = accounts[0];
+  // const accounts = await ethers.getSigners();
+  // const ledger = accounts[0];
 
-  // const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
+  const ledger = await new LedgerSigner(ethers.provider, "hid", "m/44'/60'/0'/0");
   console.log("deployer: ", await ledger.getAddress());
 
   const addresses = getAddresses(network.name);

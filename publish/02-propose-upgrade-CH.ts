@@ -27,13 +27,6 @@ async function main() {
   console.log("Preparing proposal to upgrade CH...");
   const proposalCH = await defender.proposeUpgrade(addresses.clearingHouse, new ClearingHouse__factory(ledger));
   console.log("CH upgrade proposal created at:", proposalCH.url);
-
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.BAYCETH);
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.MAYCETH);
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.AZUKIETH);
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.WRAPPEDCRYPTOPUNKSETH);
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.DEGODSETH);
-  await proposeUpgradeAMM(ledger, addresses, AmmInstanceName.THECAPTAINZETH);
 }
 
 main()
