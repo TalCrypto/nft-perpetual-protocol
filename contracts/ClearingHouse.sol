@@ -90,7 +90,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
     }
 
     // constants
-    uint256 public constant LIQ_SWITCH_RATIO = 0.2 ether; // 20%
+    uint256 public constant LIQ_SWITCH_RATIO = 0.1 ether; // 10%
 
     //**********************************************************//
     //    Can not change the order of below state variables     //
