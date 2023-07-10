@@ -33,6 +33,7 @@ contract AmmTest is Test {
         amm.setAdjustable(true);
         amm.setCanLowerK(true);
         amm.mockSetSpreadCheck(true);
+        amm.setQuoteReserveUpperLimit(type(uint256).max);
     }
 
     function testReserves() public {

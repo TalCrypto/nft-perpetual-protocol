@@ -124,6 +124,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     //◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤ add state variables below ◥◤◥◤◥◤◥◤◥◤◥◤◥◤◥◤//
 
     uint256 public quoteReserveLowerLimit;
+    uint256 public quoteReserveUpperLimit;
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
 
@@ -627,8 +628,16 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     }
 
     function setQuoteReserveLowerLimit(uint256 _limit) external onlyOwner {
-        require(_limit >= 100 ether, "AMM_IVL"); // invalid limit
+        require(_limit >= 10 ether, "AMM_IVL"); // invalid limit
+        if (quoteReserveUpperLimit > 0) {
+            require(_limit < quoteReserveUpperLimit, "AMM_IVL"); // invalid limit
+        }
         quoteReserveLowerLimit = _limit;
+    }
+
+    function setQuoteReserveUpperLimit(uint256 _limit) external onlyOwner {
+        require(_limit > quoteReserveLowerLimit, "AMM_IVL"); // invalid limit
+        quoteReserveUpperLimit = _limit;
     }
 
     //
@@ -675,6 +684,9 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
                 if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve < quoteReserveLowerLimit) {
                     // if decreasing and target is smaller than lower limit
+                    isAdjustable = false;
+                } else if (newQuoteAssetReserve > _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
+                    // if increasing and target is greater than upper limit
                     isAdjustable = false;
                 } else {
                     isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();

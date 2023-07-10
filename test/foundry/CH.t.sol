@@ -59,6 +59,7 @@ contract CHFundingTest is Test {
         amm.setGlobalShutdown(address(insuranceFund));
         amm.setCounterParty(address(clearingHouse));
         amm.setOpen(true);
+        amm.setQuoteReserveUpperLimit(type(uint256).max);
 
         alice = address(1);
         bob = address(2);
