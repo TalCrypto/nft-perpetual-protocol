@@ -653,8 +653,8 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 // if the overall sum is a REVENUE to the system, give back 25% of the REVENUE in k increase
                 budgetForUpdateK = budgetForUpdateK / 4;
             } else {
-                // if the overall sum is a COST to the system, take back half of the COST in k decrease
-                budgetForUpdateK = budgetForUpdateK / 2;
+                // if the overall sum is a COST to the system, take back 65% of the COST in k decrease
+                budgetForUpdateK = budgetForUpdateK.divD(1.538 ether);
             }
             bool isAdjustable;
             int256 kAdjustmentCost;

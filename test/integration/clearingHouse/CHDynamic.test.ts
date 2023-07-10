@@ -1,5 +1,5 @@
 import { expect, use } from "chai";
-import { Signer, BigNumber } from "ethers";
+import { Signer, BigNumber, utils } from "ethers";
 import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
 import {
@@ -121,6 +121,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     await ethStakingPool.setTribe3Treasury(admin.address);
     await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
     await amm.mockSetSpreadCheck(true);
+    await amm.setQuoteReserveUpperLimit(ethers.constants.MaxUint256);
 
     return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
   }
@@ -199,7 +200,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         // net revenue = 6.5
         // total cost = 3.5
       });
-      it("total/2 is recovered through K decreasing when insurance fund is enough to pay half of total cost", async () => {
+      it("65% is recovered through K decreasing when insurance fund is enough to pay 35% of total cost", async () => {
         await ethStakingPool.stake(toFullDigitBN(1.76));
         expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(8.26));
         // budget = 8.26
@@ -215,8 +216,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).lt(toFullDigitBN(1));
         await expect(tx)
           .to.emit(clearingHouse, "UpdateK")
-          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-1749999999999999998");
-        expect(ifBalAfter.sub(ifBalBefore)).eq("-8250000000000000002"); // =1.75-10
+          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-2275682704811443433");
+        expect(ifBalAfter.sub(ifBalBefore)).eq("-7724317295188556567"); // =1.75-10
       });
       it("K is not decreased even having enough budget when the target is smaller than the lower limit", async () => {
         await ethStakingPool.stake(toFullDigitBN(3.5));
@@ -230,9 +231,9 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(baseAssetReserveAfter).eq(baseAssetReserveBefore);
         expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(0));
       });
-      it("mak k decreasing is done when insurance fund is not enough to pay half of total cost", async () => {
-        await ethStakingPool.stake(toFullDigitBN(1.75));
-        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(8.25));
+      it("max k decreasing is done when insurance fund is not enough to pay 35% of total cost", async () => {
+        await ethStakingPool.stake(toFullDigitBN(1));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(7.5));
         // budget = 8.25
         // max k decrease revenue = 41.66
         const ifBalBefore = await insuranceFund.getAvailableBudgetFor(amm.address);
@@ -354,7 +355,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReservebefore).eq(toFullDigitBN(0.5));
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706761");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-41024899564780716437");
         });
       });
       describe("when total reserve is sufficient to pay funding and repeg cost", () => {
@@ -386,18 +387,18 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           await quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReservebefore).eq(toFullDigitBN(0.5));
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706760");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-48222067404318214252");
         });
-        it("half of total cost (30.6) is recovered through k decreasing when budget is sufficient", async () => {
+        it("65% of total cost (30.6) is recovered through k decreasing when budget is sufficient", async () => {
           // budget = 38.374999999999999998
           await ethStakingPool.stake(toFullDigitBN(20));
           const tx = await clearingHouse.payFunding(amm.address);
           const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
           await expect(tx)
             .to.emit(clearingHouse, "UpdateK")
-            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-37082769833920706760");
-          expect(await quoteToken.balanceOf(insuranceFund.address)).eq("0"); // 38.37-40-21.3+30.65 = 7.724724170269585401
-          expect(await quoteToken.balanceOf(ethStakingPool.address)).eq("37792230166079293233");
+            .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-48222067404318214252");
+          expect(await quoteToken.balanceOf(insuranceFund.address)).eq("0");
+          expect(await quoteToken.balanceOf(ethStakingPool.address)).eq("48931527736476800725");
         });
       });
     });
