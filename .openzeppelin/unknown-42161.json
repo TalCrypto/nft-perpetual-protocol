@@ -4065,7 +4065,7 @@
             "label": "ammMap",
             "offset": 0,
             "slot": "301",
-            "type": "t_mapping(t_address,t_struct(AmmMap)6262_storage)",
+            "type": "t_mapping(t_address,t_struct(AmmMap)5253_storage)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:101"
           },
@@ -4081,7 +4081,7 @@
             "label": "insuranceFund",
             "offset": 0,
             "slot": "303",
-            "type": "t_contract(IInsuranceFund)14646",
+            "type": "t_contract(IInsuranceFund)9374",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:107"
           },
@@ -4089,7 +4089,7 @@
             "label": "tollPool",
             "offset": 0,
             "slot": "304",
-            "type": "t_contract(IMultiTokenRewardRecipient)14672",
+            "type": "t_contract(IMultiTokenRewardRecipient)9400",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:108"
           },
@@ -4105,7 +4105,7 @@
             "label": "vaults",
             "offset": 0,
             "slot": "306",
-            "type": "t_mapping(t_contract(IAmm)14460,t_uint256)",
+            "type": "t_mapping(t_contract(IAmm)9219,t_uint256)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:113"
           },
@@ -4113,7 +4113,7 @@
             "label": "netRevenuesSinceLastFunding",
             "offset": 0,
             "slot": "307",
-            "type": "t_mapping(t_contract(IAmm)14460,t_int256)",
+            "type": "t_mapping(t_contract(IAmm)9219,t_int256)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:116"
           },
@@ -4151,15 +4151,15 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IAmm)14460": {
+          "t_contract(IAmm)9219": {
             "label": "contract IAmm",
             "numberOfBytes": "20"
           },
-          "t_contract(IInsuranceFund)14646": {
+          "t_contract(IInsuranceFund)9374": {
             "label": "contract IInsuranceFund",
             "numberOfBytes": "20"
           },
-          "t_contract(IMultiTokenRewardRecipient)14672": {
+          "t_contract(IMultiTokenRewardRecipient)9400": {
             "label": "contract IMultiTokenRewardRecipient",
             "numberOfBytes": "20"
           },
@@ -4171,11 +4171,11 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(AmmMap)6262_storage)": {
+          "t_mapping(t_address,t_struct(AmmMap)5253_storage)": {
             "label": "mapping(address => struct ClearingHouse.AmmMap)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Position)14478_storage)": {
+          "t_mapping(t_address,t_struct(Position)9237_storage)": {
             "label": "mapping(address => struct IClearingHouse.Position)",
             "numberOfBytes": "32"
           },
@@ -4183,15 +4183,15 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_contract(IAmm)14460,t_int256)": {
+          "t_mapping(t_contract(IAmm)9219,t_int256)": {
             "label": "mapping(contract IAmm => int256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_contract(IAmm)14460,t_uint256)": {
+          "t_mapping(t_contract(IAmm)9219,t_uint256)": {
             "label": "mapping(contract IAmm => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(AmmMap)6262_storage": {
+          "t_struct(AmmMap)5253_storage": {
             "label": "struct ClearingHouse.AmmMap",
             "members": [
               {
@@ -4214,14 +4214,14 @@
               },
               {
                 "label": "positionMap",
-                "type": "t_mapping(t_address,t_struct(Position)14478_storage)",
+                "type": "t_mapping(t_address,t_struct(Position)9237_storage)",
                 "offset": 0,
                 "slot": "3"
               }
             ],
             "numberOfBytes": "128"
           },
-          "t_struct(Position)14478_storage": {
+          "t_struct(Position)9237_storage": {
             "label": "struct IClearingHouse.Position",
             "members": [
               {
@@ -4478,7 +4478,7 @@
             "label": "reserveSnapshots",
             "offset": 0,
             "slot": "170",
-            "type": "t_array(t_struct(ReserveSnapshot)1739_storage)65536_storage",
+            "type": "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:99"
           },
@@ -4510,7 +4510,7 @@
             "label": "quoteAsset",
             "offset": 0,
             "slot": "327852",
-            "type": "t_contract(IERC20)877",
+            "type": "t_contract(IERC20)831",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:104"
           },
@@ -4518,7 +4518,7 @@
             "label": "priceFeed",
             "offset": 0,
             "slot": "327853",
-            "type": "t_contract(IPriceFeed)14734",
+            "type": "t_contract(IPriceFeed)9462",
             "contract": "Amm",
             "src": "contracts\\Amm.sol:105"
           },
@@ -4616,7 +4616,7 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_struct(ReserveSnapshot)1739_storage)65536_storage": {
+          "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage": {
             "label": "struct Amm.ReserveSnapshot[65536]",
             "numberOfBytes": "10485760"
           },
@@ -4636,11 +4636,11 @@
             "label": "bytes32",
             "numberOfBytes": "32"
           },
-          "t_contract(IERC20)877": {
+          "t_contract(IERC20)831": {
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IPriceFeed)14734": {
+          "t_contract(IPriceFeed)9462": {
             "label": "contract IPriceFeed",
             "numberOfBytes": "20"
           },
@@ -4648,7 +4648,2029 @@
             "label": "int256",
             "numberOfBytes": "32"
           },
-          "t_struct(ReserveSnapshot)1739_storage": {
+          "t_struct(ReserveSnapshot)1381_storage": {
+            "label": "struct Amm.ReserveSnapshot",
+            "members": [
+              {
+                "label": "quoteAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "baseAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "cumulativeTWPBefore",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "3abc9da25feeb8498c6c8a86f8bd4305c2dc2a88505d5d4dba133592f321de34": {
+      "address": "0x40B7f49c68a6006a3b39bf5c3E3073F67D56251B",
+      "txHash": "0xfd9cdb4548bdaff7e289d6b057d9cd23fd3a906f91ca037988892f267b1b110a",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "aggregators",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_mapping(t_bytes32,t_contract(AggregatorV3Interface)45)",
+            "contract": "ChainlinkPriceFeed",
+            "src": "contracts\\ChainlinkPriceFeed.sol:15"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ChainlinkPriceFeed",
+            "src": "contracts\\ChainlinkPriceFeed.sol:30"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(AggregatorV3Interface)45": {
+            "label": "contract AggregatorV3Interface",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_bytes32,t_contract(AggregatorV3Interface)45)": {
+            "label": "mapping(bytes32 => contract AggregatorV3Interface)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "30bff23ee9ef429a3e4c97362b075cb8e5767b9906547bacceb7009047f156c4": {
+      "address": "0xb82aCc7aD42FfCe3518711EFC3d08EeDdF794542",
+      "txHash": "0xe10fb21424935dc41ec43e665aadd8a5ba8bd33c06e6fb9a1860f84170002de3",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "initMarginRatio",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:65"
+          },
+          {
+            "label": "maintenanceMarginRatio",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:68"
+          },
+          {
+            "label": "liquidationFeeRatio",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:71"
+          },
+          {
+            "label": "partialLiquidationRatio",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:74"
+          },
+          {
+            "label": "longPositionSize",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:76"
+          },
+          {
+            "label": "shortPositionSize",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:77"
+          },
+          {
+            "label": "cumulativeNotional",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:79"
+          },
+          {
+            "label": "settlementPrice",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:81"
+          },
+          {
+            "label": "tradeLimitRatio",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:82"
+          },
+          {
+            "label": "quoteAssetReserve",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:83"
+          },
+          {
+            "label": "baseAssetReserve",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:84"
+          },
+          {
+            "label": "fluctuationLimitRatio",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:85"
+          },
+          {
+            "label": "tollRatio",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:88"
+          },
+          {
+            "label": "spreadRatio",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:89"
+          },
+          {
+            "label": "spotPriceTwapInterval",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:91"
+          },
+          {
+            "label": "fundingPeriod",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:92"
+          },
+          {
+            "label": "fundingBufferPeriod",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:93"
+          },
+          {
+            "label": "nextFundingTime",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:94"
+          },
+          {
+            "label": "priceFeedKey",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_bytes32",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:95"
+          },
+          {
+            "label": "reserveSnapshots",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:99"
+          },
+          {
+            "label": "latestReserveSnapshotIndex",
+            "offset": 0,
+            "slot": "327850",
+            "type": "t_uint16",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:100"
+          },
+          {
+            "label": "counterParty",
+            "offset": 2,
+            "slot": "327850",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:102"
+          },
+          {
+            "label": "globalShutdown",
+            "offset": 0,
+            "slot": "327851",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:103"
+          },
+          {
+            "label": "quoteAsset",
+            "offset": 0,
+            "slot": "327852",
+            "type": "t_contract(IERC20)831",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:104"
+          },
+          {
+            "label": "priceFeed",
+            "offset": 0,
+            "slot": "327853",
+            "type": "t_contract(IPriceFeed)11089",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:105"
+          },
+          {
+            "label": "open",
+            "offset": 20,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:106"
+          },
+          {
+            "label": "adjustable",
+            "offset": 21,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:107"
+          },
+          {
+            "label": "canLowerK",
+            "offset": 22,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:108"
+          },
+          {
+            "label": "repegFlag",
+            "offset": 23,
+            "slot": "327853",
+            "type": "t_uint8",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:109"
+          },
+          {
+            "label": "repegPriceGapRatio",
+            "offset": 0,
+            "slot": "327854",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:110"
+          },
+          {
+            "label": "fundingCostCoverRate",
+            "offset": 0,
+            "slot": "327855",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:112"
+          },
+          {
+            "label": "fundingRevenueTakeRate",
+            "offset": 0,
+            "slot": "327856",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:113"
+          },
+          {
+            "label": "ptcKIncreaseMax",
+            "offset": 0,
+            "slot": "327857",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:115"
+          },
+          {
+            "label": "ptcKDecreaseMax",
+            "offset": 0,
+            "slot": "327858",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "327859",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:118"
+          },
+          {
+            "label": "quoteReserveLowerLimit",
+            "offset": 0,
+            "slot": "327909",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:128"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage": {
+            "label": "struct Amm.ReserveSnapshot[65536]",
+            "numberOfBytes": "10485760"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)831": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPriceFeed)11089": {
+            "label": "contract IPriceFeed",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReserveSnapshot)1381_storage": {
+            "label": "struct Amm.ReserveSnapshot",
+            "members": [
+              {
+                "label": "quoteAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "baseAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "cumulativeTWPBefore",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "0a2b0968773751026d971dbdbeee2c261d48ccf7b5073b2cdbb28816ea323215": {
+      "address": "0x8254Bb0d2B08b0FE7a641Ca4DC5763Fa744B41C0",
+      "txHash": "0xac812ecbd88066a326bbc5e8e3a6d27f6c33e12df70b99fe53eafab0d8b35f82",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "OwnerPausableUpgradeSafe",
+            "src": "contracts\\OwnerPausable.sol:21"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_mapping(t_address,t_struct(AmmMap)5294_storage)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:101"
+          },
+          {
+            "label": "prepaidBadDebts",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:104"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_contract(IInsuranceFund)11001",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:107"
+          },
+          {
+            "label": "tollPool",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_contract(IMultiTokenRewardRecipient)11027",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:108"
+          },
+          {
+            "label": "backstopLiquidityProviderMap",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:110"
+          },
+          {
+            "label": "vaults",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_mapping(t_contract(IAmm)10846,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:113"
+          },
+          {
+            "label": "netRevenuesSinceLastFunding",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_mapping(t_contract(IAmm)10846,t_int256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:116"
+          },
+          {
+            "label": "whitelistMaster",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:118"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "309",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:120"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAmm)10846": {
+            "label": "contract IAmm",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IInsuranceFund)11001": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMultiTokenRewardRecipient)11027": {
+            "label": "contract IMultiTokenRewardRecipient",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AmmMap)5294_storage)": {
+            "label": "mapping(address => struct ClearingHouse.AmmMap)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Position)10864_storage)": {
+            "label": "mapping(address => struct IClearingHouse.Position)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10846,t_int256)": {
+            "label": "mapping(contract IAmm => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10846,t_uint256)": {
+            "label": "mapping(contract IAmm => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AmmMap)5294_storage": {
+            "label": "struct ClearingHouse.AmmMap",
+            "members": [
+              {
+                "label": "lastRestrictionBlock",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "latestCumulativePremiumFractionLong",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "latestCumulativePremiumFractionShort",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "positionMap",
+                "type": "t_mapping(t_address,t_struct(Position)10864_storage)",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Position)10864_storage": {
+            "label": "struct IClearingHouse.Position",
+            "members": [
+              {
+                "label": "size",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margin",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "openNotional",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdatedCumulativePremiumFraction",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "a090add99e4f54b73ffc2bf85699b64356f53abfde108e2f26fd0d00c18577ab": {
+      "address": "0x8ba3bA3051672558B7E22bf0504c88430BEeF6DC",
+      "txHash": "0xcd75f806667f3409811b03d7ce448cdae3b5d756870f3bbd602b26caf37e13f2",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "OwnerPausableUpgradeSafe",
+            "src": "contracts\\OwnerPausable.sol:21"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_mapping(t_address,t_struct(AmmMap)5340_storage)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:101"
+          },
+          {
+            "label": "prepaidBadDebts",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:104"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_contract(IInsuranceFund)11048",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:107"
+          },
+          {
+            "label": "tollPool",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_contract(IMultiTokenRewardRecipient)11074",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:108"
+          },
+          {
+            "label": "backstopLiquidityProviderMap",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:110"
+          },
+          {
+            "label": "vaults",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_mapping(t_contract(IAmm)10893,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:113"
+          },
+          {
+            "label": "netRevenuesSinceLastFunding",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_mapping(t_contract(IAmm)10893,t_int256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:116"
+          },
+          {
+            "label": "whitelistMaster",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:118"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "309",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:120"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAmm)10893": {
+            "label": "contract IAmm",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IInsuranceFund)11048": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMultiTokenRewardRecipient)11074": {
+            "label": "contract IMultiTokenRewardRecipient",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AmmMap)5340_storage)": {
+            "label": "mapping(address => struct ClearingHouse.AmmMap)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Position)10911_storage)": {
+            "label": "mapping(address => struct IClearingHouse.Position)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10893,t_int256)": {
+            "label": "mapping(contract IAmm => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10893,t_uint256)": {
+            "label": "mapping(contract IAmm => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AmmMap)5340_storage": {
+            "label": "struct ClearingHouse.AmmMap",
+            "members": [
+              {
+                "label": "lastRestrictionBlock",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "latestCumulativePremiumFractionLong",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "latestCumulativePremiumFractionShort",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "positionMap",
+                "type": "t_mapping(t_address,t_struct(Position)10911_storage)",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Position)10911_storage": {
+            "label": "struct IClearingHouse.Position",
+            "members": [
+              {
+                "label": "size",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margin",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "openNotional",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdatedCumulativePremiumFraction",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "6fc9c3e172dc6e5672afd5bc82da14d9fc2b980316df4f0032cfe3575e6a2acc": {
+      "address": "0x767f78CFF76A4110213599b5c4EcFaD1A989d7d3",
+      "txHash": "0xaf7cbed37ab9f32cb180964a979756a6873c8558fd3d29962711c3dd406d7845",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "initMarginRatio",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:65"
+          },
+          {
+            "label": "maintenanceMarginRatio",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:68"
+          },
+          {
+            "label": "liquidationFeeRatio",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:71"
+          },
+          {
+            "label": "partialLiquidationRatio",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:74"
+          },
+          {
+            "label": "longPositionSize",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:76"
+          },
+          {
+            "label": "shortPositionSize",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:77"
+          },
+          {
+            "label": "cumulativeNotional",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:79"
+          },
+          {
+            "label": "settlementPrice",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:81"
+          },
+          {
+            "label": "tradeLimitRatio",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:82"
+          },
+          {
+            "label": "quoteAssetReserve",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:83"
+          },
+          {
+            "label": "baseAssetReserve",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:84"
+          },
+          {
+            "label": "fluctuationLimitRatio",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:85"
+          },
+          {
+            "label": "tollRatio",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:88"
+          },
+          {
+            "label": "spreadRatio",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:89"
+          },
+          {
+            "label": "spotPriceTwapInterval",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:91"
+          },
+          {
+            "label": "fundingPeriod",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:92"
+          },
+          {
+            "label": "fundingBufferPeriod",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:93"
+          },
+          {
+            "label": "nextFundingTime",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:94"
+          },
+          {
+            "label": "priceFeedKey",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_bytes32",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:95"
+          },
+          {
+            "label": "reserveSnapshots",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:99"
+          },
+          {
+            "label": "latestReserveSnapshotIndex",
+            "offset": 0,
+            "slot": "327850",
+            "type": "t_uint16",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:100"
+          },
+          {
+            "label": "counterParty",
+            "offset": 2,
+            "slot": "327850",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:102"
+          },
+          {
+            "label": "globalShutdown",
+            "offset": 0,
+            "slot": "327851",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:103"
+          },
+          {
+            "label": "quoteAsset",
+            "offset": 0,
+            "slot": "327852",
+            "type": "t_contract(IERC20)831",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:104"
+          },
+          {
+            "label": "priceFeed",
+            "offset": 0,
+            "slot": "327853",
+            "type": "t_contract(IPriceFeed)11136",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:105"
+          },
+          {
+            "label": "open",
+            "offset": 20,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:106"
+          },
+          {
+            "label": "adjustable",
+            "offset": 21,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:107"
+          },
+          {
+            "label": "canLowerK",
+            "offset": 22,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:108"
+          },
+          {
+            "label": "repegFlag",
+            "offset": 23,
+            "slot": "327853",
+            "type": "t_uint8",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:109"
+          },
+          {
+            "label": "repegPriceGapRatio",
+            "offset": 0,
+            "slot": "327854",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:110"
+          },
+          {
+            "label": "fundingCostCoverRate",
+            "offset": 0,
+            "slot": "327855",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:112"
+          },
+          {
+            "label": "fundingRevenueTakeRate",
+            "offset": 0,
+            "slot": "327856",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:113"
+          },
+          {
+            "label": "ptcKIncreaseMax",
+            "offset": 0,
+            "slot": "327857",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:115"
+          },
+          {
+            "label": "ptcKDecreaseMax",
+            "offset": 0,
+            "slot": "327858",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "327859",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:118"
+          },
+          {
+            "label": "quoteReserveLowerLimit",
+            "offset": 0,
+            "slot": "327909",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:127"
+          },
+          {
+            "label": "quoteReserveUpperLimit",
+            "offset": 0,
+            "slot": "327910",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:129"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage": {
+            "label": "struct Amm.ReserveSnapshot[65536]",
+            "numberOfBytes": "10485760"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)831": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPriceFeed)11136": {
+            "label": "contract IPriceFeed",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReserveSnapshot)1381_storage": {
+            "label": "struct Amm.ReserveSnapshot",
+            "members": [
+              {
+                "label": "quoteAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "baseAssetReserve",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "cumulativeTWPBefore",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint16": {
+            "label": "uint16",
+            "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "5ce0b6d79bfedcada23207cc58d181ec88e526bfd417db15277027ed01ed7bc4": {
+      "address": "0x01dEf3E340deaeda1e86f9833B8f99da5CF7747e",
+      "txHash": "0x9372681c5f01cbc5212b4586e77ae043a0517981f87de2160f6e1355fa118c4b",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "initMarginRatio",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:67"
+          },
+          {
+            "label": "maintenanceMarginRatio",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:70"
+          },
+          {
+            "label": "liquidationFeeRatio",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:73"
+          },
+          {
+            "label": "partialLiquidationRatio",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:76"
+          },
+          {
+            "label": "longPositionSize",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:78"
+          },
+          {
+            "label": "shortPositionSize",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:79"
+          },
+          {
+            "label": "cumulativeNotional",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_int256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:81"
+          },
+          {
+            "label": "settlementPrice",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:83"
+          },
+          {
+            "label": "tradeLimitRatio",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:84"
+          },
+          {
+            "label": "quoteAssetReserve",
+            "offset": 0,
+            "slot": "160",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:85"
+          },
+          {
+            "label": "baseAssetReserve",
+            "offset": 0,
+            "slot": "161",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:86"
+          },
+          {
+            "label": "fluctuationLimitRatio",
+            "offset": 0,
+            "slot": "162",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:87"
+          },
+          {
+            "label": "tollRatio",
+            "offset": 0,
+            "slot": "163",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:90"
+          },
+          {
+            "label": "spreadRatio",
+            "offset": 0,
+            "slot": "164",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:91"
+          },
+          {
+            "label": "spotPriceTwapInterval",
+            "offset": 0,
+            "slot": "165",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:93"
+          },
+          {
+            "label": "fundingPeriod",
+            "offset": 0,
+            "slot": "166",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:94"
+          },
+          {
+            "label": "fundingBufferPeriod",
+            "offset": 0,
+            "slot": "167",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:95"
+          },
+          {
+            "label": "nextFundingTime",
+            "offset": 0,
+            "slot": "168",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:96"
+          },
+          {
+            "label": "priceFeedKey",
+            "offset": 0,
+            "slot": "169",
+            "type": "t_bytes32",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:97"
+          },
+          {
+            "label": "reserveSnapshots",
+            "offset": 0,
+            "slot": "170",
+            "type": "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:101"
+          },
+          {
+            "label": "latestReserveSnapshotIndex",
+            "offset": 0,
+            "slot": "327850",
+            "type": "t_uint16",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:102"
+          },
+          {
+            "label": "counterParty",
+            "offset": 2,
+            "slot": "327850",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:104"
+          },
+          {
+            "label": "globalShutdown",
+            "offset": 0,
+            "slot": "327851",
+            "type": "t_address",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:105"
+          },
+          {
+            "label": "quoteAsset",
+            "offset": 0,
+            "slot": "327852",
+            "type": "t_contract(IERC20)831",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:106"
+          },
+          {
+            "label": "priceFeed",
+            "offset": 0,
+            "slot": "327853",
+            "type": "t_contract(IPriceFeed)9618",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:107"
+          },
+          {
+            "label": "open",
+            "offset": 20,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:108"
+          },
+          {
+            "label": "adjustable",
+            "offset": 21,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:109"
+          },
+          {
+            "label": "canLowerK",
+            "offset": 22,
+            "slot": "327853",
+            "type": "t_bool",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:110"
+          },
+          {
+            "label": "repegFlag",
+            "offset": 23,
+            "slot": "327853",
+            "type": "t_uint8",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:111"
+          },
+          {
+            "label": "repegPriceGapRatio",
+            "offset": 0,
+            "slot": "327854",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:112"
+          },
+          {
+            "label": "fundingCostCoverRate",
+            "offset": 0,
+            "slot": "327855",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:114"
+          },
+          {
+            "label": "fundingRevenueTakeRate",
+            "offset": 0,
+            "slot": "327856",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:115"
+          },
+          {
+            "label": "ptcKIncreaseMax",
+            "offset": 0,
+            "slot": "327857",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:117"
+          },
+          {
+            "label": "ptcKDecreaseMax",
+            "offset": 0,
+            "slot": "327858",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:118"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "327859",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:120"
+          },
+          {
+            "label": "quoteReserveLowerLimit",
+            "offset": 0,
+            "slot": "327909",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:129"
+          },
+          {
+            "label": "quoteReserveUpperLimit",
+            "offset": 0,
+            "slot": "327910",
+            "type": "t_uint256",
+            "contract": "Amm",
+            "src": "contracts\\Amm.sol:131"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_struct(ReserveSnapshot)1381_storage)65536_storage": {
+            "label": "struct Amm.ReserveSnapshot[65536]",
+            "numberOfBytes": "10485760"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_contract(IERC20)831": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPriceFeed)9618": {
+            "label": "contract IPriceFeed",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReserveSnapshot)1381_storage": {
             "label": "struct Amm.ReserveSnapshot",
             "members": [
               {
