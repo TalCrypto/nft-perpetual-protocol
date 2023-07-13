@@ -57,6 +57,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     uint8 public constant MIN_NUM_REPEG_FLAG = 3;
 
+    uint256 public constant BASE_DECREASE_RATIO = 0.001 ether;
+
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -685,9 +687,18 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve < quoteReserveLowerLimit) {
                     // if decreasing and target is smaller than lower limit
                     isAdjustable = false;
+                } else if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
+                    // if decreasing and the target is bigger than the upper limit
+                    // decrease more by base pct
+                    newQuoteAssetReserve = newQuoteAssetReserve - _quoteAssetReserve.mulD(BASE_DECREASE_RATIO);
+                    newBaseAssetReserve = newBaseAssetReserve - _baseAssetReserve.mulD(BASE_DECREASE_RATIO);
+                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
                 } else if (newQuoteAssetReserve > _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
-                    // if increasing and target is greater than upper limit
-                    isAdjustable = false;
+                    // if increasing and target is bigger than upper limit
+                    // make it decrease by 0.1%
+                    newQuoteAssetReserve = _quoteAssetReserve.mulD(1 ether - BASE_DECREASE_RATIO);
+                    newBaseAssetReserve = _baseAssetReserve.mulD(1 ether - BASE_DECREASE_RATIO);
+                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
                 } else {
                     isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
                 }
