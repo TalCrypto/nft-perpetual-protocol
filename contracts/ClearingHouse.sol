@@ -815,9 +815,9 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                     })
                 );
 
-                // half of the liquidationFee goes to liquidator & another half goes to insurance fund
+                // 1/10 of the liquidationFee goes to liquidator & the remaining amount goes to insurance fund
                 liquidationPenalty = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio);
-                feeToLiquidator = liquidationPenalty / 2;
+                feeToLiquidator = liquidationPenalty / 10;
                 feeToInsuranceFund = liquidationPenalty - feeToLiquidator;
 
                 positionResp.position.margin = positionResp.position.margin - liquidationPenalty.toInt();
@@ -828,7 +828,7 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 // liquidationPenalty = getPosition(_amm, _trader).margin.abs();
                 positionResp = _closePosition(_amm, _trader, true);
                 uint256 remainMargin = positionResp.marginToVault < 0 ? positionResp.marginToVault.abs() : 0;
-                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio) / 2;
+                feeToLiquidator = positionResp.exchangedQuoteAssetAmount.mulD(_liquidationFeeRatio) / 10;
 
                 // if the remainMargin is not enough for liquidationFee, count it as bad debt
                 // else, then the rest will be transferred to insuranceFund

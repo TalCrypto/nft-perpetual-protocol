@@ -262,8 +262,8 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "68455640744970299585", // positionNotional
           toFullDigitBN(5), // positionSize
-          "855695509312128744", // feeToLiquidator
-          "855695509312128745", //feeToIF
+          "171139101862425748", // feeToLiquidator
+          "1540251916761831741", //feeToIF
           carol.address, // liquidator
           "0" // badDebt
         )
@@ -287,10 +287,8 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).margin).to.eq("19274981656679729691");
       expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).to.eq("43713253015241334");
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(toFullDigitBN(15));
-      // Change from 855695 to 5000855695509312128745 because perp v1 use 6 decimals quote token but we are using 18 decimals
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("855695509312128744");
-      // Change from 5000855695 to 5000855695509312128745
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("855695509312128745");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("171139101862425748");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("1540251916761831741");
     });
 
     it("partially liquidate a long position with quoteAssetAmountLimit", async () => {
@@ -386,8 +384,8 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "44258754381889405651", // positionNotional
           toFullDigitBN(6.25), // positionSize
-          "553234429773617570", // liquidationFee
-          "553234429773617571", // feeToIF
+          "110646885954723514", // liquidationFee
+          "995821973592511627", // feeToIF
           carol.address, // liquidator
           "0" // badDebt
         )
@@ -411,8 +409,8 @@ describe("ClearingHouse Liquidation Test", () => {
       expect((await clearingHouse.getPosition(amm.address, alice.address)).margin).to.eq("16079605164093693758");
       expect(await clearingHouse.getMarginRatio(amm.address, alice.address)).to.eq("45736327859926164");
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(toFullDigitBN(-18.75));
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("553234429773617570");
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("553234429773617571");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("110646885954723514");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("995821973592511627");
     });
 
     it("partially liquidate a short position with quoteAssetAmountLimit", async () => {
@@ -475,10 +473,10 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "224089635855963718818", // positionNotional 224.08
           "20000000000000000000", // positionSize
-          "2801120448199546485", // feeToLiquidator
+          "560224089639909297", // feeToLiquidator
           "0", //feeToIF
           carol.address, // liquidator
-          "3711484592235827667" // badDebt
+          "1470588233676190479" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -492,13 +490,13 @@ describe("ClearingHouse Liquidation Test", () => {
           "-25910364144036281182", // realizedPnl
           "0", // unrealizedPnlAfter
           "910364144036281182", // badDebt
-          "2801120448199546485", // liquidationPenalty margin<0 => liquidationPenalty=feeToLiquidator
+          "560224089639909297", // liquidationPenalty margin<0 => liquidationPenalty=feeToLiquidator
           "9070294784639239822", // spotPrice
           "0" // fundingPayment
         );
 
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("2801120448199546485");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("560224089639909297");
       // 5000 - 0.91 - 2.8
       expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
@@ -559,10 +557,10 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "228937728772189349135", // positionNotional
           "20000000000000000000", // positionSize
-          "5723443219304733728", // feeToLiquidator
-          "0", //feeToIF
+          "1144688643860946745", // feeToLiquidator
+          "2793040128328402390", //feeToIF
           carol.address, // liquidator
-          "1785714447115384593" // badDebt
+          "0" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -576,15 +574,15 @@ describe("ClearingHouse Liquidation Test", () => {
           "-21062271227810650865", // realizedPnl
           "0", // unrealizedPnlAfter
           "0", // badDebt
-          "5723443219304733728", // margin(25) + realizedPnL(-21.06) < feeToLiquidator => liquidationPenalty = liquidationFee
+          "3937728772189349135", // margin(25) + realizedPnL(-21.06) < feeToLiquidator => liquidationPenalty = liquidationFee
           "9245562124203459263", // spotPrice
           "0" // fundingPayment
         );
 
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("5723443219304733728");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("1144688643860946745");
       // 5000 - (liquidationFee-(initial margin + realizedPnl))
-      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
+      expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("2793040128328402390");
     });
 
     it("a short position is under water, thus liquidating the complete position", async () => {
@@ -615,10 +613,10 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "223493652777982118604", // positionNotional
           toFullDigitBN(25), // positionSize
-          "2793670659724776482", // liquidationFee
+          "558734131944955296", // liquidationFee
           "0", //
           carol.address, // liquidator
-          "6287323437706895086" // badDebt
+          "4052386909927073900" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -632,7 +630,7 @@ describe("ClearingHouse Liquidation Test", () => {
           "-23493652777982118604", // realizedPnl
           "0", // unrealizedPnlAfter
           "3493652777982118604", // badDebt
-          "2793670659724776482", // liquidationPenalty
+          "558734131944955296", // liquidationPenalty
           "11317338161935337063", // spotPrice
           "0" // fundingPayment
         );
@@ -659,7 +657,7 @@ describe("ClearingHouse Liquidation Test", () => {
       // })
 
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("2793670659724776482");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("558734131944955296");
       // 5000 - 3.49 - 2.79
       expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });
@@ -693,10 +691,10 @@ describe("ClearingHouse Liquidation Test", () => {
           amm.address, // amm
           "219298245415512465429", // positionNotional
           toFullDigitBN(25), // positionSize
-          "5482456135387811635", // feeToLiquidator,
+          "1096491227077562327", // feeToLiquidator,
           "0", // feeToIF
           carol.address, // liquidator
-          "4780701550900277064" // badDebt
+          "394736642590027756" // badDebt
         )
         .to.emit(clearingHouse, "PositionChanged")
         .withArgs(
@@ -710,13 +708,13 @@ describe("ClearingHouse Liquidation Test", () => {
           "-19298245415512465429", // realizedPnl
           "0", // unrealizedPnlAfter
           "0", // badDebt
-          "5482456135387811635", // liquidationPenalty
+          "1096491227077562327", // liquidationPenalty
           "11080332398775331684", // spotPrice
           "0" // fundingPayment
         );
 
       expect((await clearingHouse.getPosition(amm.address, alice.address)).size).to.eq(0);
-      expect(await quoteToken.balanceOf(carol.address)).to.eq("5482456135387811635");
+      expect(await quoteToken.balanceOf(carol.address)).to.eq("1096491227077562327");
       // 5000 - (liquidationFee-(initial margin + realizedPnl))
       expect(await quoteToken.balanceOf(insuranceFund.address)).to.eq("0");
     });

@@ -912,7 +912,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       // liquidator get half of the 5% liquidation fee = 294.11 * 2.5% ~= 7.352941
       // clearingHouse is depleted
       expect(await quoteToken.balanceOf(clearingHouse.address)).eq(3);
-      expect(await quoteToken.balanceOf(carol.address)).eq("7352941176470588235");
+      expect(await quoteToken.balanceOf(carol.address)).eq("1470588235294117647");
     });
 
     // the test for pointing out the calculation of margin ratio should be based on positionNotional instead of openNotional
@@ -959,7 +959,7 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
       await expectPositionChanged(tx, {
         realizedPnl: "-278761061946902654868",
         badDebt: "128761061946902654868",
-        liquidationPenalty: "8030973451327433628",
+        liquidationPenalty: "1606194690265486725",
       });
 
       const receipt = await tx.wait();
@@ -967,8 +967,8 @@ describe("ClearingHouse - open/close by quote asset Test", () => {
         return x.event == "PositionLiquidated";
       });
 
-      expect(event?.args?.[4]).to.eq("8030973451327433628");
-      expect(event?.args?.[7]).to.eq("136792035398230088496");
+      expect(event?.args?.[4]).to.eq("1606194690265486725");
+      expect(event?.args?.[7]).to.eq("130367256637168141593");
     });
 
     // it("alice's long position margin ratio is underwater, but oracle price kicked in, thus won't get liquidated", async () => {
