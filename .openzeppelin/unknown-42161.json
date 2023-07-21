@@ -5640,7 +5640,7 @@
             "label": "ammMap",
             "offset": 0,
             "slot": "301",
-            "type": "t_mapping(t_address,t_struct(AmmMap)5340_storage)",
+            "type": "t_mapping(t_address,t_struct(AmmMap)5408_storage)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:101"
           },
@@ -5656,7 +5656,7 @@
             "label": "insuranceFund",
             "offset": 0,
             "slot": "303",
-            "type": "t_contract(IInsuranceFund)11048",
+            "type": "t_contract(IInsuranceFund)9530",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:107"
           },
@@ -5664,7 +5664,7 @@
             "label": "tollPool",
             "offset": 0,
             "slot": "304",
-            "type": "t_contract(IMultiTokenRewardRecipient)11074",
+            "type": "t_contract(IMultiTokenRewardRecipient)9556",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:108"
           },
@@ -5680,7 +5680,7 @@
             "label": "vaults",
             "offset": 0,
             "slot": "306",
-            "type": "t_mapping(t_contract(IAmm)10893,t_uint256)",
+            "type": "t_mapping(t_contract(IAmm)9375,t_uint256)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:113"
           },
@@ -5688,7 +5688,7 @@
             "label": "netRevenuesSinceLastFunding",
             "offset": 0,
             "slot": "307",
-            "type": "t_mapping(t_contract(IAmm)10893,t_int256)",
+            "type": "t_mapping(t_contract(IAmm)9375,t_int256)",
             "contract": "ClearingHouse",
             "src": "contracts\\ClearingHouse.sol:116"
           },
@@ -5726,15 +5726,15 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IAmm)10893": {
+          "t_contract(IAmm)9375": {
             "label": "contract IAmm",
             "numberOfBytes": "20"
           },
-          "t_contract(IInsuranceFund)11048": {
+          "t_contract(IInsuranceFund)9530": {
             "label": "contract IInsuranceFund",
             "numberOfBytes": "20"
           },
-          "t_contract(IMultiTokenRewardRecipient)11074": {
+          "t_contract(IMultiTokenRewardRecipient)9556": {
             "label": "contract IMultiTokenRewardRecipient",
             "numberOfBytes": "20"
           },
@@ -5746,11 +5746,11 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(AmmMap)5340_storage)": {
+          "t_mapping(t_address,t_struct(AmmMap)5408_storage)": {
             "label": "mapping(address => struct ClearingHouse.AmmMap)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_address,t_struct(Position)10911_storage)": {
+          "t_mapping(t_address,t_struct(Position)9393_storage)": {
             "label": "mapping(address => struct IClearingHouse.Position)",
             "numberOfBytes": "32"
           },
@@ -5758,15 +5758,15 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_contract(IAmm)10893,t_int256)": {
+          "t_mapping(t_contract(IAmm)9375,t_int256)": {
             "label": "mapping(contract IAmm => int256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_contract(IAmm)10893,t_uint256)": {
+          "t_mapping(t_contract(IAmm)9375,t_uint256)": {
             "label": "mapping(contract IAmm => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(AmmMap)5340_storage": {
+          "t_struct(AmmMap)5408_storage": {
             "label": "struct ClearingHouse.AmmMap",
             "members": [
               {
@@ -5789,14 +5789,14 @@
               },
               {
                 "label": "positionMap",
-                "type": "t_mapping(t_address,t_struct(Position)10911_storage)",
+                "type": "t_mapping(t_address,t_struct(Position)9393_storage)",
                 "offset": 0,
                 "slot": "3"
               }
             ],
             "numberOfBytes": "128"
           },
-          "t_struct(Position)10911_storage": {
+          "t_struct(Position)9393_storage": {
             "label": "struct IClearingHouse.Position",
             "members": [
               {
@@ -6709,6 +6709,307 @@
           "t_uint16": {
             "label": "uint16",
             "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "3b388f576decdabbc09f2366695e897caff9aa590db1edae2c3deeba8d3725cc": {
+      "address": "0x98BcCAE7E298656d43ba28Ca4d949A308ee802F4",
+      "txHash": "0xccb3e147de0650f4c7c3774143c63b842bd18df75b48eeb84a30d806df885c1d",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "_paused",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_bool",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:29"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "PausableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\PausableUpgradeable.sol:116"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "OwnerPausableUpgradeSafe",
+            "src": "contracts\\OwnerPausable.sol:21"
+          },
+          {
+            "label": "_status",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_uint256",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:38"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "ReentrancyGuardUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\security\\ReentrancyGuardUpgradeable.sol:74"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_mapping(t_address,t_struct(AmmMap)5181_storage)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:101"
+          },
+          {
+            "label": "prepaidBadDebts",
+            "offset": 0,
+            "slot": "302",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:104"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "303",
+            "type": "t_contract(IInsuranceFund)10889",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:107"
+          },
+          {
+            "label": "tollPool",
+            "offset": 0,
+            "slot": "304",
+            "type": "t_contract(IMultiTokenRewardRecipient)10915",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:108"
+          },
+          {
+            "label": "backstopLiquidityProviderMap",
+            "offset": 0,
+            "slot": "305",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:110"
+          },
+          {
+            "label": "vaults",
+            "offset": 0,
+            "slot": "306",
+            "type": "t_mapping(t_contract(IAmm)10734,t_uint256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:113"
+          },
+          {
+            "label": "netRevenuesSinceLastFunding",
+            "offset": 0,
+            "slot": "307",
+            "type": "t_mapping(t_contract(IAmm)10734,t_int256)",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:116"
+          },
+          {
+            "label": "whitelistMaster",
+            "offset": 0,
+            "slot": "308",
+            "type": "t_address",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:118"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "309",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ClearingHouse",
+            "src": "contracts\\ClearingHouse.sol:120"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAmm)10734": {
+            "label": "contract IAmm",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IInsuranceFund)10889": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IMultiTokenRewardRecipient)10915": {
+            "label": "contract IMultiTokenRewardRecipient",
+            "numberOfBytes": "20"
+          },
+          "t_int256": {
+            "label": "int256",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(AmmMap)5181_storage)": {
+            "label": "mapping(address => struct ClearingHouse.AmmMap)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(Position)10752_storage)": {
+            "label": "mapping(address => struct IClearingHouse.Position)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10734,t_int256)": {
+            "label": "mapping(contract IAmm => int256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)10734,t_uint256)": {
+            "label": "mapping(contract IAmm => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AmmMap)5181_storage": {
+            "label": "struct ClearingHouse.AmmMap",
+            "members": [
+              {
+                "label": "lastRestrictionBlock",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "latestCumulativePremiumFractionLong",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "latestCumulativePremiumFractionShort",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "positionMap",
+                "type": "t_mapping(t_address,t_struct(Position)10752_storage)",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          },
+          "t_struct(Position)10752_storage": {
+            "label": "struct IClearingHouse.Position",
+            "members": [
+              {
+                "label": "size",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "margin",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "openNotional",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdatedCumulativePremiumFraction",
+                "type": "t_int256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
           },
           "t_uint256": {
             "label": "uint256",
