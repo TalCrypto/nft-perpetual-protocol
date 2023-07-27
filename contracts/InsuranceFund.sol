@@ -282,14 +282,33 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
     function getAvailableBudgetFor(IAmm _amm) external view override returns (uint256 budget) {
         budget = budgetsAllocated[_amm];
         address _ethStakingPool = ethStakingPool;
-        if (_ethStakingPool != address(0)) {
-            IClearingHouse clearingHouse = IClearingHouse(beneficiary);
-            uint256 currentVault = clearingHouse.getVaultFor(_amm);
+        if (_ethStakingPool != address(0) && _amm.open()) {
+            IAmm[] memory _amms = amms;
+            uint256 i;
+            uint256 totalNotional;
+            uint256 price;
+            int256 netPositionSize;
+            uint256 ammPrice;
+            int256 ammNetPositionSize;
+            for (i; i < _amms.length; ) {
+                if (_amms[i].open()) {
+                    price = _amms[i].getSpotPrice();
+                    netPositionSize = _amms[i].getBaseAssetDelta();
+                    totalNotional += netPositionSize.abs().mulD(price);
+                    if (_amms[i] == _amm) {
+                        ammPrice = price;
+                        ammNetPositionSize = netPositionSize;
+                    }
+                }
+                unchecked {
+                    i++;
+                }
+            }
+            uint256 ammNotional = ammNetPositionSize.abs().mulD(ammPrice);
             IERC20 quoteToken = _amm.quoteAsset();
-            uint256 totalVault = quoteToken.balanceOf(address(clearingHouse));
             uint256 balanceOfStakingPool = quoteToken.balanceOf(_ethStakingPool);
-            if (totalVault != 0) {
-                budget += Math.mulDiv(balanceOfStakingPool, currentVault, totalVault);
+            if (totalNotional != 0) {
+                budget += Math.mulDiv(balanceOfStakingPool, ammNotional, totalNotional);
             }
         }
     }

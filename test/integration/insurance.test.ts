@@ -3,9 +3,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { AmmFake, ClearingHouseFake, ERC20Fake, ETHStakingPool, InsuranceFundFake, L2PriceFeedMock } from "../../typechain-types";
-import { Side } from "../../utils/contract";
+import { Side, deployAmm } from "../../utils/contract";
 import { fullDeploy } from "../../utils/deploy";
 import { toFullDigitBN } from "../../utils/number";
+import { BigNumber } from "ethers";
+import { formatEther } from "ethers/lib/utils";
 
 describe("fund flow test", async () => {
   let admin: SignerWithAddress;
@@ -14,6 +16,7 @@ describe("fund flow test", async () => {
 
   let clearingHouse: ClearingHouseFake;
   let amm: AmmFake;
+  let amm2: AmmFake;
   let insuranceFund: InsuranceFundFake;
   let ethStakingPool: ETHStakingPool;
   let mockPriceFeed: L2PriceFeedMock;
@@ -40,6 +43,33 @@ describe("fund flow test", async () => {
     const clearingHouseViewer = contracts.clearingHouseViewer;
     const ethStakingPool = contracts.ethStakingPool;
 
+    const amm2 = await deployAmm({
+      deployer: admin!,
+      quoteAssetTokenAddr: quoteToken.address,
+      priceFeedAddr: mockPriceFeed.address,
+      fundingPeriod: BigNumber.from(86400), // to make calculation easier we set fundingPeriod = 1 day
+      fluctuation: toFullDigitBN(0),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      quoteAssetReserve: toFullDigitBN(1000),
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      baseAssetReserve: toFullDigitBN(100),
+      tollRatio: BigNumber.from(0),
+      spreadRatio: BigNumber.from(0),
+    });
+
+    await amm2.mockSetIMRatio(toFullDigitBN(0.05));
+    await amm2.mockSetMMRatio(toFullDigitBN(0.05));
+    await amm2.mockSetLFRatio(toFullDigitBN(0.05));
+    await amm2.setPartialLiquidationRatio(toFullDigitBN(0));
+    await amm2.setGlobalShutdown(insuranceFund.address);
+    await amm2.setCounterParty(clearingHouse.address);
+    await insuranceFund.addAmm(amm2.address);
+
+    await amm2.setOpen(true);
+
+    await amm2.setFundingCostCoverRate(toFullDigitBN(1));
+    await amm2.setFundingRevenueTakeRate(toFullDigitBN(1));
+
     // clearingHouse = contracts.clearingHouse;
 
     // Each of Alice & Bob have 5000 DAI
@@ -57,7 +87,7 @@ describe("fund flow test", async () => {
     const marketPrice = await amm.getSpotPrice();
     await mockPriceFeed.setTwapPrice(marketPrice);
 
-    return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
+    return { admin, alice, bob, amm, amm2, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
   }
 
   beforeEach(async () => {
@@ -66,6 +96,7 @@ describe("fund flow test", async () => {
     alice = fixture.alice;
     bob = fixture.bob;
     amm = fixture.amm;
+    amm2 = fixture.amm2;
     insuranceFund = fixture.insuranceFund;
     quoteToken = fixture.quoteToken;
     mockPriceFeed = fixture.mockPriceFeed;
@@ -82,7 +113,12 @@ describe("fund flow test", async () => {
       await ethStakingPool.stake(toFullDigitBN(10));
       await amm.setSpreadRatio(toFullDigitBN(0.001));
       await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(5), toFullDigitBN(0), true);
-      expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(10.6));
+      await clearingHouse.connect(alice).openPosition(amm2.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(5), toFullDigitBN(0), true);
+
+      const budget1 = await insuranceFund.getAvailableBudgetFor(amm.address);
+      const budget2 = await insuranceFund.getAvailableBudgetFor(amm2.address);
+      expect(budget1).eq(toFullDigitBN(5.6));
+      expect(budget2).eq(toFullDigitBN(5));
     });
     it("only insurance fund is used to cover cost when insurance fund is enough", async () => {
       await ethStakingPool.stake(toFullDigitBN(10));
