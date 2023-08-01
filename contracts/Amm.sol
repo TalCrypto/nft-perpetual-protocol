@@ -195,7 +195,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         liquidationFeeRatio = 0.05 ether; // 5% - 66.66% of maintenance margin
 
         repegPriceGapRatio = 0; // 0%
-        fundingCostCoverRate = 0.5 ether; // system covers 50% of normal funding payment when cost
+        fundingCostCoverRate = 0.15 ether; // system covers 15% of normal funding payment when cost
         fundingRevenueTakeRate = 1 ether; // system take 100% of normal funding payment when revenue
 
         ptcKIncreaseMax = 1.005 ether; // 100.5% (0.5%) increase
