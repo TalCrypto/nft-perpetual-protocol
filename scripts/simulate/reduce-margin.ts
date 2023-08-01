@@ -55,50 +55,11 @@ async function main() {
   const impersonatedSigners = await Promise.all(promises);
 
   // make balance enough for tx
-  await impersonatedSigners[4].sendTransaction({
-    to: impersonatedSigners[5].address,
-    value: (await impersonatedSigners[4].getBalance()).div(BigNumber.from(2)), // 1 ether
-  });
-  await impersonatedSigners[8].sendTransaction({
-    to: impersonatedSigners[13].address,
-    value: parseEther("0.01"),
-  });
-  await impersonatedSigners[8].sendTransaction({
-    to: impersonatedSigners[14].address,
-    value: parseEther("0.02"),
-  });
-  await impersonatedSigners[8].sendTransaction({
-    to: impersonatedSigners[19].address,
-    value: parseEther("0.01"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[22].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[25].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[30].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[32].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[34].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[35].address,
-    value: parseEther("0.1"),
-  });
-  await impersonatedSigners[29].sendTransaction({
-    to: impersonatedSigners[37].address,
-    value: parseEther("0.1"),
-  });
+  const setBalPromises = impersonatedSigners.map((signer) =>
+    ethers.provider.send("hardhat_setBalance", [signer.address, parseEther("0.1").toHexString().replace("0x0", "0x")])
+  );
+
+  await Promise.all(setBalPromises);
 
   const balPromises = impersonatedSigners.map((signer) => signer.getBalance());
   const balances = await Promise.all(balPromises);
