@@ -68,6 +68,10 @@ const config = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      forking: {
+        url: "https://arb-mainnet.g.alchemy.com/v2/XY2OuQR0tqpTi-WY_yljupj20HFlfVok",
+        blockNumber: 116915111,
+      },
     },
     arbitrum_goerli: {
       url: "https://goerli-rollup.arbitrum.io/rpc/",
