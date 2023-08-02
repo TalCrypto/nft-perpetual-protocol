@@ -2,6 +2,7 @@ import { ethers, network, upgrades } from "hardhat";
 import { getAddresses } from "../../publish/addresses";
 import { formatEther, parseEther } from "ethers/lib/utils";
 import { BigNumber, constants } from "ethers";
+import { Amm } from "../../typechain-types";
 const B_ONE = ethers.utils.parseEther("1");
 const maycTraders = [
   "0x1b0f13884ac076ac6013ec5ef947222b933fd410",
@@ -49,10 +50,6 @@ const baseReserveSlot = "0xA1";
 
 async function main() {
   const addresses = getAddresses("arbitrum");
-  const ch = await ethers.getContractAt("ClearingHouse", addresses.clearingHouse);
-  const chViewer = await ethers.getContractAt("ClearingHouseViewer", addresses.clearingHouseViewer);
-  const IF = await ethers.getContractAt("InsuranceFund", addresses.insuranceFund);
-  const stakingPool = await ethers.getContractAt("ETHStakingPool", addresses.ethStakingPool);
   const ammAddress = addresses.amm.MAYCETH ?? "";
   await simulateRepegForAMM(ammAddress);
 }
@@ -66,13 +63,18 @@ async function simulateRepegForAMM(ammAddress: string) {
   const targetPrice = await amm.getUnderlyingPrice();
   const positionSize = await amm.getBaseAssetDelta();
 
-  console.log("before", formatEther(quoteReserve), formatEther(baseReserve));
+  console.log("reserves before", formatEther(quoteReserve), formatEther(baseReserve));
 
   const { newQuoteAssetReserve, newBaseAssetReserve } = calcReservesAfterRepeg(spotPrice, baseReserve, targetPrice, positionSize);
 
-  const repegCost = calcRevenueForAdjustReserves(quoteReserve, baseReserve, positionSize, newQuoteAssetReserve, newBaseAssetReserve);
+  const repegCost = calcRevenueForAdjustReserves(quoteReserve, baseReserve, positionSize, newQuoteAssetReserve, newBaseAssetReserve).mul(
+    BigNumber.from(-1)
+  );
 
   console.log("repeg cost", formatEther(repegCost));
+
+  const badDebtBefore = await calcBadDebt(amm);
+  console.log("bad debt before", formatEther(badDebtBefore));
 
   await ethers.provider.send("hardhat_setStorageAt", [
     ammAddress,
@@ -84,10 +86,44 @@ async function simulateRepegForAMM(ammAddress: string) {
     baseReserveSlot,
     ethers.utils.hexlify(ethers.utils.zeroPad(newBaseAssetReserve.toHexString(), 32)),
   ]);
-
   const q = await amm.quoteAssetReserve();
   const b = await amm.baseAssetReserve();
-  console.log("after", formatEther(q), formatEther(b));
+  console.log("reserves after", formatEther(q), formatEther(b));
+
+  // bad debt = collateral - vault = collateral - (vault before + repegCost) = collateral - vault before - repegCost = bade debt after - repegCost
+  const badDebtAfter = (await calcBadDebt(amm)).sub(repegCost);
+  console.log("bad debt after", formatEther(badDebtAfter));
+  console.log("decrease in bad debt", formatEther(badDebtBefore.sub(badDebtAfter)));
+}
+
+async function calcBadDebt(amm: Amm) {
+  const addresses = getAddresses("arbitrum");
+  const chViewer = await ethers.getContractAt("ClearingHouseViewer", addresses.clearingHouseViewer);
+  const ch = await ethers.getContractAt("ClearingHouse", addresses.clearingHouse);
+  const vault = await ch.vaults(amm.address);
+  const positionSize = await amm.getBaseAssetDelta();
+  const absNetNotional = await amm.getBasePrice(positionSize.isNegative() ? 1 : 0, positionSize.abs());
+  const settlementPrice = absNetNotional.mul(B_ONE).div(positionSize.abs());
+  console.log("settlementPrice", formatEther(settlementPrice));
+  const positionInfoPromise = maycTraders.map((trader) => chViewer.getTraderPositionInfo(amm.address, trader));
+  const positionInfos = await Promise.all(positionInfoPromise);
+  const unrealizedPnlSettleArray = positionInfos.map((info) => {
+    const signedOpenNotional = info.openNotional.mul(BigNumber.from((-1) ** (info.positionSize.isNegative() ? 1 : 0)));
+    const signedNotionalSettle = settlementPrice.mul(info.positionSize).div(B_ONE);
+    return signedNotionalSettle.sub(signedOpenNotional);
+  });
+  const collateralSettle = positionInfos.map((info, index) => {
+    return info.openMargin.add(info.fundingPayment).add(unrealizedPnlSettleArray[index]);
+  });
+  const totalCollateralSettle = collateralSettle.reduce((val, collateral) => {
+    if (collateral.isNegative()) {
+      return val;
+    } else {
+      return val.add(collateral);
+    }
+  }, constants.Zero);
+  const badDebt = totalCollateralSettle.sub(vault);
+  return badDebt;
 }
 
 function calcReservesAfterRepeg(spotPrice: BigNumber, baseAssetReserve: BigNumber, targetPrice: BigNumber, positionSize: BigNumber) {
