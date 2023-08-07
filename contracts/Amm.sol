@@ -57,8 +57,6 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     uint8 public constant MIN_NUM_REPEG_FLAG = 3;
 
-    uint256 public constant BASE_DECREASE_RATIO = 0.001 ether;
-
     //**********************************************************//
     //    The below state variables can not change the order    //
     //**********************************************************//
@@ -127,6 +125,7 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
 
     uint256 public quoteReserveLowerLimit;
     uint256 public quoteReserveUpperLimit;
+    uint256 public ptcBaseDecrease;
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
 
@@ -642,6 +641,11 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
         quoteReserveUpperLimit = _limit;
     }
 
+    function setPtcBaseDecrease(uint256 _rate) external onlyOwner {
+        require(_rate < 1 ether && _rate > 0, "AMM_IDR"); // invalid decrease ratio
+        ptcBaseDecrease = _rate;
+    }
+
     //
     // VIEW FUNCTIONS
     //
@@ -690,14 +694,14 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 } else if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
                     // if decreasing and the target is bigger than the upper limit
                     // decrease more by base pct
-                    newQuoteAssetReserve = newQuoteAssetReserve - _quoteAssetReserve.mulD(BASE_DECREASE_RATIO);
-                    newBaseAssetReserve = newBaseAssetReserve - _baseAssetReserve.mulD(BASE_DECREASE_RATIO);
+                    newQuoteAssetReserve = newQuoteAssetReserve - _quoteAssetReserve.mulD(ptcBaseDecrease);
+                    newBaseAssetReserve = newBaseAssetReserve - _baseAssetReserve.mulD(ptcBaseDecrease);
                     isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
                 } else if (newQuoteAssetReserve > _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
                     // if increasing and target is bigger than upper limit
-                    // make it decrease by 0.1%
-                    newQuoteAssetReserve = _quoteAssetReserve.mulD(1 ether - BASE_DECREASE_RATIO);
-                    newBaseAssetReserve = _baseAssetReserve.mulD(1 ether - BASE_DECREASE_RATIO);
+                    // make it decrease by ptcBaseDecrease
+                    newQuoteAssetReserve = _quoteAssetReserve.mulD(1 ether - ptcBaseDecrease);
+                    newBaseAssetReserve = _baseAssetReserve.mulD(1 ether - ptcBaseDecrease);
                     isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
                 } else {
                     isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();

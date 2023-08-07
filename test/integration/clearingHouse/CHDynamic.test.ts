@@ -122,6 +122,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     await quoteToken.approve(ethStakingPool.address, toFullDigitBN(5000));
     await amm.mockSetSpreadCheck(true);
     await amm.setQuoteReserveUpperLimit(ethers.constants.MaxUint256);
+    await amm.setPtcBaseDecrease(toFullDigitBN(0.001));
 
     return { admin, alice, bob, amm, insuranceFund, quoteToken, mockPriceFeed, clearingHouse, clearingHouseViewer, ethStakingPool };
   }
