@@ -176,4 +176,8 @@ interface IAmm {
             int256 fundingPayment,
             uint256 underlyingPrice
         );
+
+    function kRevenueTakeRate() external view returns (uint256);
+
+    function kCostCoverRate() external view returns (uint256);
 }
