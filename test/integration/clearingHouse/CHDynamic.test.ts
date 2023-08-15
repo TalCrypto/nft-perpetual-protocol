@@ -156,6 +156,14 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         // net revenue = 6.5
         // total revenue = 8.5
       });
+      it("should not increase k when max increase rate is 1", async () => {
+        await amm.setKIncreaseMax(toFullDigitBN(1));
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        await clearingHouse.payFunding(amm.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(1));
+      });
       it("should increase k", async () => {
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         await clearingHouse.payFunding(amm.address);
