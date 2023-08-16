@@ -156,13 +156,23 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         // net revenue = 6.5
         // total revenue = 8.5
       });
-      it("should not increase k when max increase rate is 1", async () => {
+      it("should not increase k when max increase rate is 1 and current reserve is under upper limit", async () => {
         await amm.setKIncreaseMax(toFullDigitBN(1));
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         await clearingHouse.payFunding(amm.address);
         const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
         expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(1));
+      });
+      it("should decrease k by 0.1% when max increase rate is 1 and current reserve is above upper limit", async () => {
+        await amm.setKIncreaseMax(toFullDigitBN(1));
+        await amm.setQuoteReserveUpperLimit(toFullDigitBN(1000));
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        await clearingHouse.payFunding(amm.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(0.999));
+        expect(baseAssetReserveAfter.mul(toFullDigitBN(1)).div(baseAssetReserveBefore)).eq(toFullDigitBN(0.999));
       });
       it("should increase k", async () => {
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
@@ -171,7 +181,7 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
         expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).gt(toFullDigitBN(1));
       });
-      it("should decrease k by 0.1% if the target is bigger than upper limit", async () => {
+      it("should decrease k by 0.1% if the current reserve is bigger than upper limit", async () => {
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         await amm.setQuoteReserveUpperLimit(toFullDigitBN(1000));
         await clearingHouse.payFunding(amm.address);
