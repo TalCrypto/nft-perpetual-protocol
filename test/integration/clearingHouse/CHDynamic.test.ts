@@ -101,6 +101,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
     await amm.setSpreadRatio(toFullDigitBN(0.01));
     await amm.setKIncreaseMax(toFullDigitBN(1.5));
     await amm.setKDecreaseMax(toFullDigitBN(0.5));
+    await amm.setKCostCoverRate(toFullDigitBN(1));
+    await amm.setKRevenueTakeRate(toFullDigitBN(1));
 
     // given alice takes 2x short position (-25B) with 100 margin
     await quoteToken.connect(alice).approve(clearingHouse.address, toFullDigitBN(5000));
@@ -154,6 +156,14 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         // net revenue = 6.5
         // total revenue = 8.5
       });
+      it("should not increase k when max increase rate is 1", async () => {
+        await amm.setKIncreaseMax(toFullDigitBN(1));
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        await clearingHouse.payFunding(amm.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).eq(toFullDigitBN(1));
+      });
       it("should increase k", async () => {
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
         await clearingHouse.payFunding(amm.address);
@@ -200,6 +210,20 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
           .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "2125000000000000001");
         expect(ifBalAfter.sub(ifBalBefore)).eq("-125000000000000001");
       });
+      it("total/4 * 0.25 is used for increasing K when coverRate is 0.25", async () => {
+        // k cost = (2 + 6.5)/4 * 0.25 = 0.53125
+        // funding revenue = 2
+        // total revenue = 2 - 0.53125 = 1.46875
+        await amm.setKCostCoverRate(toFullDigitBN(0.25));
+        const ifBalBefore = await quoteToken.balanceOf(insuranceFund.address);
+        const tx = await clearingHouse.payFunding(amm.address);
+        const ifBalAfter = await quoteToken.balanceOf(insuranceFund.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        await expect(tx)
+          .to.emit(clearingHouse, "UpdateK")
+          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "531250000000000000");
+        expect(ifBalAfter.sub(ifBalBefore)).eq("1468750000000000000");
+      });
     });
     describe("when total is cost", () => {
       beforeEach(async () => {
@@ -213,7 +237,8 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         await ethStakingPool.stake(toFullDigitBN(1.76));
         expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(8.26));
         // budget = 8.26
-        // -3.5/2 = -1.75
+        // k revenue  3.5*065 = 2.275
+        // total cost 10 - 2.275 = 7.725
         const ifBalBefore = await insuranceFund.getAvailableBudgetFor(amm.address);
         // await quoteToken.balanceOf(insuranceFund.address);
         const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
@@ -226,7 +251,31 @@ describe("ClearingHouse Dynamic Adjustment Test", () => {
         await expect(tx)
           .to.emit(clearingHouse, "UpdateK")
           .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-2275682704811443433");
-        expect(ifBalAfter.sub(ifBalBefore)).eq("-7724317295188556567"); // =1.75-10
+        expect(ifBalAfter.sub(ifBalBefore)).eq("-7724317295188556567");
+      });
+      it("65% * 0.25 is recovered through K decreasing when insurance fund is enough to pay 35% of total cost when k revenue take rate is 0.25", async () => {
+        await amm.setKRevenueTakeRate(toFullDigitBN(0.25));
+        await ethStakingPool.stake(toFullDigitBN(3));
+        expect(await insuranceFund.getAvailableBudgetFor(amm.address)).eq(toFullDigitBN(9.5));
+        // budget = 9.5
+        // net cost = 3.5
+        // original k decrease revenue = 3.5*065
+        // k taking revenue 3.5*065*0.25 = 0.56875
+        // funding cost = 10
+        // total cost 10 - 0.56875 = 9.43125
+        const ifBalBefore = await insuranceFund.getAvailableBudgetFor(amm.address);
+        // await quoteToken.balanceOf(insuranceFund.address);
+        const [quoteAssetReserveBefore, baseAssetReserveBefore] = await amm.getReserve();
+        const tx = await clearingHouse.payFunding(amm.address);
+        const ifBalAfter = await insuranceFund.getAvailableBudgetFor(amm.address);
+        //await quoteToken.balanceOf(insuranceFund.address);
+        const [quoteAssetReserveAfter, baseAssetReserveAfter] = await amm.getReserve();
+        expect(quoteAssetReserveBefore.div(baseAssetReserveBefore)).eq(quoteAssetReserveAfter.div(baseAssetReserveAfter));
+        expect(quoteAssetReserveAfter.mul(toFullDigitBN(1)).div(quoteAssetReserveBefore)).lt(toFullDigitBN(1));
+        await expect(tx)
+          .to.emit(clearingHouse, "UpdateK")
+          .withArgs(amm.address, quoteAssetReserveAfter, baseAssetReserveAfter, "-568920676202860858");
+        expect(ifBalAfter.sub(ifBalBefore)).eq("-9431079323797139142");
       });
       it("65% is recovered with additional 0.1% decreasing through K decreasing when insurance fund is enough to pay 35% of total cost when target is above the upper limit", async () => {
         await ethStakingPool.stake(toFullDigitBN(1.76));

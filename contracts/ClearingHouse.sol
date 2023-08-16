@@ -667,6 +667,14 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
                 );
             }
             if (isAdjustable) {
+                // not move full of k revenue or cost to decrease system leverage
+                if (kAdjustmentCost < 0) {
+                    // when K decreasing with revenue
+                    kAdjustmentCost = -(kAdjustmentCost.abs().mulD(_amm.kRevenueTakeRate())).toInt();
+                } else {
+                    // when K increasig with cost
+                    kAdjustmentCost = kAdjustmentCost.abs().mulD(_amm.kCostCoverRate()).toInt();
+                }
                 _amm.adjust(newQuoteAssetReserve, newBaseAssetReserve);
                 emit UpdateK(address(_amm), newQuoteAssetReserve, newBaseAssetReserve, kAdjustmentCost);
             }

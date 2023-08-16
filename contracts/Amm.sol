@@ -126,6 +126,8 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     uint256 public quoteReserveLowerLimit;
     uint256 public quoteReserveUpperLimit;
     uint256 public ptcBaseDecrease;
+    uint256 public override kRevenueTakeRate;
+    uint256 public override kCostCoverRate;
 
     //◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣ add state variables above ◢◣◢◣◢◣◢◣◢◣◢◣◢◣◢◣//
 
@@ -619,12 +621,12 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     }
 
     function setKIncreaseMax(uint256 _rate) external onlyOwner {
-        require(_rate > 1 ether, "AMM_IIR"); // invalid increase ratio
+        require(_rate >= 1 ether, "AMM_IIR"); // invalid increase ratio
         ptcKIncreaseMax = _rate;
     }
 
     function setKDecreaseMax(uint256 _rate) external onlyOwner {
-        require(_rate < 1 ether && _rate > 0, "AMM_IDR"); // invalid decrease ratio
+        require(_rate <= 1 ether && _rate > 0, "AMM_IDR"); // invalid decrease ratio
         ptcKDecreaseMax = _rate;
     }
 
@@ -644,6 +646,16 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
     function setPtcBaseDecrease(uint256 _rate) external onlyOwner {
         require(_rate < 1 ether && _rate > 0, "AMM_IDR"); // invalid decrease ratio
         ptcBaseDecrease = _rate;
+    }
+
+    function setKRevenueTakeRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
+        kRevenueTakeRate = _rate;
+    }
+
+    function setKCostCoverRate(uint256 _rate) external onlyOwner {
+        _requireRatio(_rate);
+        kCostCoverRate = _rate;
     }
 
     //
