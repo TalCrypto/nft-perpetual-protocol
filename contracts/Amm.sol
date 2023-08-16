@@ -696,7 +696,18 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                 })
             );
             if (scaleNum == scaleDenom || scaleDenom == 0 || scaleNum == 0) {
-                isAdjustable = false;
+                // if there is no need to update k and current is bigger than upper limit, decrease by ptcBaseDecrease
+                // as long as the target is not under the lower limit
+                // otherwise don't update k
+                if (_quoteAssetReserve > quoteReserveUpperLimit) {
+                    newQuoteAssetReserve = _quoteAssetReserve.mulD(1 ether - ptcBaseDecrease);
+                    newBaseAssetReserve = _baseAssetReserve.mulD(1 ether - ptcBaseDecrease);
+                    isAdjustable =
+                        (_positionSize >= 0 || newBaseAssetReserve > _positionSize.abs()) &&
+                        newQuoteAssetReserve >= quoteReserveLowerLimit;
+                } else {
+                    isAdjustable = false;
+                }
             } else {
                 newQuoteAssetReserve = Math.mulDiv(_quoteAssetReserve, scaleNum, scaleDenom);
                 newBaseAssetReserve = Math.mulDiv(_baseAssetReserve, scaleNum, scaleDenom);
@@ -705,28 +716,32 @@ contract Amm is IAmm, OwnableUpgradeableSafe, BlockContext {
                     isAdjustable = false;
                 } else if (newQuoteAssetReserve < _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
                     // if decreasing and the target is bigger than the upper limit
-                    // decrease more by base pct
-                    newQuoteAssetReserve = newQuoteAssetReserve - _quoteAssetReserve.mulD(ptcBaseDecrease);
-                    newBaseAssetReserve = newBaseAssetReserve - _baseAssetReserve.mulD(ptcBaseDecrease);
-                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
-                } else if (newQuoteAssetReserve > _quoteAssetReserve && newQuoteAssetReserve > quoteReserveUpperLimit) {
-                    // if increasing and target is bigger than upper limit
-                    // make it decrease by ptcBaseDecrease
+                    // decrease more by base pct when the new target is bigger than or equal to the lower limit, otherwise decrease normally
+                    if (newQuoteAssetReserve - _quoteAssetReserve.mulD(ptcBaseDecrease) >= quoteReserveLowerLimit) {
+                        newQuoteAssetReserve = newQuoteAssetReserve - _quoteAssetReserve.mulD(ptcBaseDecrease);
+                        newBaseAssetReserve = newBaseAssetReserve - _baseAssetReserve.mulD(ptcBaseDecrease);
+                    }
+                    isAdjustable = (_positionSize >= 0 || newBaseAssetReserve > _positionSize.abs());
+                } else if (newQuoteAssetReserve > _quoteAssetReserve && _quoteAssetReserve > quoteReserveUpperLimit) {
+                    // if increasing and current quote reserve is bigger than upper limit
+                    // make it decrease by ptcBaseDecrease as long as the target is not under the lower limit
                     newQuoteAssetReserve = _quoteAssetReserve.mulD(1 ether - ptcBaseDecrease);
                     newBaseAssetReserve = _baseAssetReserve.mulD(1 ether - ptcBaseDecrease);
-                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                    isAdjustable =
+                        (_positionSize >= 0 || newBaseAssetReserve > _positionSize.abs()) &&
+                        newQuoteAssetReserve >= quoteReserveLowerLimit;
                 } else {
-                    isAdjustable = _positionSize >= 0 || newBaseAssetReserve > _positionSize.abs();
+                    isAdjustable = (_positionSize >= 0 || newBaseAssetReserve > _positionSize.abs());
                 }
-                if (isAdjustable) {
-                    cost = AmmMath.calcCostForAdjustReserves(
-                        _quoteAssetReserve,
-                        _baseAssetReserve,
-                        _positionSize,
-                        newQuoteAssetReserve,
-                        newBaseAssetReserve
-                    );
-                }
+            }
+            if (isAdjustable) {
+                cost = AmmMath.calcCostForAdjustReserves(
+                    _quoteAssetReserve,
+                    _baseAssetReserve,
+                    _positionSize,
+                    newQuoteAssetReserve,
+                    newBaseAssetReserve
+                );
             }
         }
     }
