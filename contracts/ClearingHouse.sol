@@ -320,41 +320,42 @@ contract ClearingHouse is IClearingHouse, IInsuranceFundCallee, OwnerPausableUpg
      * @param _amm IAmm address
      */
     function settlePosition(IAmm _amm) external nonReentrant checkAccess {
-        // check condition
-        _requireAmm(_amm, false);
-        address trader = _msgSender();
-        Position memory pos = getPosition(_amm, trader);
-        _requirePositionSize(pos.size);
-        // update position
-        _setPosition(
-            _amm,
-            trader,
-            Position({ size: 0, margin: 0, openNotional: 0, lastUpdatedCumulativePremiumFraction: 0, blockNumber: _blockNumber() })
-        );
-        // calculate settledValue
-        // If Settlement Price = 0, everyone takes back her collateral.
-        // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
-        uint256 settlementPrice = _amm.getSettlementPrice();
-        uint256 settledValue;
-        if (settlementPrice == 0 && pos.margin > 0) {
-            settledValue = pos.margin.abs();
-        } else {
-            // returnedFund = positionSize * (settlementPrice - openPrice) + positionMargin
-            // openPrice = positionOpenNotional / positionSize.abs()
-            int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) + pos.margin;
-            // if `returnedFund` is negative, trader can't get anything back
-            if (returnedFund > 0) {
-                settledValue = returnedFund.abs();
-            }
-        }
-        // transfer token based on settledValue. no insurance fund support
-        if (settledValue > 0) {
-            _withdraw(_amm, trader, settledValue);
-            // _amm.quoteAsset().safeTransfer(trader, settledValue);
-            //_transfer(_amm.quoteAsset(), trader, settledValue);
-        }
-        // emit event
-        emit PositionSettled(address(_amm), trader, settledValue);
+        revert("CH_NS"); // not supported
+        // // check condition
+        // _requireAmm(_amm, false);
+        // address trader = _msgSender();
+        // Position memory pos = getPosition(_amm, trader);
+        // _requirePositionSize(pos.size);
+        // // update position
+        // _setPosition(
+        //     _amm,
+        //     trader,
+        //     Position({ size: 0, margin: 0, openNotional: 0, lastUpdatedCumulativePremiumFraction: 0, blockNumber: _blockNumber() })
+        // );
+        // // calculate settledValue
+        // // If Settlement Price = 0, everyone takes back her collateral.
+        // // else Returned Fund = Position Size * (Settlement Price - Open Price) + Collateral
+        // uint256 settlementPrice = _amm.getSettlementPrice();
+        // uint256 settledValue;
+        // if (settlementPrice == 0 && pos.margin > 0) {
+        //     settledValue = pos.margin.abs();
+        // } else {
+        //     // returnedFund = positionSize * (settlementPrice - openPrice) + positionMargin
+        //     // openPrice = positionOpenNotional / positionSize.abs()
+        //     int256 returnedFund = pos.size.mulD(settlementPrice.toInt() - (pos.openNotional.divD(pos.size.abs())).toInt()) + pos.margin;
+        //     // if `returnedFund` is negative, trader can't get anything back
+        //     if (returnedFund > 0) {
+        //         settledValue = returnedFund.abs();
+        //     }
+        // }
+        // // transfer token based on settledValue. no insurance fund support
+        // if (settledValue > 0) {
+        //     _withdraw(_amm, trader, settledValue);
+        //     // _amm.quoteAsset().safeTransfer(trader, settledValue);
+        //     //_transfer(_amm.quoteAsset(), trader, settledValue);
+        // }
+        // // emit event
+        // emit PositionSettled(address(_amm), trader, settledValue);
     }
 
     // if increase position
