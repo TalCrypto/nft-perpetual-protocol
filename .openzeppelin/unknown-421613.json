@@ -1321,7 +1321,7 @@
             "label": "insuranceFund",
             "offset": 0,
             "slot": "152",
-            "type": "t_contract(IInsuranceFund)12177",
+            "type": "t_contract(IInsuranceFund)12736",
             "contract": "ETHStakingPool",
             "src": "contracts\\ETHStakingPool.sol:17"
           },
@@ -1395,7 +1395,7 @@
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
-          "t_contract(IInsuranceFund)12177": {
+          "t_contract(IInsuranceFund)12736": {
             "label": "contract IInsuranceFund",
             "numberOfBytes": "20"
           },
@@ -5346,7 +5346,7 @@
             "label": "amms",
             "offset": 0,
             "slot": "153",
-            "type": "t_array(t_contract(IAmm)2557)dyn_storage",
+            "type": "t_array(t_contract(IAmm)12550)dyn_storage",
             "contract": "InsuranceFund",
             "src": "contracts\\InsuranceFund.sol:28"
           },
@@ -5354,7 +5354,7 @@
             "label": "quoteTokens",
             "offset": 0,
             "slot": "154",
-            "type": "t_array(t_contract(IERC20)645)dyn_storage",
+            "type": "t_array(t_contract(IERC20)831)dyn_storage",
             "contract": "InsuranceFund",
             "src": "contracts\\InsuranceFund.sol:29"
           },
@@ -5370,7 +5370,7 @@
             "label": "budgetsAllocated",
             "offset": 0,
             "slot": "156",
-            "type": "t_mapping(t_contract(IAmm)2557,t_uint256)",
+            "type": "t_mapping(t_contract(IAmm)12550,t_uint256)",
             "contract": "InsuranceFund",
             "src": "contracts\\InsuranceFund.sol:35"
           },
@@ -5412,11 +5412,11 @@
             "label": "address",
             "numberOfBytes": "20"
           },
-          "t_array(t_contract(IAmm)2557)dyn_storage": {
+          "t_array(t_contract(IAmm)12550)dyn_storage": {
             "label": "contract IAmm[]",
             "numberOfBytes": "32"
           },
-          "t_array(t_contract(IERC20)645)dyn_storage": {
+          "t_array(t_contract(IERC20)831)dyn_storage": {
             "label": "contract IERC20[]",
             "numberOfBytes": "32"
           },
@@ -5432,11 +5432,11 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IAmm)2557": {
+          "t_contract(IAmm)12550": {
             "label": "contract IAmm",
             "numberOfBytes": "20"
           },
-          "t_contract(IERC20)645": {
+          "t_contract(IERC20)831": {
             "label": "contract IERC20",
             "numberOfBytes": "20"
           },
@@ -5444,7 +5444,7 @@
             "label": "mapping(address => bool)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_contract(IAmm)2557,t_uint256)": {
+          "t_mapping(t_contract(IAmm)12550,t_uint256)": {
             "label": "mapping(contract IAmm => uint256)",
             "numberOfBytes": "32"
           },
@@ -5894,6 +5894,352 @@
           "t_uint16": {
             "label": "uint16",
             "numberOfBytes": "2"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "04f57a538e25136547e23d3c8b58bfb3783ddadc69821f07d6b0d2bf9b021360": {
+      "address": "0x8B3A192685706ea10f557A04D2BFf071CfEE67C5",
+      "txHash": "0x336ec2f2d7f226ed2ee135c52bdee07be7bbb2202ca4cc24356fccebbc8eac4b",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "quoteToken",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_contract(IERC20)645",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:16"
+          },
+          {
+            "label": "insuranceFund",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_contract(IInsuranceFund)3229",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:17"
+          },
+          {
+            "label": "totalSupply",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:19"
+          },
+          {
+            "label": "tribe3Treasury",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_address",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:21"
+          },
+          {
+            "label": "guardEndTimestamp",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:23"
+          },
+          {
+            "label": "nextClaimTimestamp",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:25"
+          },
+          {
+            "label": "claimPeriodInSec",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_uint256",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:27"
+          },
+          {
+            "label": "balanceOf",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ETHStakingPool",
+            "src": "contracts\\ETHStakingPool.sol:29"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IERC20)645": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IInsuranceFund)3229": {
+            "label": "contract IInsuranceFund",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "3bdee776a7d8941560dca828a9e1446b2647a002c9367e078fa246b8782c6855": {
+      "address": "0x52FBBBA0705fed6f38e69b6a6FeF26968A4f8863",
+      "txHash": "0x6bcb51c81de74d82e2e7b07fdd5b4b1fef1a8a10b75ded71676be5e9dd4f53fd",
+      "layout": {
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:67"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\utils\\ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "BlockContext",
+            "src": "contracts\\utils\\BlockContext.sol:13"
+          },
+          {
+            "label": "ammMap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:26"
+          },
+          {
+            "label": "quoteTokenMap",
+            "offset": 0,
+            "slot": "152",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:27"
+          },
+          {
+            "label": "amms",
+            "offset": 0,
+            "slot": "153",
+            "type": "t_array(t_contract(IAmm)2584)dyn_storage",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:28"
+          },
+          {
+            "label": "quoteTokens",
+            "offset": 0,
+            "slot": "154",
+            "type": "t_array(t_contract(IERC20)645)dyn_storage",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:29"
+          },
+          {
+            "label": "beneficiary",
+            "offset": 0,
+            "slot": "155",
+            "type": "t_address",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:32"
+          },
+          {
+            "label": "budgetsAllocated",
+            "offset": 0,
+            "slot": "156",
+            "type": "t_mapping(t_contract(IAmm)2584,t_uint256)",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:35"
+          },
+          {
+            "label": "ethStakingPool",
+            "offset": 0,
+            "slot": "157",
+            "type": "t_address",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:37"
+          },
+          {
+            "label": "tttStakingPool",
+            "offset": 0,
+            "slot": "158",
+            "type": "t_address",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:39"
+          },
+          {
+            "label": "reserveCoeff",
+            "offset": 20,
+            "slot": "158",
+            "type": "t_uint8",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:42"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "159",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "InsuranceFund",
+            "src": "contracts\\InsuranceFund.sol:44"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_contract(IAmm)2584)dyn_storage": {
+            "label": "contract IAmm[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_contract(IERC20)645)dyn_storage": {
+            "label": "contract IERC20[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IAmm)2584": {
+            "label": "contract IAmm",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IERC20)645": {
+            "label": "contract IERC20",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_contract(IAmm)2584,t_uint256)": {
+            "label": "mapping(contract IAmm => uint256)",
+            "numberOfBytes": "32"
           },
           "t_uint256": {
             "label": "uint256",
