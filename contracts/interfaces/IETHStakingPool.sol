@@ -14,4 +14,6 @@ interface IETHStakingPool {
     function calculateTotalReward() external view returns (int256);
 
     function withdraw(IAmm _amm, uint256 _amount) external;
+
+    function withdrawAll() external;
 }

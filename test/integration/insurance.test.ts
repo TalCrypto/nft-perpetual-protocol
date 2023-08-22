@@ -255,4 +255,32 @@ describe("fund flow test", async () => {
       expect(await ethStakingPool.calculateTotalReward()).eq(toFullDigitBN(60));
     });
   });
+  describe("remove token", async () => {
+    beforeEach(async () => {
+      await ethStakingPool.stake(toFullDigitBN(10));
+      await amm.setSpreadRatio(toFullDigitBN(0.03));
+      await amm2.setSpreadRatio(toFullDigitBN(0.03));
+      await clearingHouse.connect(alice).openPosition(amm.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(5), toFullDigitBN(0), true);
+      await clearingHouse.connect(alice).openPosition(amm2.address, Side.BUY, toFullDigitBN(600), toFullDigitBN(5), toFullDigitBN(0), true);
+      await insuranceFund.shutdownAllAmm();
+    });
+    it("balances should be transferred to owner", async () => {
+      const ownerBalanceBefore = await quoteToken.balanceOf(admin.address);
+      const vaultBefore = await quoteToken.balanceOf(clearingHouse.address);
+      const IFBefore = await quoteToken.balanceOf(insuranceFund.address);
+      const stakingBefore = await quoteToken.balanceOf(ethStakingPool.address);
+      expect(vaultBefore).eq(toFullDigitBN(240));
+      expect(IFBefore).eq(toFullDigitBN(36));
+      expect(stakingBefore).eq(toFullDigitBN(10));
+      await insuranceFund.removeToken(quoteToken.address);
+      const ownerBalanceAfter = await quoteToken.balanceOf(admin.address);
+      expect(ownerBalanceAfter).eq(ownerBalanceBefore.add(vaultBefore).add(IFBefore).add(stakingBefore));
+      expect(await quoteToken.balanceOf(clearingHouse.address)).eq(toFullDigitBN(0));
+      expect(await quoteToken.balanceOf(insuranceFund.address)).eq(toFullDigitBN(0));
+      expect(await quoteToken.balanceOf(ethStakingPool.address)).eq(toFullDigitBN(0));
+    });
+    it("one except owner can't remove token", async () => {
+      await expect(insuranceFund.connect(alice).removeToken(quoteToken.address)).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+  });
 });

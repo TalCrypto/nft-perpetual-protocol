@@ -134,6 +134,11 @@ contract InsuranceFund is IInsuranceFund, OwnableUpgradeableSafe, BlockContext {
             }
         }
 
+        // withdraw fund from vault
+        IInsuranceFundCallee(beneficiary).depositCallback(_token, _token.balanceOf(beneficiary));
+        // withdraw fund from staking pool
+        IETHStakingPool(ethStakingPool).withdrawAll();
+
         // transfer the quoteToken to owner.
         if (_balanceOf(_token) > 0) {
             _token.safeTransfer(owner(), _balanceOf(_token));

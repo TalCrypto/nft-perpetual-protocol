@@ -102,6 +102,11 @@ contract ETHStakingPool is IETHStakingPool, OwnableUpgradeableSafe, BlockContext
         emit Withdrawn(address(_amm), _amount);
     }
 
+    function withdrawAll() external {
+        require(_msgSender() == address(insuranceFund), "ES_NI"); // not insurancefund
+        quoteToken.transfer(_msgSender(), quoteToken.balanceOf(address(this)));
+    }
+
     /**
      * @notice calculate total reward
      * @return reward positive is profit, negative is loss
